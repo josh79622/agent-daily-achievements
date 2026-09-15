@@ -8,7 +8,7 @@
 
 ## Decisions and technology
 
-- The first-version interface is approved as a local web page; a Mac app is deferred until after first-version features are working. The technology stack, summarization agent or model, data-sharing boundary, report time, retention period, and source-collection details are not yet approved. Do not select them silently. Bring choices that would settle these questions to Josh with concrete trade-offs.
+- The first-version interface is approved as a local web page, and TypeScript is approved for first-version application code (local worker, web interface, and optional Chrome add-on); a Mac app is deferred until after first-version features are working. Runtime, framework, package manager, storage, extension tooling, installation method, verification commands, summarization agent or model, data-sharing boundary, report time, retention period, and source-collection details are not yet approved. Do not select them silently. Bring choices that would settle these questions to Josh with concrete trade-offs.
 - Once the stack is approved, record its practical requirements here: runtime, framework, package manager, storage, extension tooling, and verification commands. Keep rationale and rejected alternatives in a decision record.
 - This is a local-Mac first-version project. Do not add a cloud account, server, cross-device sync, or external processing of conversation contents without an explicit product and privacy decision.
 
