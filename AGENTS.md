@@ -16,7 +16,7 @@
 
 - An achievement must describe observable progress, a decision, a clarification, or learning with a traceable source. A stated intention is not proof of completion; a web conversation without execution evidence cannot establish that a task was completed.
 - Preserve links or identifiers back to original records. Avoid counting the same activity twice across sources. Make incorrect items correctable or removable by Josh.
-- Show optional add-on sources as not enabled when the add-on is absent or disabled; do not interpret this as a read failure or inactivity. When an enabled source cannot be read, show the report as incomplete. Test each source and its failure behavior before describing it as supported.
+- Support users with Claude Code only or Codex only. Show an absent local agent as not installed and optional add-on sources as not enabled when the add-on is absent or disabled; do not interpret either as a read failure or inactivity. When an installed or enabled source cannot be read, show the report as incomplete. Test each source and its failure behavior before describing it as supported.
 - Chrome web conversations are collected only from use of the extension onward; do not backfill pre-installation history.
 - Never commit conversation records, credentials, collected local data, or other private material. Do not send conversation contents to an external model or service before Josh approves that boundary.
 
