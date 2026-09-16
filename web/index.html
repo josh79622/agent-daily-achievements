@@ -5,63 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="A local preview of an evidence-backed daily report."
+      content="A fictional interactive view of today's achievements."
     />
     <title>Daily Proof</title>
     <link rel="stylesheet" href="/styles.css" />
     <script type="module" src="/app.js"></script>
   </head>
   <body>
-    <a class="skip-link" href="#main-content">Skip to report</a>
+    <a class="skip-link" href="#constellation">Skip to achievements</a>
 
-    <header class="topbar">
+    <header class="page-header">
       <a class="brand" href="/" aria-label="Daily Proof home">Daily Proof</a>
+      <time datetime="2026-09-16">16 Sep 2026</time>
     </header>
 
-    <main id="main-content">
-      <section class="workspace" aria-label="Generate sample report">
-        <div class="report-controls" aria-label="Generate sample report">
-          <label>
-            <span>Sample date</span>
-            <input
-              id="report-date-input"
-              type="date"
-              value="2026-09-16"
-              disabled
-            />
-          </label>
-          <button id="generate-button" type="button">
-            <span>Generate sample report</span>
-            <span aria-hidden="true">→</span>
-          </button>
-        </div>
-        <p class="sample-disclosure">Fictional sample · local only</p>
-      </section>
-
-      <div id="error-banner" class="error-banner" role="alert" hidden>
-        <strong>Couldn’t generate the preview.</strong>
-        <span id="error-message">Please try again.</span>
-      </div>
-
-      <div id="empty-state" class="empty-state" aria-hidden="true"></div>
-
-      <section id="report-view" class="report-view" aria-live="polite" hidden>
-        <header class="report-header">
-          <div>
-            <p id="report-date" class="eyebrow"></p>
-            <h2 id="report-title"></h2>
-            <p id="report-overview"></p>
-          </div>
-          <span id="report-status"></span>
-        </header>
-
-        <div id="report-sections"></div>
-
-        <footer class="report-footer">
-          <p>Sources</p>
-          <div id="report-sources"></div>
-        </footer>
-      </section>
+    <main>
+      <section
+        id="constellation"
+        class="constellation"
+        aria-label="Today's fictional achievement constellation"
+      ></section>
     </main>
   </body>
 </html>

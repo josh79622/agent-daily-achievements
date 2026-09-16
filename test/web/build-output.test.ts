@@ -14,7 +14,7 @@ test("builds the achievement constellation", async () => {
   const css = await readFile("dist/web/styles.css", "utf8");
   assert.match(html, /id="constellation"/);
   assert.match(html, /<time/);
-  assert.match(app, /achievement-node/);
+  assert.equal((app.match(/kind: "achievement"/g) ?? []).length, 3);
   assert.match(app, /Expand/);
   assert.match(app, /Related/);
   assert.doesNotMatch(html, /Generate sample report/);

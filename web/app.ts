@@ -1,145 +1,203 @@
-import type { DailyReport, EvidenceSource } from "../src/domain/report.js";
+type NodeKind = "achievement" | "event" | "detail";
 
-interface ReportResponse {
-  report: DailyReport;
+interface ConstellationNode {
+  id: string;
+  parentId?: string;
+  title: string;
+  detail: string;
+  kind: NodeKind;
+  x: number;
+  y: number;
 }
 
-interface ErrorResponse {
-  error?: { message?: string };
+const constellation = requiredElement<HTMLElement>("constellation");
+const nodes: ConstellationNode[] = [
+  {
+    id: "reliable-reports",
+    title: "Made the report generator reliable",
+    detail: "Fixed the date-boundary bug and confirmed the regression test.",
+    kind: "achievement",
+    x: 27,
+    y: 42,
+  },
+  {
+    id: "local-first",
+    title: "Kept the first release local",
+    detail: "Protected private work records by keeping the workflow on-device.",
+    kind: "achievement",
+    x: 51,
+    y: 54,
+  },
+  {
+    id: "verification",
+    title: "Clarified what verification means",
+    detail:
+      "Separated recording a change from proving that it behaves correctly.",
+    kind: "achievement",
+    x: 75,
+    y: 37,
+  },
+  {
+    id: "boundary-test",
+    parentId: "reliable-reports",
+    title: "Date-boundary regression",
+    detail: "A focused test captured the issue before the fix.",
+    kind: "event",
+    x: 14,
+    y: 67,
+  },
+  {
+    id: "focused-check",
+    parentId: "reliable-reports",
+    title: "Focused check passed",
+    detail: "The repaired path produced the expected report.",
+    kind: "event",
+    x: 36,
+    y: 74,
+  },
+  {
+    id: "privacy-choice",
+    parentId: "local-first",
+    title: "Privacy choice",
+    detail: "The first release remains local-first by design.",
+    kind: "event",
+    x: 55,
+    y: 79,
+  },
+  {
+    id: "commit-evidence",
+    parentId: "verification",
+    title: "Commit versus evidence",
+    detail: "A commit records work; verification supplies confidence.",
+    kind: "event",
+    x: 86,
+    y: 66,
+  },
+  {
+    id: "test-evidence",
+    parentId: "boundary-test",
+    title: "Regression evidence",
+    detail: "The failure was reproduced before implementation changed it.",
+    kind: "detail",
+    x: 8,
+    y: 84,
+  },
+  {
+    id: "local-control",
+    parentId: "privacy-choice",
+    title: "User control",
+    detail: "Local records stay under the user's control.",
+    kind: "detail",
+    x: 46,
+    y: 90,
+  },
+];
+
+let expandedNodeId: string | undefined;
+const relatedNodeIds = new Set<string>();
+
+renderConstellation();
+
+function renderConstellation(): void {
+  constellation.replaceChildren();
+  constellation.append(createConnectionLayer());
+
+  nodes.forEach((node) => {
+    if (isVisible(node)) constellation.append(createNode(node));
+  });
 }
 
-const generateButton = requiredElement<HTMLButtonElement>("generate-button");
-const emptyState = requiredElement<HTMLElement>("empty-state");
-const reportView = requiredElement<HTMLElement>("report-view");
-const errorBanner = requiredElement<HTMLElement>("error-banner");
-const errorMessage = requiredElement<HTMLElement>("error-message");
-const reportDate = requiredElement<HTMLElement>("report-date");
-const reportTitle = requiredElement<HTMLElement>("report-title");
-const reportOverview = requiredElement<HTMLElement>("report-overview");
-const reportStatus = requiredElement<HTMLElement>("report-status");
-const reportSections = requiredElement<HTMLElement>("report-sections");
-const reportSources = requiredElement<HTMLElement>("report-sources");
-
-generateButton.addEventListener("click", () => void generateReport());
-void loadLatestReport();
-
-async function loadLatestReport(): Promise<void> {
-  try {
-    const response = await fetch("/api/reports/latest");
-    if (response.status === 404) return;
-    if (!response.ok) throw await responseError(response);
-    const body = (await response.json()) as ReportResponse;
-    renderReport(body.report);
-  } catch (error) {
-    showError(error);
-  }
+function isVisible(node: ConstellationNode): boolean {
+  if (node.kind === "achievement") return true;
+  return node.parentId !== undefined && relatedNodeIds.has(node.parentId);
 }
 
-async function generateReport(): Promise<void> {
-  setGenerating(true);
-  errorBanner.hidden = true;
+function createConnectionLayer(): SVGSVGElement {
+  const layer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  layer.classList.add("constellation-lines");
+  layer.setAttribute("aria-hidden", "true");
+  layer.setAttribute("viewBox", "0 0 100 100");
+  layer.setAttribute("preserveAspectRatio", "none");
 
-  try {
-    const response = await fetch("/api/reports/sample", { method: "POST" });
-    if (!response.ok) throw await responseError(response);
-    const body = (await response.json()) as ReportResponse;
-    renderReport(body.report);
-    reportView.scrollIntoView({ behavior: "smooth", block: "start" });
-  } catch (error) {
-    showError(error);
-  } finally {
-    setGenerating(false);
-  }
-}
-
-function renderReport(report: DailyReport): void {
-  reportDate.textContent = formatDate(report.date);
-  reportTitle.textContent = report.title;
-  reportOverview.textContent = report.overview;
-  reportStatus.textContent = report.status;
-  reportSections.replaceChildren();
-  reportSources.replaceChildren();
-
-  report.sections.forEach((section, index) => {
-    const sectionElement = document.createElement("article");
-    sectionElement.className = "report-section";
-
-    const number = document.createElement("div");
-    number.className = "report-section-number";
-    number.textContent = String(index + 1).padStart(2, "0");
-
-    const heading = document.createElement("h3");
-    heading.textContent = section.heading;
-
-    sectionElement.append(number, heading);
-    section.items.forEach((item) => {
-      const itemElement = document.createElement("div");
-      itemElement.className = "report-item";
-
-      const title = document.createElement("h4");
-      title.textContent = item.title;
-      const detail = document.createElement("p");
-      detail.textContent = item.detail;
-
-      itemElement.append(title, detail);
-      item.sourceIds.forEach((sourceId) => {
-        const chip = document.createElement("span");
-        chip.className = "source-chip";
-        chip.textContent = sourceId;
-        itemElement.append(chip);
-      });
-      sectionElement.append(itemElement);
-    });
-    reportSections.append(sectionElement);
+  nodes.forEach((node) => {
+    if (!node.parentId || !relatedNodeIds.has(node.parentId)) return;
+    const parent = nodes.find(({ id }) => id === node.parentId);
+    if (!parent) return;
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", String(parent.x));
+    line.setAttribute("y1", String(parent.y));
+    line.setAttribute("x2", String(node.x));
+    line.setAttribute("y2", String(node.y));
+    layer.append(line);
   });
 
-  report.sources.forEach((source) => {
-    const sourceElement = document.createElement("span");
-    sourceElement.textContent = `${sourceName(source.source)} · ${source.id}`;
-    reportSources.append(sourceElement);
-  });
-
-  emptyState.hidden = true;
-  reportView.hidden = false;
+  return layer;
 }
 
-function setGenerating(isGenerating: boolean): void {
-  generateButton.disabled = isGenerating;
-  const label = generateButton.querySelector("span");
-  if (label)
-    label.textContent = isGenerating ? "Generating…" : "Generate sample report";
-}
+function createNode(node: ConstellationNode): HTMLElement {
+  const article = document.createElement("article");
+  article.className = `constellation-node ${node.kind}-node`;
+  article.dataset.nodeId = node.id;
+  article.style.setProperty("--x", `${node.x}%`);
+  article.style.setProperty("--y", `${node.y}%`);
 
-function showError(error: unknown): void {
-  errorMessage.textContent =
-    error instanceof Error ? error.message : "Please try again.";
-  errorBanner.hidden = false;
-}
+  if (expandedNodeId === node.id) article.classList.add("is-expanded");
+  if (relatedNodeIds.has(node.id)) article.classList.add("has-related");
 
-async function responseError(response: Response): Promise<Error> {
-  const body = (await response.json().catch(() => ({}))) as ErrorResponse;
-  return new Error(
-    body.error?.message ?? `Request failed (${response.status}).`,
+  const title = document.createElement("h2");
+  title.textContent = node.title;
+  article.append(title);
+
+  const detail = document.createElement("p");
+  detail.className = "node-detail";
+  detail.textContent = node.detail;
+  article.append(detail);
+
+  const controls = document.createElement("div");
+  controls.className = "node-controls";
+  controls.append(
+    createControl("Expand", expandedNodeId === node.id, () => {
+      expandedNodeId = expandedNodeId === node.id ? undefined : node.id;
+      renderConstellation();
+    }),
+    createControl("Related", relatedNodeIds.has(node.id), () => {
+      if (relatedNodeIds.has(node.id)) relatedNodeIds.delete(node.id);
+      else relatedNodeIds.add(node.id);
+      renderConstellation();
+    }),
   );
+  article.append(controls);
+
+  article.addEventListener("pointermove", (event) => {
+    const bounds = article.getBoundingClientRect();
+    article.style.setProperty(
+      "--pointer-x",
+      String(event.clientX - bounds.left - bounds.width / 2),
+    );
+    article.style.setProperty(
+      "--pointer-y",
+      String(event.clientY - bounds.top - bounds.height / 2),
+    );
+  });
+  article.addEventListener("pointerleave", () => {
+    article.style.setProperty("--pointer-x", "0");
+    article.style.setProperty("--pointer-y", "0");
+  });
+
+  return article;
 }
 
-function sourceName(source: EvidenceSource): string {
-  const names: Record<EvidenceSource, string> = {
-    "claude-code": "Claude Code",
-    codex: "Codex",
-    "chatgpt-web": "Web add-on",
-  };
-  return names[source];
-}
-
-function formatDate(date: string): string {
-  return new Intl.DateTimeFormat("en-AU", {
-    day: "numeric",
-    month: "long",
-    weekday: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${date}T00:00:00Z`));
+function createControl(
+  label: string,
+  pressed: boolean,
+  onClick: () => void,
+): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.setAttribute("aria-pressed", String(pressed));
+  button.addEventListener("click", onClick);
+  return button;
 }
 
 function requiredElement<T extends HTMLElement>(id: string): T {
