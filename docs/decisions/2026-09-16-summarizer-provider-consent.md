@@ -2,7 +2,7 @@
 
 Date: 2026-09-16
 
-Josh approved external AI summarization, with explicit consent by each user during setup. If only Claude is usable for summarization, use Claude. If only ChatGPT/OpenAI is usable, use OpenAI. If both are usable, prefer OpenAI. This priority is independent of whether the day's records came from Claude Code, Codex, or an optional web source: the selected provider may receive records originally produced by the other provider, but only within the user's approved data scope.
+Josh approved external AI summarization, with explicit consent by each user during setup. He clarified that the target users work with Claude Code, Codex, or both—not browser-only Claude or ChatGPT subscriptions. If only the Claude Code CLI is usable for summarization, use Claude Code. If only the Codex CLI is usable, use Codex. If both are usable, prefer Codex. This priority is independent of whether the day's records came from Claude Code, Codex, or an optional web source: the selected agent may receive records originally produced by the other provider, but only within the user's approved data scope.
 
 ## Privacy boundary
 
@@ -12,7 +12,7 @@ Josh approved external AI summarization, with explicit consent by each user duri
 
 ## Access and failure questions still open
 
-"Has Claude/ChatGPT" is not yet a technical detection rule. A web subscription alone is not proof that the nightly worker can call a model. Claude Code supports non-interactive `claude -p` runs; Codex supports non-interactive `codex exec` runs and can use a saved ChatGPT sign-in. Those are candidate routes, not yet a chosen integration. Their current entitlement, usage limits, authentication, input-size behavior, and unattended reliability must be checked before setup declares either usable. API-key paths would introduce separate billing and credential handling and are not chosen by this priority decision.
+"Has Claude Code/Codex" means an agent CLI ready for summarization, not merely a browser subscription or an old local history folder. An installed command by itself is not enough if authentication or unattended use fails. Claude Code supports non-interactive `claude -p` runs; Codex supports non-interactive `codex exec` runs and can use a saved ChatGPT sign-in. Those are candidate routes, not yet a chosen integration. Their current entitlement, usage limits, authentication, input-size behavior, and unattended reliability must be checked before setup declares either usable. API-key paths would introduce separate billing and credential handling and are not chosen by this priority decision.
 
 Define what source records enter a day's summarization request, how complete inputs are handled if they exceed model limits, the model and output contract, and the report's status when no approved or working provider exists. Do not label a missing or failed model response as a complete daily report.
 
