@@ -1,4 +1,6 @@
+import { readFile } from "node:fs/promises";
 import { createServer, type Server, type ServerResponse } from "node:http";
+import { join } from "node:path";
 
 import { generateSampleReport } from "../domain/generate-sample-report.js";
 import { sampleRecords } from "../domain/sample-records.js";
@@ -7,11 +9,13 @@ import type { ReportStore } from "../storage/report-store.js";
 interface AppOptions {
   reportStore: ReportStore;
   reportDate?: () => string;
+  staticDirectory?: string;
 }
 
 export function createApp({
   reportStore,
   reportDate = currentLocalDate,
+  staticDirectory,
 }: AppOptions): Server {
   return createServer(async (request, response) => {
     try {
@@ -60,6 +64,19 @@ export function createApp({
         return;
       }
 
+      const staticAsset = staticAssetFor(pathname);
+      if (request.method === "GET" && staticDirectory && staticAsset) {
+        const contents = await readFile(
+          join(staticDirectory, staticAsset.file),
+        );
+        response.writeHead(200, {
+          "content-type": staticAsset.contentType,
+          "cache-control": "no-store",
+        });
+        response.end(contents);
+        return;
+      }
+
       sendJson(response, 404, {
         error: { code: "not_found", message: "Route not found." },
       });
@@ -72,6 +89,23 @@ export function createApp({
       });
     }
   });
+}
+
+function staticAssetFor(
+  pathname: string,
+): { contentType: string; file: string } | undefined {
+  const assets: Record<string, { contentType: string; file: string }> = {
+    "/": { contentType: "text/html; charset=utf-8", file: "index.html" },
+    "/app.js": {
+      contentType: "text/javascript; charset=utf-8",
+      file: "app.js",
+    },
+    "/styles.css": {
+      contentType: "text/css; charset=utf-8",
+      file: "styles.css",
+    },
+  };
+  return assets[pathname];
 }
 
 function sendJson(

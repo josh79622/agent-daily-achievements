@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
@@ -76,4 +76,30 @@ test("returns 405 when a report route receives the wrong method", async (context
   assert.deepEqual(await response.json(), {
     error: { code: "method_not_allowed", message: "Method not allowed." },
   });
+});
+
+test("serves the local report page from the configured static directory", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "daily-report-web-"));
+  await writeFile(
+    join(directory, "index.html"),
+    "<main>Local report page</main>",
+  );
+  const server = createApp({
+    reportStore: createReportStore(join(directory, "reports")),
+    staticDirectory: directory,
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  context.after(async () => {
+    server.close();
+    await once(server, "close");
+    await rm(directory, { force: true, recursive: true });
+  });
+  const address = server.address() as AddressInfo;
+
+  const response = await fetch(`http://127.0.0.1:${address.port}/`);
+
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "<main>Local report page</main>");
+  assert.match(response.headers.get("content-type") ?? "", /text\/html/);
 });
