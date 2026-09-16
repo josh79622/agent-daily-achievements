@@ -1,0 +1,6 @@
+.worktrees/
+data/
+dist/
+node_modules/
+docs/
+*.md
