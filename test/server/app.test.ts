@@ -172,6 +172,7 @@ test("serves collector metadata before a selected local preview", async (context
   const server = createApp({
     reportStore: createReportStore(directory),
     collector,
+    consentPath: join(directory, "consent.json"),
     collectorDate: () => "2026-09-16",
   });
   server.listen(0, "127.0.0.1");
@@ -184,6 +185,11 @@ test("serves collector metadata before a selected local preview", async (context
   const address = server.address() as AddressInfo;
   const baseUrl = `http://127.0.0.1:${address.port}`;
 
+  await fetch(`${baseUrl}/api/collector/consent`, {
+    method: "PUT",
+    headers: { origin: baseUrl, "content-type": "application/json" },
+    body: JSON.stringify({ sources: ["claude-code"] }),
+  });
   const summary = await fetch(`${baseUrl}/api/collector/today`);
   const preview = await fetch(`${baseUrl}/api/collector/sessions/session-1`);
 

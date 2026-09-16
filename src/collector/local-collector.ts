@@ -28,7 +28,10 @@ export interface CollectionSummary {
 }
 
 export interface LocalCollector {
-  collect(date: string): Promise<CollectionSummary>;
+  collect(
+    date: string,
+    sources: readonly LocalSource[],
+  ): Promise<CollectionSummary>;
 }
 
 interface LocalCollectorOptions {
@@ -40,33 +43,25 @@ export function createLocalCollector(
   options: LocalCollectorOptions,
 ): LocalCollector {
   return {
-    async collect(date) {
-      const claude = await collectSource(
-        "claude-code",
-        options.claudeDirectories,
-        date,
-      );
-      const codex = await collectSource(
-        "codex",
-        options.codexDirectories,
-        date,
-      );
-      return {
-        date,
-        sources: [
-          {
-            source: "claude-code",
-            sessions: claude.sessions.length,
-            issues: claude.issues,
-          },
-          {
-            source: "codex",
-            sessions: codex.sessions.length,
-            issues: codex.issues,
-          },
-        ],
-        sessions: [...claude.sessions, ...codex.sessions],
-      };
+    async collect(date, allowedSources) {
+      const sources: CollectionSummary["sources"] = [];
+      const sessions: CollectedSession[] = [];
+      for (const source of allowedSources) {
+        const result = await collectSource(
+          source,
+          source === "claude-code"
+            ? options.claudeDirectories
+            : options.codexDirectories,
+          date,
+        );
+        sources.push({
+          source,
+          sessions: result.sessions.length,
+          issues: result.issues,
+        });
+        sessions.push(...result.sessions);
+      }
+      return { date, sources, sessions };
     },
   };
 }

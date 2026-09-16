@@ -66,7 +66,10 @@ test("local collector returns same-day Claude Code and Codex sessions with issue
     claudeDirectories: [claudeDirectory, join(root, "claude.jsonl")],
     codexDirectories: [codexDirectory, join(root, "codex.jsonl")],
   });
-  const summary = await collector.collect("2026-09-16");
+  const summary = await collector.collect("2026-09-16", [
+    "claude-code",
+    "codex",
+  ]);
 
   assert.equal(summary.sources[0]?.sessions, 1);
   assert.equal(summary.sources[1]?.sessions, 1);

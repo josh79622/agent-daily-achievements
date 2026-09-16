@@ -17,6 +17,7 @@ const collector = createLocalCollector({
 });
 const server = createApp({
   collector,
+  consentPath: resolve("data/local-sources.json"),
   reportStore,
   staticDirectory: resolve("dist/web"),
 });
