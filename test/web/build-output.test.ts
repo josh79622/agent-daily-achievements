@@ -16,6 +16,13 @@ test("builds the achievement constellation", async () => {
   assert.match(html, /<time/);
   assert.match(html, /id="collector-toggle"/);
   assert.match(html, /id="collector-panel"/);
+  assert.match(html, /id="source-consent-form"/);
+  assert.match(html, /id="source-claude-code"/);
+  assert.match(html, /id="source-codex"/);
+  assert.doesNotMatch(html, /checked/);
+  assert.match(html, /No conversation text leaves this machine/);
+  assert.match(html, /separate consent/);
+  assert.match(app, /api\/collector\/consent/);
   assert.equal((app.match(/kind: "achievement"/g) ?? []).length, 3);
   assert.match(app, /Expand/);
   assert.match(app, /Related/);
