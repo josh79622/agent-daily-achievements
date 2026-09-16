@@ -12,10 +12,12 @@ test("builds the minimal daily-report workflow", async () => {
   const html = await readFile("dist/web/index.html", "utf8");
   const css = await readFile("dist/web/styles.css", "utf8");
   assert.match(html, /type="date"/);
-  assert.match(html, /Fictional preview/);
+  assert.match(html, /Fictional sample · local only/);
   assert.match(html, /Generate sample report/);
   assert.match(html, /id="report-view"/);
-  assert.doesNotMatch(html, /Today’s proof/);
-  assert.doesNotMatch(html, /Collected gently in the background/);
+  assert.doesNotMatch(html, /What moved today\?/);
+  assert.doesNotMatch(html, /This demo uses invented records/);
+  assert.doesNotMatch(html, /No report yet/);
+  assert.doesNotMatch(html, /Stage 2 · Fictional data only/);
   assert.match(css, /\.empty-state\[hidden\]/);
 });
