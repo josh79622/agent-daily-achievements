@@ -41,3 +41,15 @@ Automated checks will confirm the engineer-facing copy and structural hooks in t
 ## Implementation status
 
 Implemented on `codex/ui-skeleton`. The complete quality gate passed with all ten tests. The initial and generated report states were inspected at 1440 × 900 and 390 × 844; the navigation, preview disclosure, source status, report sections, source IDs, and evidence trail remained readable. The generation control successfully completed the persisted report flow in the browser.
+
+## Revised direction: calm productivity
+
+Browser research showed that the first implementation leaned too far toward an infrastructure console. The approved revision uses the calmer personal-productivity language represented by Timylabs and Sunsama:
+
+- retain a dark theme, but soften contrast and remove the background grid;
+- replace terminal, localhost, API, and configuration language with a friendly daily greeting;
+- use spacious summary cards and a readable daily-review hierarchy;
+- keep source traceability available without making source IDs visually dominant;
+- preserve the fictional-data disclosure and the existing local report flow.
+
+The result should still feel credible to engineers without looking like monitoring or deployment software.
