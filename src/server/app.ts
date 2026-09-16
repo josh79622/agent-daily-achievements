@@ -198,9 +198,15 @@ export function createApp({
             sources: result.sources.filter((source) =>
               sources.includes(source.source),
             ),
-            sessions: sessions.map(
-              ({ messages: _messages, ...metadata }) => metadata,
-            ),
+            sessions: sessions.map((session) => ({
+              id: session.id,
+              source: session.source,
+              file: session.file,
+              startedAt: session.startedAt,
+              endedAt: session.endedAt,
+              messageCount: session.messageCount,
+              issueCount: session.issueCount,
+            })),
           });
           return;
         }

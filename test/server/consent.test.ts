@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { request } from "node:http";
 import { once } from "node:events";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
@@ -109,11 +110,6 @@ test("consent: malformed input and foreign origin/host cannot authorize reads", 
   for (const headers of [
     { origin: "https://unrelated.example", "content-type": "application/json" },
     { origin: app.url, "content-type": "text/plain" },
-    {
-      origin: app.url,
-      host: "unrelated.example",
-      "content-type": "application/json",
-    },
   ]) {
     assert.equal(
       (
@@ -126,6 +122,28 @@ test("consent: malformed input and foreign origin/host cannot authorize reads", 
       403,
     );
   }
+  const foreignHostStatus = await new Promise<number | undefined>(
+    (resolve, reject) => {
+      const req = request(
+        app.url + "/api/collector/consent",
+        {
+          method: "PUT",
+          headers: {
+            host: "unrelated.example",
+            origin: app.url,
+            "content-type": "application/json",
+          },
+        },
+        (response) => {
+          response.resume();
+          resolve(response.statusCode);
+        },
+      );
+      req.on("error", reject);
+      req.end('{"sources":["codex"]}');
+    },
+  );
+  assert.equal(foreignHostStatus, 403);
   assert.equal(
     (
       await fetch(app.url + "/api/collector/consent", {
