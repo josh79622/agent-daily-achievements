@@ -53,4 +53,4 @@ GitHub Actions runs the same gate on pushes and pull requests. Before calling th
 
 ## Implementation status
 
-Implemented on the `codex/ui-skeleton` branch. The rendered page and generated report were inspected at desktop and 390-pixel viewport widths; the fictional-data notice, local status, source coverage, report sections, and evidence trail remained visible and readable. A deliberate date-assertion failure proved the gate stops at the test stage before building. After restoring the assertion, the complete gate passed with all nine source tests.
+Implemented on the `codex/ui-skeleton` branch. The rendered page and generated report were inspected at desktop and 390-pixel viewport widths; the fictional-data notice, local status, source coverage, report sections, and evidence trail remained visible and readable. A deliberate date-assertion failure proved the gate stops at the test stage before building. After restoring the assertion, the complete gate passed. A subsequent review added a tenth regression test proving the generated report is read back from storage before it is rendered.
