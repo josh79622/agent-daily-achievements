@@ -34,7 +34,11 @@ export function createApp({
 
         const report = generateSampleReport(sampleRecords, reportDate());
         await reportStore.save(report);
-        sendJson(response, 201, { report });
+        const storedReport = await reportStore.readLatest();
+        if (!storedReport.found) {
+          throw new Error("Saved report could not be read back.");
+        }
+        sendJson(response, 201, { report: storedReport.report });
         return;
       }
 
