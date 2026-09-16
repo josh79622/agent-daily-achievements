@@ -2,24 +2,86 @@ import { readFile } from "node:fs/promises";
 import { createServer, type Server, type ServerResponse } from "node:http";
 import { join } from "node:path";
 
+import type { LocalCollector } from "../collector/local-collector.js";
 import { generateSampleReport } from "../domain/generate-sample-report.js";
 import { sampleRecords } from "../domain/sample-records.js";
 import type { ReportStore } from "../storage/report-store.js";
 
 interface AppOptions {
   reportStore: ReportStore;
+  collector?: LocalCollector;
+  collectorDate?: () => string;
   reportDate?: () => string;
   staticDirectory?: string;
 }
 
 export function createApp({
   reportStore,
+  collector,
+  collectorDate = currentLocalDate,
   reportDate = currentLocalDate,
   staticDirectory,
 }: AppOptions): Server {
   return createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
+
+      if (pathname === "/api/collector/today" && request.method === "GET") {
+        if (!collector) {
+          sendJson(response, 503, {
+            error: {
+              code: "collector_unavailable",
+              message: "Local collector is unavailable.",
+            },
+          });
+          return;
+        }
+        const result = await collector.collect(collectorDate());
+        sendJson(response, 200, {
+          date: result.date,
+          sources: result.sources,
+          sessions: result.sessions.map((session) => ({
+            id: session.id,
+            source: session.source,
+            file: session.file,
+            startedAt: session.startedAt,
+            endedAt: session.endedAt,
+            messageCount: session.messageCount,
+            issueCount: session.issueCount,
+          })),
+        });
+        return;
+      }
+
+      const previewMatch = pathname.match(
+        /^\/api\/collector\/sessions\/([^/]+)$/,
+      );
+      if (previewMatch && request.method === "GET") {
+        if (!collector) {
+          sendJson(response, 503, {
+            error: {
+              code: "collector_unavailable",
+              message: "Local collector is unavailable.",
+            },
+          });
+          return;
+        }
+        const sessionId = decodeURIComponent(previewMatch[1] ?? "");
+        const session = (
+          await collector.collect(collectorDate())
+        ).sessions.find(({ id }) => id === sessionId);
+        if (!session) {
+          sendJson(response, 404, {
+            error: {
+              code: "session_not_found",
+              message: "Local session not found.",
+            },
+          });
+          return;
+        }
+        sendJson(response, 200, { session });
+        return;
+      }
 
       if (pathname === "/api/reports/sample") {
         if (request.method !== "POST") {

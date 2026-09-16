@@ -63,6 +63,64 @@ a:focus-visible {
   pointer-events: none;
 }
 
+#collector-toggle {
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.66rem;
+  pointer-events: auto;
+}
+
+.collector-panel {
+  position: fixed;
+  top: 4.5rem;
+  right: 1.5rem;
+  z-index: 4;
+  width: min(390px, calc(100% - 2rem));
+  max-height: calc(100vh - 6rem);
+  padding: 1rem;
+  overflow: auto;
+  color: var(--text);
+  background: #151917;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
+.collector-panel[hidden] {
+  display: none;
+}
+.collector-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+}
+.collector-panel-header p,
+.collector-source,
+.collector-session p {
+  margin: 0 0 0.65rem;
+}
+.collector-panel button {
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+.collector-session {
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--line);
+}
+.collector-preview {
+  margin-top: 0.7rem;
+  color: var(--muted);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .brand {
   color: var(--text);
   font-size: 0.78rem;

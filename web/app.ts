@@ -11,6 +11,12 @@ interface ConstellationNode {
 }
 
 const constellation = requiredElement<HTMLElement>("constellation");
+const collectorToggle = requiredElement<HTMLButtonElement>("collector-toggle");
+const collectorPanel = requiredElement<HTMLElement>("collector-panel");
+const collectorClose = requiredElement<HTMLButtonElement>("collector-close");
+const collectorStatus = requiredElement<HTMLElement>("collector-status");
+const collectorSources = requiredElement<HTMLElement>("collector-sources");
+const collectorSessions = requiredElement<HTMLElement>("collector-sessions");
 const nodes: ConstellationNode[] = [
   {
     id: "reliable-reports",
@@ -97,6 +103,80 @@ let expandedNodeId: string | undefined;
 let relatedNodeId: string | undefined;
 
 renderConstellation();
+collectorToggle.addEventListener("click", () => void showCollector());
+collectorClose.addEventListener("click", hideCollector);
+
+interface CollectorSession {
+  id: string;
+  source: string;
+  startedAt: string;
+  endedAt: string;
+  messageCount: number;
+  issueCount: number;
+}
+
+async function showCollector(): Promise<void> {
+  collectorPanel.hidden = false;
+  collectorToggle.setAttribute("aria-expanded", "true");
+  collectorStatus.textContent = "Reading local metadata…";
+  collectorSources.replaceChildren();
+  collectorSessions.replaceChildren();
+  try {
+    const response = await fetch("/api/collector/today");
+    if (!response.ok) throw new Error("Local activity is unavailable.");
+    const result = (await response.json()) as {
+      sources: Array<{ source: string; sessions: number; issues: number }>;
+      sessions: CollectorSession[];
+    };
+    collectorStatus.textContent = "Metadata only — previews stay local.";
+    result.sources.forEach((source) => {
+      const line = document.createElement("p");
+      line.className = "collector-source";
+      line.textContent = `${source.source} · ${source.sessions} sessions · ${source.issues} issues`;
+      collectorSources.append(line);
+    });
+    result.sessions.forEach((session) =>
+      collectorSessions.append(createSession(session)),
+    );
+  } catch (error) {
+    collectorStatus.textContent =
+      error instanceof Error ? error.message : "Local activity is unavailable.";
+  }
+}
+
+function hideCollector(): void {
+  collectorPanel.hidden = true;
+  collectorToggle.setAttribute("aria-expanded", "false");
+}
+
+function createSession(session: CollectorSession): HTMLElement {
+  const article = document.createElement("article");
+  article.className = "collector-session";
+  const title = document.createElement("p");
+  title.textContent = `${session.source} · ${session.messageCount} messages`;
+  const preview = document.createElement("button");
+  preview.type = "button";
+  preview.textContent = "Preview locally";
+  preview.addEventListener("click", async () => {
+    const response = await fetch(
+      `/api/collector/sessions/${encodeURIComponent(session.id)}`,
+    );
+    if (!response.ok) return;
+    const body = (await response.json()) as {
+      session: { messages: Array<{ role: string; text: string }> };
+    };
+    const messages = document.createElement("div");
+    messages.className = "collector-preview";
+    body.session.messages.forEach((message) => {
+      const line = document.createElement("p");
+      line.textContent = `${message.role}: ${message.text}`;
+      messages.append(line);
+    });
+    preview.replaceWith(messages);
+  });
+  article.append(title, preview);
+  return article;
+}
 
 function renderConstellation(): void {
   constellation.replaceChildren();
