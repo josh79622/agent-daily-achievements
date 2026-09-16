@@ -26,8 +26,11 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 Implement the first-read local-source consent gate: the page must require an explicit source-scope choice before the collector API is enabled, persist only the choice locally, and disclose that no conversation text leaves the machine. The task must not add model invocation or scheduling.
 
+The [proposed consent design and acceptance cases](docs/plans/2026-09-16-local-source-consent-design.md) are ready for Josh's review. They propose server-enforced source selection persisted in ignored local JSON, explicit withdrawal behavior, and blocking access when settings fail. Implementation and test-code generation await confirmation of the design and behavior-setting cases, as required by the project workflow. No application code or local history was read for this design task.
+
 ## Latest verification
 
+- Consent design only: targeted Prettier check and `git diff --check` passed. No application tests were run for this documentation change. The shell's default Node 25 fails to start because of a missing Homebrew library; use `/opt/homebrew/opt/node@24/bin` on `PATH` for the approved Node 24 runtime (verified v24.20.0).
 - `npm run check` passed after the local collector panel change: format, lint, typecheck, 12 tests, and build.
 - Browser inspection confirmed the local collector panel loaded metadata for both configured sources. Do not record conversation text or session contents in this file.
 

@@ -5,6 +5,7 @@
 - [x] Define a shared local session/message/issue model for Claude Code and Codex fixtures. (`951bb03`)
 - [x] Add a metadata-first local collector panel and on-demand preview API. (`976cb44`)
 - [ ] Require explicit first-read consent and source scope before collector access.
+  - Proposed design and cases C1–C8 are [ready for confirmation](docs/plans/2026-09-16-local-source-consent-design.md); implementation has not started.
 - [ ] Verify Claude Code parsing against approved real local sessions: timestamps, role/content extraction, session identity, partial/malformed input.
 - [ ] Verify Codex parsing against approved real local sessions: timestamps, role/content extraction, session identity, active/archived overlap, partial/malformed input.
 - [ ] Surface absent source, unreadable source, unsupported shape, and partial-write state as distinct incomplete coverage.
