@@ -6,13 +6,20 @@ import type { AddressInfo } from "node:net";
 import { once } from "node:events";
 import test from "node:test";
 
+import type { DailyReport } from "../../src/domain/report.js";
 import { createApp } from "../../src/server/app.js";
-import { createReportStore } from "../../src/storage/report-store.js";
+import {
+  createReportStore,
+  type ReportStore,
+} from "../../src/storage/report-store.js";
 
-async function startTestApp(context: test.TestContext) {
+async function startTestApp(
+  context: test.TestContext,
+  reportStore?: ReportStore,
+) {
   const directory = await mkdtemp(join(tmpdir(), "daily-report-server-"));
   const server = createApp({
-    reportStore: createReportStore(directory),
+    reportStore: reportStore ?? createReportStore(directory),
     reportDate: () => "2026-09-16",
   });
   server.listen(0, "127.0.0.1");
@@ -54,6 +61,31 @@ test("generates a sample report and reads the stored result back", async (contex
   assert.equal(generationResponse.status, 201);
   assert.equal(latestResponse.status, 200);
   assert.deepEqual(await latestResponse.json(), generationBody);
+});
+
+test("returns the persisted report after sample generation", async (context) => {
+  let savedReport: DailyReport | undefined;
+  const reportStore: ReportStore = {
+    async save(report) {
+      savedReport = report;
+    },
+    async readLatest() {
+      assert.ok(savedReport);
+      return {
+        found: true,
+        report: { ...savedReport, title: "Read-back report" },
+      };
+    },
+  };
+  const baseUrl = await startTestApp(context, reportStore);
+
+  const response = await fetch(`${baseUrl}/api/reports/sample`, {
+    method: "POST",
+  });
+  const body = (await response.json()) as { report: DailyReport };
+
+  assert.equal(response.status, 201);
+  assert.equal(body.report.title, "Read-back report");
 });
 
 test("returns a structured 404 for an unknown API route", async (context) => {
