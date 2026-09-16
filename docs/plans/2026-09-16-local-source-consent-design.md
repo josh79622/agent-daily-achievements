@@ -1,6 +1,6 @@
 # First-read local-source consent — proposed design
 
-Status: pending Josh's approval. This document does not authorize implementation or local history access.
+Status: Josh approved this design and cases C1–C8 in the task conversation. Implementation uses synthetic histories for verification.
 
 ## Observable task
 
@@ -36,7 +36,7 @@ The proposed JSON settings file is for this local skeleton; it does not settle p
 
 ## Acceptance cases derived from the brief and handoff
 
-All cases below are **pending Josh's confirmation**. They were written before inspecting implementation code for this task.
+All cases below are **confirmed by Josh**. They were written before inspecting implementation code for this task.
 
 | ID | Scenario | Expected observable result |
 | --- | --- | --- |
