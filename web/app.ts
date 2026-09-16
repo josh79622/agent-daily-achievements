@@ -94,7 +94,7 @@ const nodes: ConstellationNode[] = [
 ];
 
 let expandedNodeId: string | undefined;
-const relatedNodeIds = new Set<string>();
+let relatedNodeId: string | undefined;
 
 renderConstellation();
 
@@ -109,7 +109,7 @@ function renderConstellation(): void {
 
 function isVisible(node: ConstellationNode): boolean {
   if (node.kind === "achievement") return true;
-  return node.parentId !== undefined && relatedNodeIds.has(node.parentId);
+  return node.parentId === relatedNodeId;
 }
 
 function createConnectionLayer(): SVGSVGElement {
@@ -120,7 +120,7 @@ function createConnectionLayer(): SVGSVGElement {
   layer.setAttribute("preserveAspectRatio", "none");
 
   nodes.forEach((node) => {
-    if (!node.parentId || !relatedNodeIds.has(node.parentId)) return;
+    if (!node.parentId || node.parentId !== relatedNodeId) return;
     const parent = nodes.find(({ id }) => id === node.parentId);
     if (!parent) return;
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -142,7 +142,7 @@ function createNode(node: ConstellationNode): HTMLElement {
   article.style.setProperty("--y", `${node.y}%`);
 
   if (expandedNodeId === node.id) article.classList.add("is-expanded");
-  if (relatedNodeIds.has(node.id)) article.classList.add("has-related");
+  if (relatedNodeId === node.id) article.classList.add("has-related");
 
   const title = document.createElement("h2");
   title.textContent = node.title;
@@ -160,9 +160,8 @@ function createNode(node: ConstellationNode): HTMLElement {
       expandedNodeId = expandedNodeId === node.id ? undefined : node.id;
       renderConstellation();
     }),
-    createControl("Related", relatedNodeIds.has(node.id), () => {
-      if (relatedNodeIds.has(node.id)) relatedNodeIds.delete(node.id);
-      else relatedNodeIds.add(node.id);
+    createControl("Related", relatedNodeId === node.id, () => {
+      relatedNodeId = relatedNodeId === node.id ? undefined : node.id;
       renderConstellation();
     }),
   );

@@ -228,7 +228,8 @@ main,
   }
 
   .constellation {
-    min-height: 100svh;
+    min-height: 138vh;
+    overflow: visible;
   }
 
   .constellation-node,
@@ -242,24 +243,31 @@ main,
     transform: translate(-50%, -50%);
   }
 
-  .achievement-node:nth-of-type(2) {
-    top: 31%;
+  [data-node-id="reliable-reports"] {
+    top: 27vh;
   }
 
-  .achievement-node:nth-of-type(3) {
-    top: 48%;
+  [data-node-id="local-first"] {
+    top: 49vh;
   }
 
-  .achievement-node:nth-of-type(4) {
-    top: 65%;
+  [data-node-id="verification"] {
+    top: 71vh;
   }
 
-  .event-node,
-  .detail-node {
-    position: relative;
-    top: auto;
-    margin: 1.5rem auto;
-    transform: none;
+  [data-node-id="boundary-test"],
+  [data-node-id="privacy-choice"],
+  [data-node-id="commit-evidence"] {
+    top: 94vh;
+  }
+
+  [data-node-id="focused-check"] {
+    top: 108vh;
+  }
+
+  [data-node-id="test-evidence"],
+  [data-node-id="local-control"] {
+    top: 122vh;
   }
 
   .constellation-lines {
