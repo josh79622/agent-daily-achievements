@@ -7,6 +7,7 @@ import { once } from "node:events";
 import test from "node:test";
 
 import type { DailyReport } from "../../src/domain/report.js";
+import type { LocalCollector } from "../../src/collector/local-collector.js";
 import { createApp } from "../../src/server/app.js";
 import {
   createReportStore,
@@ -134,4 +135,31 @@ test("serves the local report page from the configured static directory", async 
   assert.equal(response.status, 200);
   assert.equal(await response.text(), "<main>Local report page</main>");
   assert.match(response.headers.get("content-type") ?? "", /text\/html/);
+});
+
+test("serves collector metadata before a selected local preview", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "daily-proof-collector-api-"));
+  const collector: LocalCollector = {
+    async collect() {
+      return {
+        date: "2026-09-16",
+        sources: [{ source: "claude-code", sessions: 1, issues: 0 }, { source: "codex", sessions: 0, issues: 0 }],
+        sessions: [{ id: "session-1", source: "claude-code", file: "/local/session.jsonl", startedAt: "2026-09-16T01:00:00Z", endedAt: "2026-09-16T01:01:00Z", messageCount: 1, issueCount: 0, messages: [{ id: "record-1", role: "user", text: "Private preview", timestamp: "2026-09-16T01:00:00Z" }] }],
+      };
+    },
+  };
+  const server = createApp({ reportStore: createReportStore(directory), collector, collectorDate: () => "2026-09-16" });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  context.after(async () => { server.close(); await once(server, "close"); await rm(directory, { force: true, recursive: true }); });
+  const address = server.address() as AddressInfo;
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const summary = await fetch(`${baseUrl}/api/collector/today`);
+  const preview = await fetch(`${baseUrl}/api/collector/sessions/session-1`);
+
+  assert.equal(summary.status, 200);
+  assert.doesNotMatch(await summary.text(), /Private preview/);
+  assert.equal(preview.status, 200);
+  assert.match(await preview.text(), /Private preview/);
 });
