@@ -24,4 +24,4 @@ All 102 Claude and 67 Codex JSONL files passed a whole-file JSON syntax read wit
 4. Distinguish conversation-bearing events from metadata, tools, attachments, and compacted state. Do not count every event as an achievement or infer completion from an intention.
 5. Expose unreadable or uninterpretable source data as incomplete coverage. A JSON syntax pass alone is insufficient for source-support claims.
 
-Still untested: actual day-boundary behavior, semantic parsing and deduplication, permissions over time, source-link opening, incremental updates, and failure handling. Chrome web Claude, ChatGPT, and Gemini were not surveyed in this task. The implementation stack and privacy boundary for sending real records to any model are still decisions for Josh.
+Still untested: actual day-boundary behavior, semantic parsing and deduplication, permissions over time, source-link opening, incremental updates, and failure handling. Chrome web Claude, ChatGPT, and Gemini were not surveyed in this task. Subsequent decisions chose Node.js LTS and a consent-gated daily data scope; their implementation and verification remain open.

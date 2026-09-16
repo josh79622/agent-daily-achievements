@@ -18,7 +18,7 @@
 - Preserve links or identifiers back to original records. Avoid counting the same activity twice across sources. Make incorrect items correctable or removable by Josh.
 - Support users with Claude Code only or Codex only. Show an absent local agent as not installed and optional add-on sources as not enabled when the add-on is absent or disabled; do not interpret either as a read failure or inactivity. When an installed or enabled source cannot be read, show the report as incomplete. Test each source and its failure behavior before describing it as supported.
 - Chrome web conversations are collected only from use of the extension onward; do not backfill pre-installation history.
-- Never commit conversation records, credentials, collected local data, or other private material. External AI summarization is approved only after the tool's user explicitly consents during setup to the chosen recipient and conversation-data scope. Do not send before that consent, silently switch providers, or interpret source installation as summarizer authorization.
+- Never commit conversation records, credentials, collected local data, or other private material. External AI summarization is approved only after the tool's user explicitly consents during setup to the chosen recipient and conversation-data scope. For each daily report, include complete conversations with activity that day, up to that day's end; do not preselect relevance-based excerpts or resend the unrelated archive. Do not send before consent, silently switch providers, or interpret source installation as summarizer authorization.
 
 ## Working method
 
