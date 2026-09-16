@@ -14,7 +14,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "start": "node dist/src/server/index.js",
-    "test": "tsx --test",
+    "test": "tsx --test test/**/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
