@@ -18,6 +18,6 @@ Josh chose TypeScript for now, meaning the first-version local worker, local web
 
 ## Still open
 
-Do not infer Node.js versus another TypeScript runtime, a specific Node version, package manager, web framework, database, installer, Chrome distribution path, summarization provider/privacy boundary, or initial operating-system support from this decision. Design and verify those separately before implementation or public release.
+This language decision alone did not select a runtime or installation method; those were chosen subsequently in [the Node.js LTS and GitHub-source decision](2026-09-16-node-lts-github-source-setup.md). A specific Node version, package manager, web framework, database, concrete setup commands, Chrome distribution path, and summarization provider/privacy boundary remain open. The initial public-release operating system was also chosen separately in [the macOS decision](2026-09-16-macos-first-release.md).
 
 References: [TypeScript's compiled JavaScript model](https://www.typescriptlang.org/docs/handbook/typescript-from-scratch), [Chrome extension development](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world), and [macOS timed jobs](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/ScheduledJobs.html).
