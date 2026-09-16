@@ -17,3 +17,7 @@ The local API, persisted report loading, error handling, source links, disabled 
 ## Verification
 
 The built-page test will require the compact disclosure and the retained report controls while excluding the removed explanatory language. The full quality gate and desktop/narrow browser inspection will verify the result.
+
+## Implementation status
+
+Implemented on `codex/ui-skeleton`. The full quality gate passed with ten tests. The local demo was inspected with its persisted report at desktop and 390-pixel widths, and the generate action still rendered the report successfully.
