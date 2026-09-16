@@ -5,123 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="A calm, private daily review of progress made with AI agents."
+      content="A local preview of an evidence-backed daily report."
     />
-    <title>Daily Proof — Your daily progress, remembered</title>
+    <title>Daily Proof</title>
     <link rel="stylesheet" href="/styles.css" />
     <script type="module" src="/app.js"></script>
   </head>
   <body>
-    <a class="skip-link" href="#main-content">Skip to today’s report</a>
+    <a class="skip-link" href="#main-content">Skip to report</a>
 
     <header class="topbar">
-      <a class="brand" href="/" aria-label="Daily Proof home">
-        <span class="brand-mark" aria-hidden="true">
-          <i></i><i></i><i></i>
-        </span>
-        <span>Daily Proof</span>
-      </a>
-      <div class="privacy-status">
-        <span aria-hidden="true"></span>
-        Private by design
-      </div>
+      <a class="brand" href="/" aria-label="Daily Proof home">Daily Proof</a>
+      <span>Local preview</span>
     </header>
 
     <main id="main-content">
-      <section class="hero" aria-labelledby="page-title">
-        <div class="hero-copy">
-          <p class="eyebrow">Good evening</p>
-          <h1 id="page-title">The progress worth remembering.</h1>
-          <p class="hero-description">
-            Daily Proof turns scattered agent activity into a thoughtful record
-            of what you built, decided, and learned.
+      <section class="workspace" aria-labelledby="page-title">
+        <header class="workspace-header">
+          <div>
+            <p class="eyebrow">Daily report</p>
+            <h1 id="page-title">What moved today?</h1>
+          </div>
+          <p class="preview-copy">
+            <strong>Fictional preview.</strong> This demo uses invented records
+            only. Your histories are not read.
           </p>
-          <div class="hero-actions">
-            <button id="generate-button" class="primary-button" type="button">
-              <span>Generate sample report</span>
-              <span class="button-arrow" aria-hidden="true">→</span>
-            </button>
-            <p>Three invented records · your histories stay untouched</p>
-          </div>
-        </div>
-
-        <aside class="preview-note" aria-label="Preview data notice">
-          <div class="preview-orbit" aria-hidden="true">
-            <span>✦</span>
-          </div>
-          <div>
-            <p class="preview-label">Fictional preview</p>
-            <h2>A safe space to try the idea.</h2>
-            <p>
-              This demo uses sample activity only. Nothing is read from Claude
-              Code, Codex, or your browser.
-            </p>
-          </div>
-        </aside>
-      </section>
-
-      <section class="proof-overview" aria-labelledby="proof-title">
-        <header class="section-heading">
-          <div>
-            <p class="eyebrow">Today’s proof</p>
-            <h2 id="proof-title">A day is more than a task count.</h2>
-          </div>
-          <p>Sample day · 16 September 2026</p>
         </header>
 
-        <div class="proof-cards">
-          <article class="proof-card proof-progress">
-            <span class="proof-icon" aria-hidden="true">↗</span>
-            <div><strong>1</strong><span>Progress moment</span></div>
-            <p>Something meaningful moved forward.</p>
-          </article>
-          <article class="proof-card proof-decisions">
-            <span class="proof-icon" aria-hidden="true">◇</span>
-            <div><strong>1</strong><span>Decision clarified</span></div>
-            <p>A choice became easier to explain.</p>
-          </article>
-          <article class="proof-card proof-learning">
-            <span class="proof-icon" aria-hidden="true">✦</span>
-            <div><strong>1</strong><span>Learning captured</span></div>
-            <p>An insight will not disappear with the chat.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="source-overview" aria-labelledby="source-title">
-        <div class="source-heading">
-          <div>
-            <p class="eyebrow">Sample sources</p>
-            <h2 id="source-title">Collected gently in the background.</h2>
-          </div>
-          <span>Demo data only</span>
-        </div>
-
-        <div class="source-list">
-          <article class="source-card">
-            <span class="source-monogram source-claude">C</span>
-            <div><strong>Claude Code</strong><span>Decision</span></div>
-            <span class="source-state"><i></i>Ready</span>
-          </article>
-          <article class="source-card">
-            <span class="source-monogram source-codex">⌘</span>
-            <div><strong>Codex</strong><span>Progress</span></div>
-            <span class="source-state"><i></i>Ready</span>
-          </article>
-          <article class="source-card">
-            <span class="source-monogram source-web">W</span>
-            <div><strong>Web add-on</strong><span>Learning</span></div>
-            <span class="source-state"><i></i>Ready</span>
-          </article>
+        <div class="report-controls" aria-label="Generate sample report">
+          <label>
+            <span>Sample date</span>
+            <input
+              id="report-date-input"
+              type="date"
+              value="2026-09-16"
+              disabled
+            />
+          </label>
+          <button id="generate-button" type="button">
+            <span>Generate sample report</span>
+            <span aria-hidden="true">→</span>
+          </button>
         </div>
       </section>
 
       <div id="error-banner" class="error-banner" role="alert" hidden>
-        <span aria-hidden="true">!</span>
-        <div>
-          <strong>We couldn’t create the preview.</strong>
-          <span id="error-message">Please try again.</span>
-        </div>
+        <strong>Couldn’t generate the preview.</strong>
+        <span id="error-message">Please try again.</span>
       </div>
 
       <section
@@ -129,15 +59,11 @@
         class="empty-state"
         aria-labelledby="empty-title"
       >
-        <div class="empty-icon" aria-hidden="true">✦</div>
-        <div>
-          <p class="eyebrow">Your daily review</p>
-          <h2 id="empty-title">Your proof will appear here.</h2>
-          <p>
-            Generate the sample to see how progress, decisions, and learning
-            become one calm record of the day.
-          </p>
-        </div>
+        <h2 id="empty-title">No report yet.</h2>
+        <p>
+          Generate the sample report to see today’s progress, decisions, and
+          learning.
+        </p>
       </section>
 
       <section id="report-view" class="report-view" aria-live="polite" hidden>
@@ -145,26 +71,20 @@
           <div>
             <p id="report-date" class="eyebrow"></p>
             <h2 id="report-title"></h2>
-            <p id="report-overview" class="report-overview"></p>
+            <p id="report-overview"></p>
           </div>
-          <span id="report-status" class="report-status"></span>
+          <span id="report-status"></span>
         </header>
 
-        <div id="report-sections" class="report-grid"></div>
+        <div id="report-sections"></div>
 
         <footer class="report-footer">
-          <div>
-            <p class="eyebrow">Evidence, when you need it</p>
-            <h3>Every reflection stays connected to its source.</h3>
-          </div>
-          <div id="report-sources" class="report-sources"></div>
+          <p>Sources</p>
+          <div id="report-sources"></div>
         </footer>
       </section>
     </main>
 
-    <footer class="page-footer">
-      <span>Private. Local. Yours.</span>
-      <span>Stage 2 preview · Fictional data only</span>
-    </footer>
+    <footer class="page-footer">Stage 2 · Fictional data only</footer>
   </body>
 </html>
