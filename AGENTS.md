@@ -8,7 +8,7 @@
 
 ## Decisions and technology
 
-- The first-version interface is approved as a local web page, and TypeScript is approved for first-version application code (local worker, web interface, and optional Chrome add-on); a Mac app is deferred until after first-version features are working. Use Node.js LTS for the main tool's runtime and start with GitHub source plus documented setup commands, not a required standalone executable. Framework, package manager, storage, extension tooling, exact installation commands, verification commands, summarization agent or model, data-sharing boundary, report time, retention period, and source-collection details are not yet approved. Do not select them silently. Bring choices that would settle these questions to Josh with concrete trade-offs.
+- The first-version interface is approved as a local web page, and TypeScript is approved for first-version application code (local worker, web interface, and optional Chrome add-on); a Mac app is deferred until after first-version features are working. Use Node.js LTS for the main tool's runtime and start with GitHub source plus documented setup commands, not a required standalone executable. Prefer Claude when it is the only usable summarization provider, OpenAI when it is the only one, and OpenAI when both are usable. Framework, package manager, storage, extension tooling, exact installation commands, verification commands, provider access method, model, report time, retention period, and source-collection details are not yet approved. Do not select them silently. Bring choices that would settle these questions to Josh with concrete trade-offs.
 - Once the stack is approved, record its practical requirements here: runtime, framework, package manager, storage, extension tooling, and verification commands. Keep rationale and rejected alternatives in a decision record.
 - The initial public release supports macOS only and must have a fresh-user installation check before release; do not claim Windows or Linux support without separate design and verification. Do not add a cloud account, server, cross-device sync, or external processing of conversation contents without an explicit product and privacy decision.
 
@@ -18,7 +18,7 @@
 - Preserve links or identifiers back to original records. Avoid counting the same activity twice across sources. Make incorrect items correctable or removable by Josh.
 - Support users with Claude Code only or Codex only. Show an absent local agent as not installed and optional add-on sources as not enabled when the add-on is absent or disabled; do not interpret either as a read failure or inactivity. When an installed or enabled source cannot be read, show the report as incomplete. Test each source and its failure behavior before describing it as supported.
 - Chrome web conversations are collected only from use of the extension onward; do not backfill pre-installation history.
-- Never commit conversation records, credentials, collected local data, or other private material. Do not send conversation contents to an external model or service before Josh approves that boundary.
+- Never commit conversation records, credentials, collected local data, or other private material. External AI summarization is approved only after the tool's user explicitly consents during setup to the chosen recipient and conversation-data scope. Do not send before that consent, silently switch providers, or interpret source installation as summarizer authorization.
 
 ## Working method
 
