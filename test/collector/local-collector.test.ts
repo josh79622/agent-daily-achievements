@@ -77,3 +77,29 @@ test("local collector returns same-day Claude Code and Codex sessions with issue
   assert.equal(summary.sessions[1]?.messageCount, 1);
   assert.equal(summary.sessions[1]?.messages[0]?.text, "Build it");
 });
+
+for (const selected of ["claude-code", "codex"] as const) {
+  test(`local collector never accesses unselected directories when selecting ${selected}`, async () => {
+    const options =
+      selected === "codex"
+        ? {
+            codexDirectories: [],
+            get claudeDirectories(): string[] {
+              throw new Error("Unauthorized directory access");
+            },
+          }
+        : {
+            claudeDirectories: [],
+            get codexDirectories(): string[] {
+              throw new Error("Unauthorized directory access");
+            },
+          };
+    const result = await createLocalCollector(options).collect("2026-09-16", [
+      selected,
+    ]);
+    assert.deepEqual(
+      result.sources.map(({ source }) => source),
+      [selected],
+    );
+  });
+}
