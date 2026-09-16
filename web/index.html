@@ -5,151 +5,145 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="A local developer console for evidence-backed daily achievements."
+      content="A calm, private daily review of progress made with AI agents."
     />
-    <title>Daily Proof — Local developer report</title>
+    <title>Daily Proof — Your daily progress, remembered</title>
     <link rel="stylesheet" href="/styles.css" />
     <script type="module" src="/app.js"></script>
   </head>
   <body>
-    <a class="skip-link" href="#main-content">Skip to report</a>
+    <a class="skip-link" href="#main-content">Skip to today’s report</a>
 
     <header class="topbar">
       <a class="brand" href="/" aria-label="Daily Proof home">
-        <span class="brand-mark" aria-hidden="true">D_</span>
+        <span class="brand-mark" aria-hidden="true">
+          <i></i><i></i><i></i>
+        </span>
         <span>Daily Proof</span>
-        <span class="version">v0.1</span>
       </a>
-      <div class="runtime-status">
-        <span class="status-indicator" aria-hidden="true"></span>
-        <span class="runtime-label">local</span>
-        <code>localhost:4317</code>
+      <div class="privacy-status">
+        <span aria-hidden="true"></span>
+        Private by design
       </div>
     </header>
 
     <main id="main-content">
       <section class="hero" aria-labelledby="page-title">
         <div class="hero-copy">
-          <p class="path-label"><span>~/</span>agent-daily-achievements</p>
-          <h1 id="page-title">Daily Proof.</h1>
+          <p class="eyebrow">Good evening</p>
+          <h1 id="page-title">The progress worth remembering.</h1>
           <p class="hero-description">
-            Turn a day of agent activity into a structured, source-linked
-            engineering record.
+            Daily Proof turns scattered agent activity into a thoughtful record
+            of what you built, decided, and learned.
           </p>
-
-          <dl class="hero-metadata" aria-label="Preview configuration">
-            <div>
-              <dt>mode</dt>
-              <dd>demo</dd>
-            </div>
-            <div>
-              <dt>input</dt>
-              <dd>synthetic</dd>
-            </div>
-            <div>
-              <dt>output</dt>
-              <dd>local</dd>
-            </div>
-          </dl>
-
           <div class="hero-actions">
             <button id="generate-button" class="primary-button" type="button">
               <span>Generate sample report</span>
-              <span class="button-arrow" aria-hidden="true">↗</span>
+              <span class="button-arrow" aria-hidden="true">→</span>
             </button>
-            <code>POST /api/reports/sample</code>
+            <p>Three invented records · your histories stay untouched</p>
           </div>
         </div>
 
-        <aside class="preview-panel" aria-label="Preview data notice">
-          <header class="panel-chrome">
-            <span class="window-dots" aria-hidden="true"
-              ><i></i><i></i><i></i
-            ></span>
-            <code>preview.config</code>
-          </header>
-          <div class="config-body">
-            <p><span>stage</span><strong>02 / skeleton</strong></p>
-            <p><span>records</span><strong>3 invented</strong></p>
-            <p><span>network</span><strong>localhost only</strong></p>
-            <p><span>histories</span><strong>not accessed</strong></p>
+        <aside class="preview-note" aria-label="Preview data notice">
+          <div class="preview-orbit" aria-hidden="true">
+            <span>✦</span>
           </div>
-          <div class="preview-notice">
-            <span class="notice-icon" aria-hidden="true">i</span>
-            <div>
-              <strong>Fictional preview</strong>
-              <p>No Claude Code, Codex, or browser history is read.</p>
-            </div>
+          <div>
+            <p class="preview-label">Fictional preview</p>
+            <h2>A safe space to try the idea.</h2>
+            <p>
+              This demo uses sample activity only. Nothing is read from Claude
+              Code, Codex, or your browser.
+            </p>
           </div>
         </aside>
       </section>
 
-      <section class="source-overview" aria-labelledby="source-title">
+      <section class="proof-overview" aria-labelledby="proof-title">
         <header class="section-heading">
           <div>
-            <p class="section-index">01 / integrations</p>
-            <h2 id="source-title">Integration status</h2>
+            <p class="eyebrow">Today’s proof</p>
+            <h2 id="proof-title">A day is more than a task count.</h2>
           </div>
-          <code>3 sources · sample mode</code>
+          <p>Sample day · 16 September 2026</p>
         </header>
+
+        <div class="proof-cards">
+          <article class="proof-card proof-progress">
+            <span class="proof-icon" aria-hidden="true">↗</span>
+            <div><strong>1</strong><span>Progress moment</span></div>
+            <p>Something meaningful moved forward.</p>
+          </article>
+          <article class="proof-card proof-decisions">
+            <span class="proof-icon" aria-hidden="true">◇</span>
+            <div><strong>1</strong><span>Decision clarified</span></div>
+            <p>A choice became easier to explain.</p>
+          </article>
+          <article class="proof-card proof-learning">
+            <span class="proof-icon" aria-hidden="true">✦</span>
+            <div><strong>1</strong><span>Learning captured</span></div>
+            <p>An insight will not disappear with the chat.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="source-overview" aria-labelledby="source-title">
+        <div class="source-heading">
+          <div>
+            <p class="eyebrow">Sample sources</p>
+            <h2 id="source-title">Collected gently in the background.</h2>
+          </div>
+          <span>Demo data only</span>
+        </div>
 
         <div class="source-list">
           <article class="source-card">
-            <span class="source-monogram">CL</span>
-            <div><strong>Claude Code</strong><span>decision record</span></div>
-            <span class="source-state"><i></i>sample</span>
+            <span class="source-monogram source-claude">C</span>
+            <div><strong>Claude Code</strong><span>Decision</span></div>
+            <span class="source-state"><i></i>Ready</span>
           </article>
           <article class="source-card">
-            <span class="source-monogram">CX</span>
-            <div><strong>Codex</strong><span>progress record</span></div>
-            <span class="source-state"><i></i>sample</span>
+            <span class="source-monogram source-codex">⌘</span>
+            <div><strong>Codex</strong><span>Progress</span></div>
+            <span class="source-state"><i></i>Ready</span>
           </article>
           <article class="source-card">
-            <span class="source-monogram">WEB</span>
-            <div><strong>Web add-on</strong><span>learning record</span></div>
-            <span class="source-state"><i></i>sample</span>
+            <span class="source-monogram source-web">W</span>
+            <div><strong>Web add-on</strong><span>Learning</span></div>
+            <span class="source-state"><i></i>Ready</span>
           </article>
         </div>
       </section>
 
       <div id="error-banner" class="error-banner" role="alert" hidden>
-        <span class="error-code">ERR</span>
+        <span aria-hidden="true">!</span>
         <div>
-          <strong>Report generation failed</strong>
+          <strong>We couldn’t create the preview.</strong>
           <span id="error-message">Please try again.</span>
         </div>
       </div>
 
       <section
         id="empty-state"
-        class="empty-state console-panel"
+        class="empty-state"
         aria-labelledby="empty-title"
       >
-        <header class="panel-chrome">
-          <span class="window-dots" aria-hidden="true"
-            ><i></i><i></i><i></i
-          ></span>
-          <code>reports/latest.json</code>
-          <span class="panel-state">Awaiting generation</span>
-        </header>
-        <div class="empty-console">
-          <div class="prompt-mark" aria-hidden="true">›_</div>
-          <div>
-            <p class="section-index">02 / report output</p>
-            <h2 id="empty-title">No report artifact yet.</h2>
-            <p>
-              Run the sample pipeline to generate progress, decisions, and
-              learning with traceable source IDs.
-            </p>
-            <code>$ daily-proof generate --sample</code>
-          </div>
+        <div class="empty-icon" aria-hidden="true">✦</div>
+        <div>
+          <p class="eyebrow">Your daily review</p>
+          <h2 id="empty-title">Your proof will appear here.</h2>
+          <p>
+            Generate the sample to see how progress, decisions, and learning
+            become one calm record of the day.
+          </p>
         </div>
       </section>
 
       <section id="report-view" class="report-view" aria-live="polite" hidden>
         <header class="report-header">
           <div>
-            <p id="report-date" class="section-index"></p>
+            <p id="report-date" class="eyebrow"></p>
             <h2 id="report-title"></h2>
             <p id="report-overview" class="report-overview"></p>
           </div>
@@ -160,8 +154,8 @@
 
         <footer class="report-footer">
           <div>
-            <p class="section-index">evidence / source map</p>
-            <h3>Traceable by default.</h3>
+            <p class="eyebrow">Evidence, when you need it</p>
+            <h3>Every reflection stays connected to its source.</h3>
           </div>
           <div id="report-sources" class="report-sources"></div>
         </footer>
@@ -169,8 +163,8 @@
     </main>
 
     <footer class="page-footer">
-      <span><i></i> local-first</span>
-      <code>stage_02 · fictional_data_only</code>
+      <span>Private. Local. Yours.</span>
+      <span>Stage 2 preview · Fictional data only</span>
     </footer>
   </body>
 </html>
