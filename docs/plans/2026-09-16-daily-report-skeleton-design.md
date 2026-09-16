@@ -50,3 +50,7 @@ The single gate command runs `format:check`, `lint`, `typecheck`, `test`, and `b
 - the built page contains the fictional-data notice and generation control.
 
 GitHub Actions runs the same gate on pushes and pull requests. Before calling the slice complete, deliberately make one focused test fail and confirm the gate stops, restore it, run the complete gate successfully, then inspect the UI in a browser at desktop and narrow widths.
+
+## Implementation status
+
+Implemented on the `codex/ui-skeleton` branch. The rendered page and generated report were inspected at desktop and 390-pixel viewport widths; the fictional-data notice, local status, source coverage, report sections, and evidence trail remained visible and readable. A deliberate date-assertion failure proved the gate stops at the test stage before building. After restoring the assertion, the complete gate passed with all nine source tests.

@@ -9,7 +9,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
-    "dev": "tsx watch src/server/index.ts",
+    "dev": "npm run build && tsx watch src/server/index.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
