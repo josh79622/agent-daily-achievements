@@ -36,7 +36,9 @@ interface LocalCollectorOptions {
   codexDirectories: string[];
 }
 
-export function createLocalCollector(options: LocalCollectorOptions): LocalCollector {
+export function createLocalCollector(
+  options: LocalCollectorOptions,
+): LocalCollector {
   return {
     async collect(date) {
       const claude = await collectSource(
@@ -44,12 +46,24 @@ export function createLocalCollector(options: LocalCollectorOptions): LocalColle
         options.claudeDirectories,
         date,
       );
-      const codex = await collectSource("codex", options.codexDirectories, date);
+      const codex = await collectSource(
+        "codex",
+        options.codexDirectories,
+        date,
+      );
       return {
         date,
         sources: [
-          { source: "claude-code", sessions: claude.sessions.length, issues: claude.issues },
-          { source: "codex", sessions: codex.sessions.length, issues: codex.issues },
+          {
+            source: "claude-code",
+            sessions: claude.sessions.length,
+            issues: claude.issues,
+          },
+          {
+            source: "codex",
+            sessions: codex.sessions.length,
+            issues: codex.issues,
+          },
         ],
         sessions: [...claude.sessions, ...codex.sessions],
       };
@@ -110,8 +124,13 @@ async function parseFile(
       continue;
     }
     sessionId = sessionIdFrom(source, record) ?? sessionId;
-    const message = messageFrom(source, record, `${basename(file)}:${index + 1}`);
-    if (message && localDate(message.timestamp) === date) messages.push(message);
+    const message = messageFrom(
+      source,
+      record,
+      `${basename(file)}:${index + 1}`,
+    );
+    if (message && localDate(message.timestamp) === date)
+      messages.push(message);
   }
   if (messages.length === 0) return { issues };
   messages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
@@ -132,7 +151,10 @@ async function parseFile(
   };
 }
 
-function sessionIdFrom(source: LocalSource, record: Record<string, unknown>): string | undefined {
+function sessionIdFrom(
+  source: LocalSource,
+  record: Record<string, unknown>,
+): string | undefined {
   if (source === "claude-code") return stringAt(record.sessionId);
   const payload = objectAt(record.payload);
   return stringAt(payload?.id);

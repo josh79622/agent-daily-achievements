@@ -14,8 +14,20 @@ test("local collector returns same-day Claude Code and Codex sessions with issue
   await writeFile(
     join(root, "claude.jsonl"),
     [
-      JSON.stringify({ type: "user", sessionId: "claude-1", timestamp: "2026-09-16T02:00:00Z", uuid: "c1", message: { role: "user", content: "Plan the collector" } }),
-      JSON.stringify({ type: "assistant", sessionId: "claude-1", timestamp: "2026-09-16T02:01:00Z", uuid: "c2", message: { role: "assistant", content: "I can help." } }),
+      JSON.stringify({
+        type: "user",
+        sessionId: "claude-1",
+        timestamp: "2026-09-16T02:00:00Z",
+        uuid: "c1",
+        message: { role: "user", content: "Plan the collector" },
+      }),
+      JSON.stringify({
+        type: "assistant",
+        sessionId: "claude-1",
+        timestamp: "2026-09-16T02:01:00Z",
+        uuid: "c2",
+        message: { role: "assistant", content: "I can help." },
+      }),
       JSON.stringify({ type: "system", timestamp: "2026-09-16T02:02:00Z" }),
       "{bad-json",
     ].join("\n"),
@@ -23,9 +35,29 @@ test("local collector returns same-day Claude Code and Codex sessions with issue
   await writeFile(
     join(root, "codex.jsonl"),
     [
-      JSON.stringify({ type: "session_meta", timestamp: "2026-09-16T02:00:00Z", payload: { id: "codex-1" } }),
-      JSON.stringify({ type: "response_item", timestamp: "2026-09-16T04:00:00Z", payload: { role: "user", type: "message", content: [{ type: "input_text", text: "Build it" }] } }),
-      JSON.stringify({ type: "response_item", timestamp: "2026-09-15T04:00:00Z", payload: { role: "assistant", type: "message", content: [{ type: "output_text", text: "Old message" }] } }),
+      JSON.stringify({
+        type: "session_meta",
+        timestamp: "2026-09-16T02:00:00Z",
+        payload: { id: "codex-1" },
+      }),
+      JSON.stringify({
+        type: "response_item",
+        timestamp: "2026-09-16T04:00:00Z",
+        payload: {
+          role: "user",
+          type: "message",
+          content: [{ type: "input_text", text: "Build it" }],
+        },
+      }),
+      JSON.stringify({
+        type: "response_item",
+        timestamp: "2026-09-15T04:00:00Z",
+        payload: {
+          role: "assistant",
+          type: "message",
+          content: [{ type: "output_text", text: "Old message" }],
+        },
+      }),
     ].join("\n"),
   );
   context.after(() => rm(root, { force: true, recursive: true }));
