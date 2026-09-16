@@ -10,10 +10,12 @@ test("builds the calm daily-review page and sample-report control", async () => 
 
   assert.equal(build.status, 0, build.stderr);
   const html = await readFile("dist/web/index.html", "utf8");
+  const css = await readFile("dist/web/styles.css", "utf8");
   assert.match(html, /Good evening/);
   assert.match(html, /Today’s proof/);
   assert.match(html, /Private by design/);
   assert.match(html, /Fictional preview/);
   assert.match(html, /Generate sample report/);
   assert.match(html, /id="report-view"/);
+  assert.match(css, /\.empty-state\[hidden\]/);
 });
