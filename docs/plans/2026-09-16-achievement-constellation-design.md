@@ -25,3 +25,7 @@ The interactions work with mouse, keyboard focus, and buttons. On narrow screens
 ## Verification
 
 The built output will assert the date, three achievement nodes, and both node actions. Browser inspection will exercise expanding an achievement and revealing related events at desktop and narrow widths.
+
+## Implementation status
+
+Implemented on `codex/ui-skeleton`. The full quality gate passed with ten tests. Desktop inspection verified achievement expansion, related-event lines, and a nested event relationship. At 390 pixels, the same constellation was inspected before and after related events appeared; the narrow layout uses vertically separated nodes and scrolls to deeper event groups without overlap.
