@@ -16,22 +16,10 @@
 
     <header class="topbar">
       <a class="brand" href="/" aria-label="Daily Proof home">Daily Proof</a>
-      <span>Local preview</span>
     </header>
 
     <main id="main-content">
-      <section class="workspace" aria-labelledby="page-title">
-        <header class="workspace-header">
-          <div>
-            <p class="eyebrow">Daily report</p>
-            <h1 id="page-title">What moved today?</h1>
-          </div>
-          <p class="preview-copy">
-            <strong>Fictional preview.</strong> This demo uses invented records
-            only. Your histories are not read.
-          </p>
-        </header>
-
+      <section class="workspace" aria-label="Generate sample report">
         <div class="report-controls" aria-label="Generate sample report">
           <label>
             <span>Sample date</span>
@@ -47,6 +35,7 @@
             <span aria-hidden="true">→</span>
           </button>
         </div>
+        <p class="sample-disclosure">Fictional sample · local only</p>
       </section>
 
       <div id="error-banner" class="error-banner" role="alert" hidden>
@@ -54,17 +43,7 @@
         <span id="error-message">Please try again.</span>
       </div>
 
-      <section
-        id="empty-state"
-        class="empty-state"
-        aria-labelledby="empty-title"
-      >
-        <h2 id="empty-title">No report yet.</h2>
-        <p>
-          Generate the sample report to see today’s progress, decisions, and
-          learning.
-        </p>
-      </section>
+      <div id="empty-state" class="empty-state" aria-hidden="true"></div>
 
       <section id="report-view" class="report-view" aria-live="polite" hidden>
         <header class="report-header">
@@ -84,7 +63,5 @@
         </footer>
       </section>
     </main>
-
-    <footer class="page-footer">Stage 2 · Fictional data only</footer>
   </body>
 </html>
