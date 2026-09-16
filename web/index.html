@@ -39,7 +39,36 @@
             ×
           </button>
         </div>
-        <p id="collector-status">Reading local metadata…</p>
+        <form id="source-consent-form">
+          <fieldset>
+            <legend>Choose local sources</legend>
+            <p>
+              Selected histories across projects may be scanned to find activity
+              on the requested Australia/Sydney day. Session details appear
+              first; messages appear only when you choose a preview.
+            </p>
+            <p>
+              No conversation text leaves this machine or is saved by this
+              collector. Sending conversations to an AI summarizer requires
+              separate consent later.
+            </p>
+            <label
+              ><input id="source-claude-code" type="checkbox" /> Claude
+              Code</label
+            >
+            <label><input id="source-codex" type="checkbox" /> Codex</label>
+            <p>
+              Only your source choice is saved locally. Choose neither to stop
+              collection. You can change this choice here anytime.
+            </p>
+            <button id="source-consent-save" type="submit">
+              Save source choice
+            </button>
+          </fieldset>
+        </form>
+        <p id="collector-status" role="status">
+          Choose sources before reading local activity.
+        </p>
         <div id="collector-sources"></div>
         <div id="collector-sessions"></div>
       </aside>

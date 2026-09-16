@@ -115,41 +115,121 @@ interface CollectorSession {
   issueCount: number;
 }
 
+const consentForm = requiredElement<HTMLFormElement>("source-consent-form");
+const claudeChoice = requiredElement<HTMLInputElement>("source-claude-code");
+const codexChoice = requiredElement<HTMLInputElement>("source-codex");
+const consentSave = requiredElement<HTMLButtonElement>("source-consent-save");
+let collectorRevision = 0;
+let savedSources: string[] = [];
+consentForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  void saveSources();
+});
+
+function clearCollection(): number {
+  collectorSources.replaceChildren();
+  collectorSessions.replaceChildren();
+  return ++collectorRevision;
+}
+
+async function api<T>(path: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(path, options);
+  const body = (await response.json()) as T & { error?: { message?: string } };
+  if (!response.ok)
+    throw new Error(body.error?.message ?? "Local activity is unavailable.");
+  return body;
+}
+
 async function showCollector(): Promise<void> {
   collectorPanel.hidden = false;
   collectorToggle.setAttribute("aria-expanded", "true");
-  collectorStatus.textContent = "Reading local metadata…";
-  collectorSources.replaceChildren();
-  collectorSessions.replaceChildren();
+  const revision = clearCollection();
+  collectorStatus.textContent = "Checking source settings…";
   try {
-    const response = await fetch("/api/collector/today");
-    if (!response.ok) throw new Error("Local activity is unavailable.");
-    const result = (await response.json()) as {
-      sources: Array<{ source: string; sessions: number; issues: number }>;
-      sessions: CollectorSession[];
-    };
-    collectorStatus.textContent = "Metadata only — previews stay local.";
-    result.sources.forEach((source) => {
-      const line = document.createElement("p");
-      line.className = "collector-source";
-      line.textContent = `${source.source} · ${source.sessions} sessions · ${source.issues} issues`;
-      collectorSources.append(line);
-    });
-    result.sessions.forEach((session) =>
-      collectorSessions.append(createSession(session)),
-    );
+    const consent = await api<{ sources: string[] }>("/api/collector/consent");
+    if (revision !== collectorRevision) return;
+    savedSources = consent.sources;
+    claudeChoice.checked = savedSources.includes("claude-code");
+    codexChoice.checked = savedSources.includes("codex");
+    await loadCollection(revision);
   } catch (error) {
-    collectorStatus.textContent =
-      error instanceof Error ? error.message : "Local activity is unavailable.";
+    showCollectorError(error, revision);
   }
 }
 
+async function saveSources(): Promise<void> {
+  const sources = [
+    ...(claudeChoice.checked ? ["claude-code"] : []),
+    ...(codexChoice.checked ? ["codex"] : []),
+  ];
+  const revision = clearCollection();
+  consentSave.disabled = true;
+  collectorStatus.textContent = "Saving source choice…";
+  try {
+    const consent = await api<{ sources: string[] }>("/api/collector/consent", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sources }),
+    });
+    if (revision !== collectorRevision) return;
+    savedSources = consent.sources;
+    await loadCollection(revision);
+  } catch (error) {
+    showCollectorError(error, revision);
+  } finally {
+    consentSave.disabled = false;
+  }
+}
+
+async function loadCollection(revision: number): Promise<void> {
+  const unauthorized = ["claude-code", "codex"].filter(
+    (source) => !savedSources.includes(source),
+  );
+  unauthorized.forEach((source) => {
+    const line = document.createElement("p");
+    line.textContent = `${source} · not authorized`;
+    collectorSources.append(line);
+  });
+  if (!savedSources.length) {
+    collectorStatus.textContent =
+      "Collection is off. Choose sources and save to allow local reads.";
+    return;
+  }
+  collectorStatus.textContent = "Reading authorized local metadata…";
+  const result = await api<{
+    sources: Array<{ source: string; sessions: number; issues: number }>;
+    sessions: CollectorSession[];
+  }>("/api/collector/today");
+  if (revision !== collectorRevision) return;
+  collectorStatus.textContent = "Metadata only — previews stay local.";
+  result.sources.forEach((source) => {
+    const line = document.createElement("p");
+    line.className = "collector-source";
+    line.textContent = `${source.source} · ${source.sessions} sessions · ${source.issues} issues`;
+    collectorSources.append(line);
+  });
+  result.sessions.forEach((session) =>
+    collectorSessions.append(createSession(session, revision)),
+  );
+}
+
+function showCollectorError(error: unknown, revision: number): void {
+  if (revision !== collectorRevision) return;
+  clearCollection();
+  collectorStatus.textContent =
+    error instanceof Error ? error.message : "Local activity is unavailable.";
+}
+
 function hideCollector(): void {
+  clearCollection();
   collectorPanel.hidden = true;
   collectorToggle.setAttribute("aria-expanded", "false");
 }
 
-function createSession(session: CollectorSession): HTMLElement {
+function createSession(
+  session: CollectorSession,
+  revision: number,
+): HTMLElement {
   const article = document.createElement("article");
   article.className = "collector-session";
   const title = document.createElement("p");
@@ -158,21 +238,33 @@ function createSession(session: CollectorSession): HTMLElement {
   preview.type = "button";
   preview.textContent = "Preview locally";
   preview.addEventListener("click", async () => {
-    const response = await fetch(
-      `/api/collector/sessions/${encodeURIComponent(session.id)}`,
-    );
-    if (!response.ok) return;
-    const body = (await response.json()) as {
-      session: { messages: Array<{ role: string; text: string }> };
-    };
-    const messages = document.createElement("div");
-    messages.className = "collector-preview";
-    body.session.messages.forEach((message) => {
-      const line = document.createElement("p");
-      line.textContent = `${message.role}: ${message.text}`;
-      messages.append(line);
-    });
-    preview.replaceWith(messages);
+    preview.disabled = true;
+    try {
+      const consent = await api<{ sources: string[] }>(
+        "/api/collector/consent",
+      );
+      if (revision !== collectorRevision) return;
+      if (JSON.stringify(consent.sources) !== JSON.stringify(savedSources)) {
+        await showCollector();
+        return;
+      }
+      const body = await api<{
+        session: { messages: Array<{ role: string; text: string }> };
+      }>(
+        `/api/collector/sessions/${encodeURIComponent(session.id)}?source=${encodeURIComponent(session.source)}`,
+      );
+      if (revision !== collectorRevision) return;
+      const messages = document.createElement("div");
+      messages.className = "collector-preview";
+      body.session.messages.forEach((message) => {
+        const line = document.createElement("p");
+        line.textContent = `${message.role}: ${message.text}`;
+        messages.append(line);
+      });
+      preview.replaceWith(messages);
+    } catch (error) {
+      showCollectorError(error, revision);
+    }
   });
   article.append(title, preview);
   return article;
