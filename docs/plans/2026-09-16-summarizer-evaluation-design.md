@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Compare Claude and an OpenAI model on the same English daily-report task before selecting a summarizer. The first test uses only fictional records. The subsequent [provider-priority and consent decision](../decisions/2026-09-16-summarizer-provider-consent.md) sets a preferred recipient, but real histories still must not be sent before explicit user consent and a defined data scope.
+Compare Claude and an OpenAI model on the same English daily-report task before selecting a summarizer. The first test uses only fictional records. The subsequent [agent-selection and consent decision](../decisions/2026-09-16-summarizer-provider-consent.md) lets a user with both CLIs choose the recipient during setup, but real histories still must not be sent before explicit user consent and a defined data scope.
 
 ## Staged approach
 
