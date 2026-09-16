@@ -37,3 +37,7 @@ Desktop uses a wide, data-dense layout. At narrow widths, the hero, integrations
 ## Verification
 
 Automated checks will confirm the engineer-facing copy and structural hooks in the built page. The complete project gate must pass. The rendered interface will be inspected at desktop and approximately 390-pixel widths, including generation and report rendering.
+
+## Implementation status
+
+Implemented on `codex/ui-skeleton`. The complete quality gate passed with all ten tests. The initial and generated report states were inspected at 1440 × 900 and 390 × 844; the navigation, preview disclosure, source status, report sections, source IDs, and evidence trail remained readable. The generation control successfully completed the persisted report flow in the browser.
