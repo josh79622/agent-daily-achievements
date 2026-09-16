@@ -22,3 +22,7 @@ The existing local API, generated sample report, persistence, source links, erro
 ## Verification
 
 The built-page test checks the date control, generation control, report view, fictional-data disclosure, and absence of prior dashboard language. The complete quality gate passes, and desktop plus narrow browser layouts are inspected with a generated report.
+
+## Implementation status
+
+Implemented on `codex/ui-skeleton`. The complete gate passed with ten tests. The generated-report page was inspected at desktop and 390-pixel widths, and the generate action was exercised in the browser. The empty state is now explicitly hidden after a persisted report loads.
