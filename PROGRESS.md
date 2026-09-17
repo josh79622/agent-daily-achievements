@@ -89,10 +89,10 @@ Phase 5. Task NT (collector non-text placeholders) is complete and verified
 manifest, whose cases PB-1 to PB-13 Josh approved in
 [the payload design](docs/plans/2026-09-18-report-day-payload-design.md).
 
-Awaiting Josh's confirmation: NT-5 was changed from the approved wording. A
-message holding only excluded deliberation is now dropped without counting as an
-issue, because Codex writes a `reasoning` payload per turn and the approved
-version would have marked nearly every real Codex day incomplete.
+Josh confirmed the changed NT-5 rule on 2026-09-18: `thinking` and `reasoning`
+are excluded entirely, are never sent to the summarizer, and a message holding
+only deliberation is dropped without counting as an issue. A visible count of
+excluded records was declined.
 
 Decided on 2026-09-18:
 

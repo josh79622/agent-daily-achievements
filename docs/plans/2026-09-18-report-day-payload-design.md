@@ -63,15 +63,32 @@ Placeholder forms (`text` parts are unchanged):
 | `tool_result` | `tool_result` | `[tool_result ok]` or `[tool_result error]`, then the result content |
 | unrecognized kind | `other` | `[<kind>]` |
 
-**Design questions in this task (need approval):**
+**Design questions in this task — both approved by Josh on 2026-09-18:**
 
-- **D1 — `thinking` blocks.** Recommendation: exclude them. They are internal
-  deliberation, not observable progress, and they are large. Excluding them is a
-  kind-based rule, not a relevance judgment about their content.
+- **D1 — deliberation blocks.** `thinking` (Claude Code) and `reasoning` (Codex)
+  are excluded, and are neither stored as parts nor sent to the summarizer. They
+  are the agent's internal deliberation rather than observable progress, and
+  anything they actually concluded appears in the text or tool call that follows.
+  Excluding them is a kind-based rule, not a relevance judgment about their
+  content.
+
+  A message left holding only excluded deliberation is dropped **without**
+  counting as an issue. Codex writes a `reasoning` record on every assistant
+  turn, so counting it would mark nearly every real Codex day incomplete: a
+  synthetic 20-turn day produced 20 issues and `state: "incomplete"` while
+  keeping the identical 40 messages, meaning the flag added nothing but a false
+  alarm and would have destroyed the signal that a source genuinely failed.
+  What matters is not whether content was dropped but whether the drop is
+  accounted for. Only these two named kinds are silent; any new or renamed kind
+  falls through to the `other` placeholder and stays visible.
+
+  A per-source count of excluded records was considered and declined: the
+  exclusion needs no audit trail, since the records carry nothing the report
+  could use.
 - **D2 — coverage reason vocabulary.** The collector reports
   `duplicate-conflict`, `duplicate-session` and `malformed-record`, which
-  `ReportCoverage.reason` in the contract does not have. Recommendation: extend
-  the contract's union to include them rather than flatten them into
+  `ReportCoverage.reason` in the contract does not have. Approved: extend the
+  contract's union to include them rather than flatten them into
   `collection-failed` and lose the reason in the report.
 
 **Test cases:**

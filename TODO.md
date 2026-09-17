@@ -148,7 +148,8 @@ generation moved here and comes first.
     and `output_text` (not `text`), and the approved NT-5 case was changed
     because a deliberation-only message must be dropped without an issue —
     Codex writes a `reasoning` payload per turn, so counting it would mark
-    nearly every real Codex day incomplete.
+    nearly every real Codex day incomplete. Josh confirmed this rule on
+    2026-09-18 and declined a visible count of excluded records.
   - Original scope: `image`, `tool_use`, `tool_result` and unrecognized blocks
       become visible placeholder parts, and a message left with no representable
       content counts as an issue rather than vanishing. Verified defect: of four
