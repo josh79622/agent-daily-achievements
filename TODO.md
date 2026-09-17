@@ -90,8 +90,9 @@
     fictional token outside its working directory. Codex `max`/`ultra` effort
     acceptance is a known limitation (no model-call verification approved).
     Found empty leaked probe temporary directories from interrupted startup
-    fetches (reproduced when the dev watcher restarted mid-fetch); removed,
-    fix not yet designed.
+    fetches (reproduced when the dev watcher restarted mid-fetch); removed.
+    Fixed with shutdown cleanup plus a startup sweep (LK-1 to LK-3); verified
+    end to end on a separate server instance.
   - Attempt display PR-18/PR-19 (`4fb350e`): the panel shows "Ready via
     lowest-cost model" or "Ready via summary model"; `npm run check` passed
     (203 tests); the real panel text has not been observed.

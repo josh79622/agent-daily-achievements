@@ -380,6 +380,13 @@ normally, so a server stopped mid-run leaves an empty directory. Approved fix
 | LK-2 | same | On a stop signal, tracked directories are removed and the process still exits. |
 | LK-3 | same | A directory removed normally is no longer tracked. |
 
+Status (2026-09-18): implemented; LK-1 to LK-3 pass, three deliberate mutations
+were each caught, and `npm run check` passed (207 tests). End-to-end check on a
+separate server instance (port 4395, approved startup model-list fetch only):
+a planted stale probe directory was removed by the startup sweep, and SIGINT
+sent while two probe directories were in use exited with code 130 and left none
+behind.
+
 ## Test cases for attempt display (confirmed by Josh, 2026-09-18)
 
 Status: implemented in `4fb350e`; PR-18 and PR-19 pass with fakes and
