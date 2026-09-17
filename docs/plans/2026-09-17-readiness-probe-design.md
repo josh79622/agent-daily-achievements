@@ -357,6 +357,29 @@ No test runs a real CLI.
   because its configuration differs; the settings file moves to version 2 with
   an `efforts` map, and version 1 files remain readable.
 
+## Temporary directory leak fix (approved by Josh, 2026-09-18)
+
+Probe and model-list temporary directories are removed only after a run ends
+normally, so a server stopped mid-run leaves an empty directory. Approved fix
+(L3 + L1):
+
+- L3 — clean up on shutdown: track directories in use; on SIGINT or SIGTERM,
+  remove them synchronously, then exit.
+- L1 — sweep at startup, before the model-list fetch: remove directories in
+  the system temporary directory whose names start with
+  `daily-achievements-probe-`, that are real directories (never symbolic
+  links) owned by the current user, and that were last modified more than 10
+  minutes ago. A probe takes at most about 2 minutes and a model-list fetch at
+  most 15 seconds, so a concurrent server's directories in use are not removed.
+- Rejected: a per-process parent directory (L2), which still needs a sweep
+  after a hard kill and adds complexity.
+
+| ID | File | Intended behavior |
+| --- | --- | --- |
+| LK-1 | `test/summarizer/temp-dirs.test.ts` | The sweep removes only prefixed real directories older than 10 minutes; fresh prefixed directories, other names, symbolic links, and plain files remain. |
+| LK-2 | same | On a stop signal, tracked directories are removed and the process still exits. |
+| LK-3 | same | A directory removed normally is no longer tracked. |
+
 ## Test cases for attempt display (confirmed by Josh, 2026-09-18)
 
 Status: implemented in `4fb350e`; PR-18 and PR-19 pass with fakes and
