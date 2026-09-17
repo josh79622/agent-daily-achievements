@@ -78,13 +78,11 @@ Phase 3 passed its exit review. Phase 4 now has a separate external-summarizatio
 
 ## Next task
 
-- Decide with Josh whether "Detect available selected Claude Code/Codex CLI and
-  represent failures without silent fallback" is complete, given the
-  unverified items recorded in `TODO.md` (which probe attempt passed, Codex
-  tool-disable effect, real failure-path exit codes, effort passed to a real
-  CLI).
-- Phase 4 is not complete until that item is resolved and a Phase 4 exit
-  review is done.
+- Phase 4 exit review drafted in
+  [the review](docs/reviews/2026-09-18-phase-4-exit-review.md). All four Phase 4
+  items are checked, but no real report is generated yet. Josh must decide
+  whether the payload builder, summarizer runner, and prompt work keeps Phase 4
+  open (recommended) or starts Phase 5.
 
 ## Latest verification
 
