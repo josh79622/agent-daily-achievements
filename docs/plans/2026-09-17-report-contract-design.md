@@ -70,10 +70,10 @@ interface ReportCoverage {
   reason?: "unreadable" | "unsupported-format" | "partial-write" | "collection-failed";
 }
 
-type IncompleteReason =
-  | "source-incomplete"
-  | "summary-unavailable"
-  | "summary-invalid";
+type IncompleteEntry =
+  | { reason: "source-incomplete"; source: ReportSource }
+  | { reason: "summary-unavailable" } // no run, or the run failed
+  | { reason: "summary-invalid"; issue: ValidationIssue };
 
 interface AchievementReportV1 {
   schemaVersion: 1;
@@ -82,7 +82,7 @@ interface AchievementReportV1 {
   status: "complete" | "incomplete";
   achievements: Achievement[]; // 0–5
   coverage: ReportCoverage[];
-  incomplete: Array<{ reason: IncompleteReason; source?: ReportSource; issue?: ValidationIssue }>;
+  incomplete: IncompleteEntry[]; // empty exactly when status is complete
 }
 ```
 

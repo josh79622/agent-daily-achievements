@@ -226,3 +226,66 @@ function hasOnlyKeys(
 ): boolean {
   return Object.keys(value).every((key) => allowed.includes(key));
 }
+
+export type IncompleteEntry =
+  | { reason: "source-incomplete"; source: ReportSource }
+  | { reason: "summary-unavailable" }
+  | { reason: "summary-invalid"; issue: ValidationIssue };
+
+export interface AchievementReportV1 {
+  schemaVersion: 1;
+  date: string;
+  timezone: string;
+  status: "complete" | "incomplete";
+  achievements: Achievement[];
+  coverage: ReportCoverage[];
+  incomplete: IncompleteEntry[];
+}
+
+/** What the summarizer run produced; `unavailable` covers no run or a failed run. */
+export type SummaryOutcome =
+  { kind: "candidate"; candidate: unknown } | { kind: "unavailable" };
+
+/**
+ * Builds the stored report. Status and coverage come only from local facts
+ * (collector coverage and the summarizer outcome), never from the candidate.
+ */
+export function assembleReport({
+  date,
+  timezone,
+  manifest,
+  coverage,
+  summary,
+}: {
+  date: string;
+  timezone: string;
+  manifest: EvidenceManifest;
+  coverage: readonly ReportCoverage[];
+  summary: SummaryOutcome;
+}): AchievementReportV1 {
+  const incomplete: IncompleteEntry[] = coverage
+    .filter((entry) => entry.state === "incomplete")
+    .map((entry) => ({ reason: "source-incomplete", source: entry.source }));
+
+  let achievements: Achievement[] = [];
+  if (summary.kind === "unavailable") {
+    incomplete.push({ reason: "summary-unavailable" });
+  } else {
+    const result = validateSummaryCandidate(summary.candidate, {
+      manifest,
+      coverage,
+    });
+    if (result.ok) achievements = structuredClone(result.achievements);
+    else incomplete.push({ reason: "summary-invalid", issue: result.issue });
+  }
+
+  return {
+    schemaVersion: 1,
+    date,
+    timezone,
+    status: incomplete.length ? "incomplete" : "complete",
+    achievements,
+    coverage: structuredClone([...coverage]),
+    incomplete,
+  };
+}

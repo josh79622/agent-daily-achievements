@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  assembleReport,
   validateSummaryCandidate,
   type EvidenceManifest,
   type ReportCoverage,
@@ -318,4 +319,124 @@ test("RC-9: invalid results never contain candidate text", () => {
     expect(result.ok).toBe(false);
     expect(JSON.stringify(result)).not.toContain("FICTIONAL-CANDIDATE");
   }
+});
+
+function assemble(
+  summary: Parameters<typeof assembleReport>[0]["summary"],
+  coverage: ReportCoverage[] = allIncluded,
+) {
+  return assembleReport({
+    date: "2026-09-18",
+    timezone: "Australia/Sydney",
+    manifest,
+    coverage,
+    summary,
+  });
+}
+
+describe("RA assembly", () => {
+  test("RC-1/RC-2 via assembly: valid output is complete; invalid output is incomplete with no achievements", () => {
+    const achievements = [item()];
+    expect(
+      assemble({ kind: "candidate", candidate: { achievements } }),
+    ).toEqual({
+      schemaVersion: 1,
+      date: "2026-09-18",
+      timezone: "Australia/Sydney",
+      status: "complete",
+      achievements,
+      coverage: allIncluded,
+      incomplete: [],
+    });
+
+    const invalid = assemble({
+      kind: "candidate",
+      candidate: { achievements, status: "complete" },
+    });
+    expect(invalid).toMatchObject({
+      status: "incomplete",
+      achievements: [],
+      incomplete: [{ reason: "summary-invalid", issue: "invalid-shape" }],
+    });
+  });
+
+  test("RA-1: an incomplete selected source keeps valid achievements but marks the report incomplete", () => {
+    const coverage: ReportCoverage[] = [
+      { source: "codex", state: "included" },
+      { source: "claude-code", state: "incomplete", reason: "unreadable" },
+    ];
+    const achievements = [item()];
+
+    const report = assemble(
+      { kind: "candidate", candidate: { achievements } },
+      coverage,
+    );
+
+    expect(report.status).toBe("incomplete");
+    expect(report.achievements).toEqual(achievements);
+    expect(report.coverage).toEqual(coverage);
+    expect(report.incomplete).toEqual([
+      { reason: "source-incomplete", source: "claude-code" },
+    ]);
+  });
+
+  test("RA-2: not-installed, not-enabled, and no-activity sources do not make a report incomplete", () => {
+    const coverage: ReportCoverage[] = [
+      { source: "codex", state: "included" },
+      { source: "claude-code", state: "not-installed" },
+      { source: "gemini-web", state: "not-enabled" },
+      { source: "chatgpt-web", state: "no-activity" },
+    ];
+
+    const report = assemble(
+      { kind: "candidate", candidate: { achievements: [item()] } },
+      coverage,
+    );
+
+    expect(report).toMatchObject({ status: "complete", incomplete: [] });
+    expect(report.coverage).toEqual(coverage);
+  });
+
+  test("RA-3: no summarizer result is incomplete with summary-unavailable and zero achievements", () => {
+    expect(assemble({ kind: "unavailable" })).toMatchObject({
+      status: "incomplete",
+      achievements: [],
+      coverage: allIncluded,
+      incomplete: [{ reason: "summary-unavailable" }],
+    });
+  });
+
+  test("RA-4: a valid empty candidate with complete coverage is complete with zero achievements", () => {
+    expect(
+      assemble({ kind: "candidate", candidate: { achievements: [] } }),
+    ).toMatchObject({ status: "complete", achievements: [], incomplete: [] });
+  });
+
+  test("RA-5: every incomplete source and the summary failure are all listed", () => {
+    const coverage: ReportCoverage[] = [
+      { source: "codex", state: "included" },
+      { source: "claude-code", state: "incomplete", reason: "partial-write" },
+      {
+        source: "gemini-web",
+        state: "incomplete",
+        reason: "collection-failed",
+      },
+    ];
+
+    expect(
+      assemble(
+        { kind: "candidate", candidate: { achievements: [], extra: true } },
+        coverage,
+      ).incomplete,
+    ).toEqual([
+      { reason: "source-incomplete", source: "claude-code" },
+      { reason: "source-incomplete", source: "gemini-web" },
+      { reason: "summary-invalid", issue: "invalid-shape" },
+    ]);
+    expect(assemble({ kind: "unavailable" }, coverage).incomplete).toEqual([
+      { reason: "source-incomplete", source: "claude-code" },
+      { reason: "source-incomplete", source: "gemini-web" },
+      { reason: "summary-unavailable" },
+    ]);
+  });
 });

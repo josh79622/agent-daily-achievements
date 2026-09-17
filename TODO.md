@@ -48,8 +48,10 @@
     [the report contract design](docs/plans/2026-09-17-report-contract-design.md).
   - Task 1 validation: RC-1 through RC-9 pass in
     `test/report/report-contract.test.ts` (16 tests) and `npm run check`
-    passed. Tasks 2–5 (assembly, re-analysis decision, eval scorer, status
-    records) remain.
+    passed.
+  - Task 2 assembly: RA-1 through RA-5, plus the RC-1/RC-2 status wording,
+    pass in the same file (22 tests); `npm run check` passed. Tasks 3–5
+    (re-analysis decision, eval scorer, status records) remain.
 - [ ] Expand the pre-labelled evaluation set before prompt iteration.
 
 ### Phase 5 — Report control
