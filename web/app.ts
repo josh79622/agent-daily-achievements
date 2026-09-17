@@ -129,7 +129,19 @@ consentForm.addEventListener("submit", (event) => {
 function clearCollection(): number {
   collectorSources.replaceChildren();
   collectorSessions.replaceChildren();
+  return nextCollectionRevision();
+}
+
+function nextCollectionRevision(): number {
   return ++collectorRevision;
+}
+
+function replaceCollection(
+  sources: HTMLElement[],
+  sessions: HTMLElement[],
+): void {
+  collectorSources.replaceChildren(...sources);
+  collectorSessions.replaceChildren(...sessions);
 }
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
@@ -162,7 +174,7 @@ async function saveSources(): Promise<void> {
     ...(claudeChoice.checked ? ["claude-code"] : []),
     ...(codexChoice.checked ? ["codex"] : []),
   ];
-  const revision = clearCollection();
+  const revision = nextCollectionRevision();
   consentSave.disabled = true;
   collectorStatus.textContent = "Saving source choice…";
   try {
@@ -173,49 +185,65 @@ async function saveSources(): Promise<void> {
     });
     if (revision !== collectorRevision) return;
     savedSources = consent.sources;
-    await loadCollection(revision);
+    await loadCollection(revision, true);
   } catch (error) {
-    showCollectorError(error, revision);
+    showCollectorError(error, revision, true);
   } finally {
     consentSave.disabled = false;
   }
 }
 
-async function loadCollection(revision: number): Promise<void> {
+async function loadCollection(
+  revision: number,
+  retainExisting = false,
+): Promise<void> {
+  consentSave.disabled = true;
   const unauthorized = ["claude-code", "codex"].filter(
     (source) => !savedSources.includes(source),
   );
-  unauthorized.forEach((source) => {
+  const sourceLines = unauthorized.map((source) => {
     const line = document.createElement("p");
     line.textContent = `${source} · not authorized`;
-    collectorSources.append(line);
+    return line;
   });
   if (!savedSources.length) {
     collectorStatus.textContent =
       "Collection is off. Choose sources and save to allow local reads.";
+    consentSave.disabled = false;
     return;
   }
   collectorStatus.textContent = "Reading authorized local metadata…";
-  const result = await api<{
-    sources: Array<{ source: string; sessions: number; issues: number }>;
-    sessions: CollectorSession[];
-  }>("/api/collector/today");
-  if (revision !== collectorRevision) return;
-  collectorStatus.textContent = "Metadata only — previews stay local.";
-  result.sources.forEach((source) => {
-    const line = document.createElement("p");
-    line.className = "collector-source";
-    line.textContent = `${source.source} · ${source.sessions} sessions · ${source.issues} issues`;
-    collectorSources.append(line);
-  });
-  result.sessions.forEach((session) =>
-    collectorSessions.append(createSession(session, revision)),
-  );
+  try {
+    const result = await api<{
+      sources: Array<{ source: string; sessions: number; issues: number }>;
+      sessions: CollectorSession[];
+    }>("/api/collector/today");
+    if (revision !== collectorRevision) return;
+    result.sources.forEach((source) => {
+      const line = document.createElement("p");
+      line.className = "collector-source";
+      line.textContent = `${source.source} · ${source.sessions} sessions · ${source.issues} issues`;
+      sourceLines.push(line);
+    });
+    replaceCollection(
+      sourceLines,
+      result.sessions.map((session) => createSession(session, revision)),
+    );
+    collectorStatus.textContent = "Metadata only — previews stay local.";
+  } catch (error) {
+    showCollectorError(error, revision, retainExisting);
+  } finally {
+    consentSave.disabled = false;
+  }
 }
 
-function showCollectorError(error: unknown, revision: number): void {
+function showCollectorError(
+  error: unknown,
+  revision: number,
+  retainExisting = false,
+): void {
   if (revision !== collectorRevision) return;
-  clearCollection();
+  if (!retainExisting) clearCollection();
   collectorStatus.textContent =
     error instanceof Error ? error.message : "Local activity is unavailable.";
 }
@@ -263,7 +291,7 @@ function createSession(
       });
       preview.replaceWith(messages);
     } catch (error) {
-      showCollectorError(error, revision);
+      showCollectorError(error, revision, true);
     }
   });
   article.append(title, preview);

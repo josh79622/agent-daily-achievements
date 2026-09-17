@@ -101,6 +101,16 @@ export function createApp({
               });
               return;
             }
+            if (activeCollections > 0) {
+              sendJson(response, 409, {
+                error: {
+                  code: "collection_in_progress",
+                  message:
+                    "Local collection is in progress. Change sources after it finishes.",
+                },
+              });
+              return;
+            }
             generation += 1;
             saving += 1;
             const write = writes.then(() => writeConsent(consentPath, sources));
@@ -166,22 +176,6 @@ export function createApp({
             result = await collector.collect(collectorDate(), sources);
           } finally {
             activeCollections -= 1;
-          }
-          let latest;
-          try {
-            latest = await readConsent(consentPath);
-          } catch {
-            settingsError(response);
-            return;
-          }
-          if (
-            generation !== revision ||
-            saving ||
-            saveFailed ||
-            JSON.stringify(latest) !== JSON.stringify(sources)
-          ) {
-            consentRequired(response);
-            return;
           }
           const sessions = result.sessions.filter((session) =>
             sources.includes(session.source),
