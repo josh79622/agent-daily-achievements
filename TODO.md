@@ -33,6 +33,13 @@
     permission/preference changes, server-built payloads, and recipient
     persistence. It does not detect or invoke a real provider yet.
 - [ ] Detect available selected Claude Code/Codex CLI and represent failures without silent fallback.
+  - UI-first login demo (`22a043c`, `3e2d7e3`, `c861af4`, `9237703`): a
+    "Report sign-in" panel shows both providers, launches only the fixed
+    `codex login` / `claude auth login` command in Terminal on macOS, and
+    reports five safe states. Unit tests use fake executors only. Still open:
+    Josh's manual Terminal demo, verifying that the real `login status` /
+    `auth status` exit codes mean signed-in, and approval of a zero-conversation
+    readiness probe (none is configured, so no provider can reach `ready`).
 - [ ] Define the report contract: at most three achievements, evidence links, incomplete coverage, and achievement-level deduplication.
 - [ ] Expand the pre-labelled evaluation set before prompt iteration.
 
