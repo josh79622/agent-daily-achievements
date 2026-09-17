@@ -26,7 +26,7 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 Implement the first-read local-source consent gate: the page must require an explicit source-scope choice before the collector API is enabled, persist only the choice locally, and disclose that no conversation text leaves the machine. The task must not add model invocation or scheduling.
 
-The [proposed consent design and acceptance cases](docs/plans/2026-09-16-local-source-consent-design.md) are ready for Josh's review. They propose server-enforced source selection persisted in ignored local JSON, explicit withdrawal behavior, and blocking access when settings fail. Implementation and test-code generation await confirmation of the design and behavior-setting cases, as required by the project workflow. No application code or local history was read for this design task.
+Josh confirmed the [consent design and acceptance cases](docs/plans/2026-09-16-local-source-consent-design.md), including an immutable source scope for each in-flight collection: a run completes with the scope saved when it began; source changes apply only to later runs. The task uses unit tests and the project quality gate; product-wide E2E tests are deferred until all planned functionality is complete. No private local history is used for tests.
 
 ## Latest verification
 
