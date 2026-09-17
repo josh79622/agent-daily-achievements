@@ -436,6 +436,7 @@ interface SigninStatus {
   checkedAt?: string;
   probeFailures?: Array<{ attempt: string; reason: string }>;
   checking?: true;
+  readyVia?: string;
 }
 
 // Display labels for the fixed probe codes; no reply or error text is shown.
@@ -709,11 +710,17 @@ function notReadyMessage(status: SigninStatus): string {
 
 function renderSignin(status: SigninStatus): void {
   if (!signinProviders.includes(status.provider)) return;
+  const readyVia = status.readyVia
+    ? probeAttemptLabels[status.readyVia]
+    : undefined;
+  const checkedTime = clockTime(status.checkedAt) ?? "just now";
   const messages: Record<SigninStatus["state"], string> = {
     "not-installed": `${status.label} is not installed.`,
     "sign-in-required": "Sign-in required.",
     "login-in-progress": `Sign-in started. Complete it in the Terminal window, then choose Check again.`,
-    ready: `Ready (checked ${clockTime(status.checkedAt) ?? "just now"})`,
+    ready: readyVia
+      ? `Ready via ${readyVia} (checked ${checkedTime})`
+      : `Ready (checked ${checkedTime})`,
     "probe-failed": notReadyMessage(status),
   };
   requiredElement(`signin-status-${status.provider}`).textContent =

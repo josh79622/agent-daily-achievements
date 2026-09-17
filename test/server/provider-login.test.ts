@@ -330,3 +330,35 @@ test("PR-16: readiness rejects unknown providers, bodies, non-local or cross-sit
     ).status,
   ).toBe(503);
 });
+
+test("PR-18: the status endpoint returns readyVia only as a known attempt code", async () => {
+  const ready = (readyVia: unknown) =>
+    ({
+      provider: "codex",
+      label: "Codex",
+      state: "ready",
+      installUrl: "https://example.test/install",
+      signedIn: true,
+      checkedAt: "2026-09-18T04:32:00.000Z",
+      readyVia,
+    }) as ProviderLoginStatus;
+  for (const [readyVia, expected] of [
+    ["summary-model", "summary-model"],
+    ["lowest-cost-model", "lowest-cost-model"],
+    ["sk-SECRET-token", undefined],
+  ] as const) {
+    const { service } = fakeService();
+    service.checkReadiness = async () => ready(readyVia);
+    const app = await setup(service);
+    const response = await app.send(
+      "POST",
+      "/api/summarizer/providers/codex/readiness",
+      { origin: app.origin },
+    );
+    const body = JSON.parse(response.body) as {
+      provider: Record<string, unknown>;
+    };
+    expect(body.provider.readyVia).toBe(expected);
+    expect(response.body).not.toContain("SECRET");
+  }
+});

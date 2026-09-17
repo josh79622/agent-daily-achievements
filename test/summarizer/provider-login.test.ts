@@ -120,7 +120,7 @@ for (const provider of providers) {
         launcher: fakeLauncher().launcher,
         probe: async () => {
           probed += 1;
-          return { ok: true };
+          return { ok: true, attempt: "lowest-cost-model" };
         },
       });
       await service.status(provider);

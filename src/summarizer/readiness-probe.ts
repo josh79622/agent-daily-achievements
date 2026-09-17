@@ -49,7 +49,8 @@ export interface ProbeAttemptFailure {
 }
 
 export type ProbeOutcome =
-  { ok: true } | { ok: false; failures: ProbeAttemptFailure[] };
+  | { ok: true; attempt: ProbeAttempt }
+  | { ok: false; failures: ProbeAttemptFailure[] };
 
 export type ReadinessProbe = (input: {
   provider: SummaryProvider;
@@ -176,7 +177,7 @@ export function createReadinessProbe({
     const failures: ProbeAttemptFailure[] = [];
     for (const [name, model, effort] of attempts) {
       const reason = await attempt(provider, executablePath, model, effort);
-      if (!reason) return { ok: true };
+      if (!reason) return { ok: true, attempt: name };
       failures.push({ attempt: name, reason });
     }
     return { ok: false, failures };

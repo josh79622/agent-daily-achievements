@@ -4,7 +4,11 @@ import { access } from "node:fs/promises";
 import { basename, delimiter, isAbsolute, join } from "node:path";
 
 import type { SummaryProvider } from "../storage/summary-permission.js";
-import type { ProbeAttemptFailure, ReadinessProbe } from "./readiness-probe.js";
+import type {
+  ProbeAttempt,
+  ProbeAttemptFailure,
+  ReadinessProbe,
+} from "./readiness-probe.js";
 
 export type ProviderLoginState =
   | "not-installed"
@@ -25,6 +29,8 @@ export interface ProviderLoginStatus {
   checkedAt?: string;
   probeFailures?: ProbeAttemptFailure[];
   checking?: true;
+  /** Which probe attempt produced Ready. */
+  readyVia?: ProbeAttempt;
 }
 
 export interface CommandResult {
@@ -120,7 +126,7 @@ const reasons = {
 } as const;
 
 type HeldReadiness =
-  | { kind: "ready"; checkedAt: string }
+  | { kind: "ready"; checkedAt: string; attempt: ProbeAttempt }
   | { kind: "failed"; checkedAt: string; failures: ProbeAttemptFailure[] };
 
 type SignIn =
@@ -208,7 +214,11 @@ export function createProviderLoginService({
       return { ...signedIn("probe-failed", reasons.checking), checking: true };
     const readiness = held.get(provider);
     if (readiness?.kind === "ready")
-      return { ...signedIn("ready"), checkedAt: readiness.checkedAt };
+      return {
+        ...signedIn("ready"),
+        checkedAt: readiness.checkedAt,
+        readyVia: readiness.attempt,
+      };
     if (readiness?.kind === "failed")
       return {
         ...signedIn("probe-failed", reasons.probeFailed),
@@ -270,7 +280,7 @@ export function createProviderLoginService({
         held.set(
           provider,
           outcome.ok
-            ? { kind: "ready", checkedAt }
+            ? { kind: "ready", checkedAt, attempt: outcome.attempt }
             : { kind: "failed", checkedAt, failures: outcome.failures },
         );
       } finally {

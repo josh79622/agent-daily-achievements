@@ -237,7 +237,7 @@ describe("SR effective model", () => {
       probe: async ({ summaryModel, summaryEffort }) => {
         received.push(summaryModel);
         efforts.push(summaryEffort);
-        return { ok: true };
+        return { ok: true, attempt: "lowest-cost-model" };
       },
       summarySettings: (provider) => models.effectiveSettings(provider),
     });

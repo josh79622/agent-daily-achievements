@@ -178,7 +178,7 @@ describe("PR-3 to PR-6 attempt order", () => {
         executablePath: "/fake/bin/claude",
         summaryModel: "opus",
       }),
-    ).toEqual({ ok: true });
+    ).toEqual({ ok: true, attempt: "lowest-cost-model" });
     expect(runs).toHaveLength(1);
   });
 
@@ -190,7 +190,7 @@ describe("PR-3 to PR-6 attempt order", () => {
         executablePath: "/fake/bin/claude",
         summaryModel: "opus",
       }),
-    ).toEqual({ ok: true });
+    ).toEqual({ ok: true, attempt: "summary-model" });
     expect(withModel.runs[1]?.args).toContain("opus");
     expect(withModel.runs[1]?.cwd).toBe("/fake/tmp/probe-2");
 
@@ -200,7 +200,7 @@ describe("PR-3 to PR-6 attempt order", () => {
         provider: "codex",
         executablePath: "/fake/bin/codex",
       }),
-    ).toEqual({ ok: true });
+    ).toEqual({ ok: true, attempt: "summary-model" });
     expect(withDefault.runs[1]?.args).not.toContain("-m");
     expect(withDefault.runs[1]?.args).not.toContain("gpt-5.6-luna");
   });
@@ -553,7 +553,7 @@ describe("PR-11 to PR-15 readiness state", () => {
         launcher,
         probe: async () => {
           probes += 1;
-          return { ok: true };
+          return { ok: true, attempt: "lowest-cost-model" };
         },
         now: clock,
       });
@@ -578,7 +578,7 @@ describe("PR-11 to PR-15 readiness state", () => {
       probe: () => {
         probes += 1;
         return new Promise((resolve) => {
-          release = () => resolve({ ok: true });
+          release = () => resolve({ ok: true, attempt: "lowest-cost-model" });
         });
       },
       now: clock,
@@ -600,7 +600,7 @@ describe("PR-11 to PR-15 readiness state", () => {
     const { createProviderLoginService } = await loginModule();
     const account = signIn("signed-in");
     const outcomes = [
-      { ok: true as const },
+      { ok: true as const, attempt: "summary-model" as const },
       {
         ok: false as const,
         failures: [
@@ -618,7 +618,11 @@ describe("PR-11 to PR-15 readiness state", () => {
       createProviderLoginService({
         executor: account.executor,
         launcher,
-        probe: async () => outcomes.shift() ?? { ok: true },
+        probe: async () =>
+          outcomes.shift() ?? {
+            ok: true as const,
+            attempt: "lowest-cost-model" as const,
+          },
         now: () => new Date(times[time++] ?? times[0]!),
       });
     const service = makeService();
@@ -630,6 +634,7 @@ describe("PR-11 to PR-15 readiness state", () => {
       installUrl: expect.stringMatching(/^https:/),
       signedIn: true,
       checkedAt: "2026-09-18T04:32:00.000Z",
+      readyVia: "summary-model",
     });
     expect(await service.status("claude-code")).toMatchObject({
       state: "ready",
@@ -659,7 +664,7 @@ describe("PR-11 to PR-15 readiness state", () => {
       const service = createProviderLoginService({
         executor: account.executor,
         launcher,
-        probe: async () => ({ ok: true }),
+        probe: async () => ({ ok: true, attempt: "lowest-cost-model" }),
         now: clock,
       });
       expect((await service.checkReadiness("codex")).state).toBe("ready");
@@ -680,7 +685,7 @@ describe("PR-11 to PR-15 readiness state", () => {
     const service = createProviderLoginService({
       executor: account.executor,
       launcher,
-      probe: async () => ({ ok: true }),
+      probe: async () => ({ ok: true, attempt: "lowest-cost-model" }),
       now: clock,
     });
     expect(await service.status("codex")).toMatchObject({
@@ -747,7 +752,7 @@ test("PR-17 support: only signed-in statuses carry signedIn, so the page can ena
         },
       },
       launcher: { async launch() {} },
-      probe: async () => ({ ok: true }),
+      probe: async () => ({ ok: true, attempt: "lowest-cost-model" }),
     });
     const status = await service.status("codex");
     if (signedIn) expect(status.signedIn).toBe(true);
@@ -818,8 +823,51 @@ describe("EP probe effort", () => {
         summaryModel: "haiku",
         summaryEffort: "low",
       }),
-    ).toEqual({ ok: true });
+    ).toEqual({ ok: true, attempt: "summary-model" });
     expect(runs).toHaveLength(2);
     expect(runs[1]?.args).toContain("--effort");
   });
+});
+
+test("PR-18: the service holds which attempt passed with Ready and clears it with Ready", async () => {
+  const { createProviderLoginService } =
+    await import("../../src/summarizer/provider-login.js");
+  let signedIn = true;
+  const outcomes = [
+    { ok: true as const, attempt: "lowest-cost-model" as const },
+    {
+      ok: false as const,
+      failures: [
+        { attempt: "lowest-cost-model" as const, reason: "timed-out" as const },
+      ],
+    },
+  ];
+  const service = createProviderLoginService({
+    executor: {
+      async locate(name) {
+        return `/fake/bin/${name}`;
+      },
+      async run() {
+        return { exitCode: signedIn ? 0 : 1, stdout: "", stderr: "" };
+      },
+    },
+    launcher: { async launch() {} },
+    probe: async () =>
+      outcomes.shift() ?? { ok: true, attempt: "summary-model" },
+  });
+
+  expect(await service.checkReadiness("codex")).toMatchObject({
+    state: "ready",
+    readyVia: "lowest-cost-model",
+  });
+  const failed = await service.checkReadiness("codex");
+  expect(failed.state).toBe("probe-failed");
+  expect(failed).not.toHaveProperty("readyVia");
+  expect(await service.checkReadiness("codex")).toMatchObject({
+    readyVia: "summary-model",
+  });
+  signedIn = false;
+  await service.status("codex");
+  signedIn = true;
+  expect(await service.status("codex")).not.toHaveProperty("readyVia");
 });

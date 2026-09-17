@@ -655,6 +655,11 @@ function safeStatus(status: ProviderLoginStatus): ProviderLoginStatus {
       reason,
     }));
   if (status.checking === true) safe.checking = true;
+  if (
+    status.readyVia === "lowest-cost-model" ||
+    status.readyVia === "summary-model"
+  )
+    safe.readyVia = status.readyVia;
   return safe;
 }
 

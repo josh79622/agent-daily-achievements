@@ -164,3 +164,16 @@ test("EU-1: each provider has an effort dropdown saved only through the model en
   expect(app).toContain("effortOptions");
   expect(app).toContain("Saved effort is no longer supported; using Default.");
 });
+
+test("PR-19: Ready shows which attempt passed with its check time", async () => {
+  const build = spawnSync(process.execPath, ["scripts/build.mjs"], {
+    encoding: "utf8",
+  });
+
+  expect(build.status, build.stderr).toBe(0);
+  const app = await readFile("dist/web/app.js", "utf8");
+  expect(app).toContain("Ready via ");
+  expect(app).toContain("readyVia");
+  expect(app).toContain("lowest-cost model");
+  expect(app).toContain("summary model");
+});
