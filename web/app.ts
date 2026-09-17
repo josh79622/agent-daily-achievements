@@ -485,7 +485,97 @@ function signinButton(provider: SigninProvider): HTMLButtonElement {
 async function showSignin(): Promise<void> {
   signinPanel.hidden = false;
   signinToggle.setAttribute("aria-expanded", "true");
-  await refreshSignin();
+  await Promise.all([refreshSignin(), loadModels()]);
+}
+
+interface ModelView {
+  provider: SigninProvider;
+  source: "fetched" | "built-in";
+  options: Array<{ value: string; label: string }>;
+  selected: string;
+  effective: string | null;
+  warnings: string[];
+}
+
+// Fixed warning texts; the page never shows free-form server text here.
+const modelWarningLabels: Record<string, string> = {
+  "saved-model-unavailable":
+    "Saved model is no longer available; using Default.",
+  "model-list-unavailable": "Model list unavailable; using the built-in list.",
+  "settings-unreadable": "Model settings could not be read; using Default.",
+};
+
+function modelSelect(provider: SigninProvider): HTMLSelectElement {
+  return requiredElement<HTMLSelectElement>(`signin-model-${provider}`);
+}
+
+function modelNote(provider: SigninProvider): HTMLElement {
+  return requiredElement(`signin-model-note-${provider}`);
+}
+
+for (const provider of signinProviders) {
+  modelSelect(provider).addEventListener(
+    "change",
+    () => void saveModel(provider),
+  );
+}
+
+async function loadModels(): Promise<void> {
+  try {
+    const { providers } = await api<{ providers: ModelView[] }>(
+      "/api/summarizer/models",
+    );
+    for (const view of providers) renderModel(view);
+  } catch {
+    for (const provider of signinProviders) {
+      modelSelect(provider).disabled = true;
+      modelNote(provider).textContent = "Model settings are unavailable.";
+    }
+  }
+}
+
+async function saveModel(provider: SigninProvider): Promise<void> {
+  const select = modelSelect(provider);
+  select.disabled = true;
+  try {
+    const { provider: view } = await api<{ provider: ModelView }>(
+      `/api/summarizer/models/${provider}`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ model: select.value }),
+      },
+    );
+    renderModel(view);
+  } catch {
+    modelNote(provider).textContent = "The model choice could not be saved.";
+    await loadModels();
+  }
+}
+
+function renderModel(view: ModelView): void {
+  if (!signinProviders.includes(view.provider)) return;
+  const select = modelSelect(view.provider);
+  const options = [
+    { value: "default", label: "Default" },
+    ...view.options.filter((option) => option.value !== "default"),
+  ];
+  select.replaceChildren(
+    ...options.map(({ value, label }) => {
+      const element = document.createElement("option");
+      element.value = value;
+      element.textContent = label;
+      return element;
+    }),
+  );
+  select.value = options.some((option) => option.value === view.selected)
+    ? view.selected
+    : "default";
+  select.disabled = false;
+  modelNote(view.provider).textContent = view.warnings
+    .map((warning) => modelWarningLabels[warning])
+    .filter(Boolean)
+    .join(" ");
 }
 
 function hideSignin(): void {

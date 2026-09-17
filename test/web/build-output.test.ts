@@ -103,3 +103,35 @@ test("PR-17: each provider has a Check readiness control wired only to the readi
   }
   expect(panel).not.toMatch(/<input|<textarea|password|api[ -]?key|token/i);
 });
+
+test("SP-1: each provider has a summary model dropdown with no free-text entry, saved only through the model endpoint", async () => {
+  const build = spawnSync(process.execPath, ["scripts/build.mjs"], {
+    encoding: "utf8",
+  });
+
+  expect(build.status, build.stderr).toBe(0);
+  const html = await readFile("dist/web/index.html", "utf8");
+  const app = await readFile("dist/web/app.js", "utf8");
+  const panel =
+    html.match(/<aside[^>]*id="signin-panel"[\s\S]*?<\/aside>/)?.[0] ?? "";
+
+  for (const provider of ["codex", "claude-code"]) {
+    expect(panel).toMatch(
+      new RegExp(
+        `<label[^>]*for="signin-model-${provider}"[^>]*>\\s*Summary model`,
+      ),
+    );
+    expect(panel).toMatch(
+      new RegExp(
+        `<select[^>]*id="signin-model-${provider}"[^>]*>\\s*<option value="default">Default</option>`,
+      ),
+    );
+    expect(panel).toMatch(new RegExp(`id="signin-model-note-${provider}"`));
+  }
+  expect(panel).not.toMatch(/<input|<textarea|contenteditable/i);
+  expect(app).toMatch(/\/api\/summarizer\/models/);
+  expect(app).toMatch(/method: "PUT"/);
+  expect(app).toContain("Saved model is no longer available; using Default.");
+  expect(app).toContain("Model list unavailable; using the built-in list.");
+  expect(app).toContain("Model settings could not be read; using Default.");
+});
