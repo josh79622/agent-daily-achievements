@@ -66,11 +66,12 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-Implement Phase 4 CLI availability detection and real, consent-gated runner
-integration. It must distinguish not installed, unavailable, and failed
-providers; keep the current no-fallback-without-permission boundary; and use
-synthetic inputs until a separate real-data authorization and payload contract
-are approved.
+Phase 4 report contract: the design, test cases (RC, RA, EV), and the fictional
+eval set are drafted in
+[the report contract design](docs/plans/2026-09-17-report-contract-design.md)
+and [synthetic set 02](docs/evals/synthetic-set-02.md). They await Josh's
+approval, including decisions D1–D3, before any test or production code. No
+model, CLI, probe, or real data is used for this work.
 
 ## Latest verification
 
