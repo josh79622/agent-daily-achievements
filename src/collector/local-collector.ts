@@ -25,6 +25,7 @@ export type SourceCoverageState =
   "available" | "incomplete" | "no-activity" | "not-installed";
 
 export type SourceCoverageReason =
+  | "duplicate-conflict"
   | "duplicate-session"
   | "malformed-record"
   | "partial-write"
@@ -100,15 +101,15 @@ async function collectSource(
   const locations = await Promise.all(paths.map(jsonlFilesAt));
   const files = locations.flatMap((location) => location.files);
   let issues = 0;
-  const sessions: CollectedSession[] = [];
+  const fragments: ParsedFile[] = [];
   let reason: SourceCoverageReason | undefined;
   let supported = false;
   for (const file of files) {
-    const parsed = await parseFile(source, file, date, timeZone);
+    const parsed = await parseFile(source, file);
     issues += parsed.issues;
     supported ||= parsed.supported;
     reason ??= parsed.reason;
-    if (parsed.session) sessions.push(parsed.session);
+    if (parsed.messages.length > 0) fragments.push(parsed);
   }
   const missingPaths = locations.reduce(
     (total, location) => total + location.missingPaths,
@@ -122,33 +123,15 @@ async function collectSource(
     issues += unreadablePaths;
     reason = "unreadable";
   }
-  if (source === "codex") {
-    const counts = new Map<string, number>();
-    for (const session of sessions)
-      counts.set(session.id, (counts.get(session.id) ?? 0) + 1);
-    const duplicateIds = new Set(
-      [...counts].flatMap(([id, count]) => (count > 1 ? [id] : [])),
-    );
-    if (duplicateIds.size > 0) {
-      return {
-        filesFound: files.length,
-        missingPaths,
-        reason: "duplicate-session",
-        sessions: sessions.filter((session) => !duplicateIds.has(session.id)),
-        issues: issues + duplicateIds.size,
-        supported,
-        unreadablePaths,
-      };
-    }
-  }
+  const merged = mergeSessions(source, fragments, date, timeZone);
   return {
     filesFound: files.length,
-    issues,
     missingPaths,
-    reason,
-    sessions,
+    reason: merged.conflicts > 0 ? "duplicate-conflict" : reason,
+    sessions: merged.sessions,
     supported,
     unreadablePaths,
+    issues: issues + merged.conflicts,
   };
 }
 
@@ -227,21 +210,22 @@ async function jsonlFilesAt(path: string): Promise<{
 async function parseFile(
   source: LocalSource,
   file: string,
-  date: string,
-  timeZone: string,
-): Promise<{
-  issues: number;
-  reason?: SourceCoverageReason;
-  session?: CollectedSession;
-  supported: boolean;
-}> {
+): Promise<ParsedFile> {
+  const fallbackSessionId = basename(file, ".jsonl");
   let contents: string;
   try {
     contents = await readFile(file, "utf8");
   } catch {
-    return { issues: 1, reason: "unreadable", supported: false };
+    return {
+      file,
+      issues: 1,
+      messages: [],
+      reason: "unreadable",
+      sessionId: fallbackSessionId,
+      supported: false,
+    };
   }
-  let sessionId = basename(file, ".jsonl");
+  let sessionId = fallbackSessionId;
   let issues = 0;
   const messages: CollectedMessage[] = [];
   const lines = contents.replace(/^\uFEFF/, "").split("\n");
@@ -272,40 +256,87 @@ async function parseFile(
     );
     if (message) messages.push(message);
   }
-  const reportDayMessages = messages.filter(
-    (message) => localDate(message.timestamp, timeZone) === date,
-  );
-  const partialWrite =
-    lastNonBlankLine(lines) === undefined
-      ? false
-      : !validJson(lastNonBlankLine(lines));
-  const reason = partialWrite
-    ? "partial-write"
-    : issues > 0
-      ? "malformed-record"
-      : undefined;
-  if (reportDayMessages.length === 0) return { issues, reason, supported };
-  const reportMessages = messages.filter(
-    (message) => localDate(message.timestamp, timeZone) <= date,
-  );
-  reportMessages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-  const firstMessage = reportMessages[0];
-  if (!firstMessage) return { issues, reason, supported };
+  const partialWrite = !validJson(lastNonBlankLine(lines));
   return {
+    file,
     issues,
-    reason,
-    session: {
-      id: sessionId,
-      source,
-      file,
-      startedAt: firstMessage.timestamp,
-      endedAt: reportMessages.at(-1)?.timestamp ?? firstMessage.timestamp,
-      messageCount: reportMessages.length,
-      issueCount: issues,
-      messages: reportMessages,
-    },
+    messages,
+    reason: partialWrite
+      ? "partial-write"
+      : issues > 0
+        ? "malformed-record"
+        : undefined,
+    sessionId,
     supported,
   };
+}
+
+interface ParsedFile {
+  file: string;
+  issues: number;
+  messages: CollectedMessage[];
+  reason?: SourceCoverageReason;
+  sessionId: string;
+  supported: boolean;
+}
+
+function mergeSessions(
+  source: LocalSource,
+  fragments: ParsedFile[],
+  date: string,
+  timeZone: string,
+): { conflicts: number; sessions: CollectedSession[] } {
+  const groups = new Map<string, ParsedFile[]>();
+  for (const fragment of fragments) {
+    const group = groups.get(fragment.sessionId) ?? [];
+    group.push(fragment);
+    groups.set(fragment.sessionId, group);
+  }
+  let conflicts = 0;
+  const sessions: CollectedSession[] = [];
+  for (const [id, group] of groups) {
+    const records = new Map<string, CollectedMessage>();
+    let conflict = false;
+    for (const fragment of group) {
+      for (const message of fragment.messages) {
+        const existing = records.get(message.id);
+        if (
+          existing &&
+          (existing.timestamp !== message.timestamp ||
+            existing.role !== message.role ||
+            existing.text !== message.text)
+        ) {
+          conflict = true;
+        } else records.set(message.id, message);
+      }
+    }
+    if (conflict) {
+      conflicts += 1;
+      continue;
+    }
+    const messages = [...records.values()]
+      .filter((message) => localDate(message.timestamp, timeZone) <= date)
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    if (
+      !messages.some(
+        (message) => localDate(message.timestamp, timeZone) === date,
+      )
+    )
+      continue;
+    const first = messages[0];
+    if (!first) continue;
+    sessions.push({
+      id,
+      source,
+      file: group[0]?.file ?? "",
+      startedAt: first.timestamp,
+      endedAt: messages.at(-1)?.timestamp ?? first.timestamp,
+      messageCount: messages.length,
+      issueCount: group.reduce((total, fragment) => total + fragment.issues, 0),
+      messages,
+    });
+  }
+  return { conflicts, sessions };
 }
 
 function lastNonBlankLine(lines: string[]): string | undefined {

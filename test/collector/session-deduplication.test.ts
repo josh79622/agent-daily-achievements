@@ -30,7 +30,11 @@ function claudeMessage(
   });
 }
 
-function codexFile(sessionId: string, timestamp: string, text: string): string[] {
+function codexFile(
+  sessionId: string,
+  timestamp: string,
+  text: string,
+): string[] {
   return [
     JSON.stringify({
       type: "session_meta",
@@ -61,7 +65,10 @@ async function collectorWithFiles(
   await mkdir(codexDirectory);
   await Promise.all(
     claudeFiles.map((lines, index) =>
-      writeFile(join(claudeDirectory, `claude-${index}.jsonl`), lines.join("\n")),
+      writeFile(
+        join(claudeDirectory, `claude-${index}.jsonl`),
+        lines.join("\n"),
+      ),
     ),
   );
   await Promise.all(

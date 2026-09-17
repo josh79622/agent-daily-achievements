@@ -238,13 +238,14 @@ for (const [placement, activeFiles, archivedFiles] of [
     ],
   ],
 ] as const) {
-  test(`CD-7: excludes a duplicate session ID across ${placement}`, async () => {
+  test(`CD-7: merges a duplicate session ID across ${placement}`, async () => {
     const { collector } = await codexCollector(activeFiles, archivedFiles);
 
     const result = await collector.collect("2026-09-16", ["codex"]);
 
-    expect(result.sessions).toEqual([]);
-    expect(result.sources[0]?.issues).toBe(1);
+    expect(result.sessions).toHaveLength(1);
+    expect(result.sessions[0]?.messageCount).toBe(2);
+    expect(result.sources[0]?.issues).toBe(0);
   });
 }
 

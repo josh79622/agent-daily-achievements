@@ -16,7 +16,8 @@
   - Recent active and archived structure passed read-only verification and CD-1 through CD-9 synthetic unit tests; see [the verification record](docs/research/2026-09-17-codex-parser-verification.md). No E2E test was run.
 - [x] Surface absent source, unreadable source, unsupported shape, and partial-write state as distinct incomplete coverage. (`738668a` and follow-up commit)
   - IC-1 through IC-6 distinguish not-installed, no-activity, and incomplete coverage with a reason, while preserving an available second source. No E2E test was run.
-- [ ] Add session-file deduplication so one resumed or repeated stream is not counted twice.
+- [x] Add session-file deduplication so one resumed or repeated stream is not counted twice. (`163dc08` and follow-up commit)
+  - DD-1 through DD-6 merge exact and split streams, retain source boundaries, and mark conflicts incomplete. The current local snapshot has no duplicate ID, so this behavior uses synthetic unit tests only; no E2E test was run.
 - [ ] Run the Phase 3 exit review and document which source behavior is actually supported.
 
 ## Later phases

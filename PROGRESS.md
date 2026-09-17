@@ -4,7 +4,7 @@
 
 **Phase 3 — Consented local collection**
 
-The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the executing computer's local calendar day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. This is not yet a shippable collector because session-file deduplication is unfinished.
+The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the executing computer's local calendar day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. Phase 3 is ready for its exit review.
 
 ## Completed
 
@@ -36,6 +36,10 @@ The project has moved past an experience-only prototype. A local collector demo 
 - Phase 3 source coverage states:
   - distinguishes a source that is not installed, has no report-day activity, or has incomplete data from an unreadable path, unsupported format, partial write, malformed record, or duplicate session;
   - preserves available data from one source while showing another selected source's incomplete state in the local page and collector API.
+- Phase 3 session-file deduplication:
+  - merges repeated or split files only within the same source and session ID;
+  - preserves one exact duplicate message, merges distinct messages chronologically, and marks conflicting message IDs incomplete without guessing;
+  - retains the report-day context rule after merging.
 
 ## Important boundaries
 
@@ -45,11 +49,11 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-Add session-file deduplication so one resumed or repeated stream is not counted twice. Before implementation or parser changes, propose the task's observable acceptance cases for Josh to confirm. Use approved real sessions only for read-only verification; do not retain their content in fixtures, logs, commits, or documentation.
+Run the Phase 3 exit review and document which source behavior is actually supported. Before implementation or parser changes, propose the task's observable acceptance cases for Josh to confirm. Use approved real sessions only for read-only verification; do not retain their content in fixtures, logs, commits, or documentation.
 
 ## Latest verification
 
-- Source coverage states: `npm run check` passed with format, lint, typecheck, 57 tests, and build. IC-1 through IC-6 use only temporary synthetic source paths and files. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
+- Session-file deduplication: `npm run check` passed with format, lint, typecheck, 63 tests, and build. DD-1 through DD-6 use only temporary synthetic source files because the current local snapshot has no duplicate session ID. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
 - The shell's default Node 25 fails to start because of a missing Homebrew library; use `/opt/homebrew/opt/node@24/bin` on `PATH` for the approved Node 24 runtime (verified v24.20.0).
 
 ## Handoff
