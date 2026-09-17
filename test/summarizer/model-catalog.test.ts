@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { describe, expect, test } from "vitest";
 
 import {
+  builtInDefaultEffortLevels,
   builtInModels,
   createModelCatalogLoader,
   isSafeModelValue,
@@ -155,6 +156,7 @@ test("MC-1: the Codex list comes from `codex debug models` and keeps only listed
   ]);
   expect(catalog.codex).toEqual({
     source: "fetched",
+    defaultEffortLevels: [],
     options: [
       {
         value: "gpt-fiction-terra",
@@ -201,6 +203,7 @@ test("MC-2: the Claude Code list uses one initialize request, never a prompt, an
   expect(spawned?.child.signals).toEqual(["SIGTERM"]);
   expect(catalog["claude-code"]).toEqual({
     source: "fetched",
+    defaultEffortLevels: ["low"],
     options: [
       {
         value: "fiction-sonnet",
@@ -217,6 +220,7 @@ describe("MC-3 fallback", () => {
   const builtIn = (provider: "codex" | "claude-code") => ({
     source: "built-in",
     options: builtInModels[provider],
+    defaultEffortLevels: builtInDefaultEffortLevels[provider],
   });
 
   test("MC-3: Codex spawn error, timeout, non-zero exit, oversize, bad output, or no usable entries use the built-in list", async () => {
@@ -366,4 +370,39 @@ test("MC-5: catalog results contain only value, label, and effort levels", async
         "label",
         "value",
       ]);
+});
+
+test("EC-1: Claude Code keeps the default entry's effort levels without offering it as a model; Codex has none", async () => {
+  const catalog = await loader({}).load();
+  expect(catalog["claude-code"].defaultEffortLevels).toEqual(["low"]);
+  expect(
+    catalog["claude-code"].options.some((option) => option.value === "default"),
+  ).toBe(false);
+  expect(catalog.codex.defaultEffortLevels).toEqual([]);
+
+  expect(builtInDefaultEffortLevels).toEqual({
+    "claude-code": ["low", "medium", "high", "xhigh", "max"],
+    codex: [],
+  });
+
+  const unsafe = await loader({
+    claude: (child) =>
+      child.stdout.emit(
+        "data",
+        JSON.stringify(
+          claudeInitialize([
+            {
+              value: "default",
+              displayName: "D",
+              supportedEffortLevels: ["-x"],
+            },
+            { value: "fiction-opus", displayName: "Opus" },
+          ]),
+        ) + "\n",
+      ),
+  }).load();
+  expect(unsafe["claude-code"]).toMatchObject({
+    source: "fetched",
+    defaultEffortLevels: [],
+  });
 });

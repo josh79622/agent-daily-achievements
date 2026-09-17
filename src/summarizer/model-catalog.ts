@@ -20,6 +20,8 @@ export interface ModelOption {
 export interface ProviderCatalog {
   source: "fetched" | "built-in";
   options: ModelOption[];
+  /** Effort levels of the CLI's default model, when the list states them (D2). */
+  defaultEffortLevels: string[];
 }
 
 export type ModelCatalog = Record<SummaryProvider, ProviderCatalog>;
@@ -71,6 +73,13 @@ export const builtInModels: Record<SummaryProvider, ModelOption[]> = {
     },
     { value: "haiku", label: "Haiku", effortLevels: [] },
   ],
+};
+
+// Claude Code's default entry was observed with these levels on 2026-09-17;
+// Codex does not mark a default model.
+export const builtInDefaultEffortLevels: Record<SummaryProvider, string[]> = {
+  "claude-code": ["low", "medium", "high", "xhigh", "max"],
+  codex: [],
 };
 
 /** A model value that can only ever be one CLI argument, never an option. */
@@ -155,7 +164,7 @@ export function createModelCatalogLoader({
     }
   }
 
-  async function codex(): Promise<ModelOption[] | undefined> {
+  async function codex(): Promise<ParsedList | undefined> {
     const path = await locate("codex");
     if (!path) return undefined;
     return inTempDir(async (directory) => {
@@ -173,16 +182,17 @@ export function createModelCatalogLoader({
         result.stdoutTooLarge
       )
         return undefined;
-      return parseCodexCatalog(result.stdout);
+      const options = parseCodexCatalog(result.stdout);
+      return options && { options, defaultEffortLevels: [] };
     });
   }
 
-  async function claude(): Promise<ModelOption[] | undefined> {
+  async function claude(): Promise<ParsedList | undefined> {
     const path = await locate("claude");
     if (!path) return undefined;
     return inTempDir(
       (directory) =>
-        new Promise<ModelOption[] | undefined>((resolve) => {
+        new Promise<ParsedList | undefined>((resolve) => {
           let child: CatalogChild;
           try {
             child = spawnClaude(path, claudeArgs, {
@@ -198,7 +208,7 @@ export function createModelCatalogLoader({
           let buffer = "";
           let size = 0;
           const decoder = new TextDecoder();
-          const finish = (options: ModelOption[] | undefined) => {
+          const finish = (options: ParsedList | undefined) => {
             if (done) return;
             done = true;
             clearTimeout(timer);
@@ -258,13 +268,22 @@ export function createModelCatalogLoader({
   };
 }
 
+interface ParsedList {
+  options: ModelOption[];
+  defaultEffortLevels: string[];
+}
+
 function catalogOrBuiltIn(
   provider: SummaryProvider,
-  options: ModelOption[] | undefined,
+  parsed: ParsedList | undefined,
 ): ProviderCatalog {
-  return options?.length
-    ? { source: "fetched", options }
-    : { source: "built-in", options: builtInModels[provider] };
+  return parsed?.options.length
+    ? { source: "fetched", ...parsed }
+    : {
+        source: "built-in",
+        options: builtInModels[provider],
+        defaultEffortLevels: builtInDefaultEffortLevels[provider],
+      };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -331,12 +350,23 @@ function initializeResponse(
   return { models: response.response.models };
 }
 
-function parseClaudeModels(models: unknown): ModelOption[] | undefined {
+function parseClaudeModels(models: unknown): ParsedList | undefined {
   if (!Array.isArray(models)) return undefined;
-  return models.flatMap((model) =>
-    isRecord(model) && model.value !== "default"
-      ? (option(model.value, model.displayName, model.supportedEffortLevels) ??
-        [])
-      : [],
-  );
+  const defaultEntry = models.find(
+    (model) => isRecord(model) && model.value === "default",
+  ) as Record<string, unknown> | undefined;
+  return {
+    // The default entry is not offered as a model; only its levels are kept.
+    options: models.flatMap((model) =>
+      isRecord(model) && model.value !== "default"
+        ? (option(
+            model.value,
+            model.displayName,
+            model.supportedEffortLevels,
+          ) ?? [])
+        : [],
+    ),
+    defaultEffortLevels:
+      effortLevels(defaultEntry?.supportedEffortLevels) ?? [],
+  };
 }

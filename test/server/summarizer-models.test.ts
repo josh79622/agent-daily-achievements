@@ -24,6 +24,7 @@ afterEach(async () => {
 const catalog: ModelCatalog = {
   codex: {
     source: "fetched",
+    defaultEffortLevels: [],
     options: [
       { value: "gpt-fiction-terra", label: "Terra", effortLevels: ["low"] },
       { value: "gpt-fiction-luna", label: "Luna", effortLevels: [] },
@@ -31,6 +32,7 @@ const catalog: ModelCatalog = {
   },
   "claude-code": {
     source: "built-in",
+    defaultEffortLevels: [],
     options: [{ value: "fiction-opus", label: "Opus", effortLevels: ["max"] }],
   },
 };

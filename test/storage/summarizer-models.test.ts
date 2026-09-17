@@ -37,6 +37,7 @@ async function tempPath() {
 const fetched: ModelCatalog = {
   codex: {
     source: "fetched",
+    defaultEffortLevels: [],
     options: [
       { value: "gpt-fiction-terra", label: "Terra", effortLevels: ["low"] },
       { value: "gpt-fiction-luna", label: "Luna", effortLevels: [] },
@@ -44,6 +45,7 @@ const fetched: ModelCatalog = {
   },
   "claude-code": {
     source: "fetched",
+    defaultEffortLevels: [],
     options: [{ value: "fiction-opus", label: "Opus", effortLevels: [] }],
   },
 };
