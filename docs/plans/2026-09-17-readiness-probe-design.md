@@ -427,6 +427,35 @@ control.
   `--tools ""` for Claude Code and the eight `--disable` switches, `-o`, and
   `--ephemeral` for Codex; each produced a non-empty reply through its reply
   channel; no `daily-achievements-probe-*` temporary directory remained.
-- Not verified: which attempt passed (lowest-cost or summary model), whether
-  the Codex switches remove every tool, real exit codes for failure cases such
-  as rate limits or expired sign-in, and that no session was persisted.
+- Not verified at that point: which attempt passed (lowest-cost or summary
+  model), whether the Codex switches remove every tool, real exit codes for
+  failure cases such as rate limits or expired sign-in, and that no session
+  was persisted.
+
+## Follow-up verification (2026-09-18)
+
+- Network failure (Josh turned Wi-Fi off and clicked Check readiness for both
+  providers): both attempts reported `timed out` for Codex and Claude Code;
+  no false Ready.
+- Session persistence (Josh approved; metadata only, no file opened): file
+  paths, sizes, and modification times under `~/.codex/sessions`,
+  `~/.codex/archived_sessions`, and `~/.claude/projects` were recorded before
+  and after one real Check readiness per provider (both showed Ready). No new
+  file appeared in any of them, and none named after the probe temporary
+  directories; one existing Claude Code file changed, most likely this working
+  session's own transcript. The startup model-list fetch was not covered.
+- Local checks without a model call (Josh approved):
+  - `codex debug prompt-input` renders only messages (developer instructions
+    and user input), not tool definitions, so it cannot show which tools remain
+    after the eight `--disable` switches. With the switches the rendered input
+    shrank from about 29.5 KB to 20.7 KB, which suggests related instructions
+    are removed but does not prove tool removal. (A first combined run exited 2
+    because of a shell quoting mistake in the check script; each switch and the
+    correctly quoted combination exit 0.)
+  - `codex debug prompt-input -c model_reasoning_effort=...` exited 0 for
+    `high`, `ultra`, and a deliberately invalid `bogus`, so it does not
+    validate effort values and cannot verify item 4.
+- Still unverified: whether any Codex tool remains available (needs a real
+  canary run), whether Codex accepts `max` or `ultra` effort in a real run
+  (Josh limited this item to checks without a model call), quota-exhaustion
+  exit codes, and which probe attempt passed.

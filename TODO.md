@@ -81,6 +81,11 @@
   - Josh restarted the dev server on 2026-09-18 and confirmed the effort
     dropdown options match each model. Still not verified with a real CLI:
     an effort option actually passed in a probe second attempt or summary run.
+  - Follow-up verification on 2026-09-18 (see the probe design): with Wi-Fi
+    off, both providers reported `timed out` (no false Ready); a metadata-only
+    before/after snapshot around one real check per provider found no new
+    session files; local `codex debug prompt-input` checks could not verify
+    tool removal or effort values.
 - [x] Define the report contract: 0–5 achievements (Josh changed the cap from three on 2026-09-17), evidence links, incomplete coverage, and achievement-level deduplication.
   - Design, decisions D1–D3, and RC/RA/RS/EV cases approved in
     [the report contract design](docs/plans/2026-09-17-report-contract-design.md).
