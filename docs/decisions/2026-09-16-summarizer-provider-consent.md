@@ -4,7 +4,7 @@ Date: 2026-09-16
 
 Josh approved external AI summarization, with explicit consent by each user during setup. He clarified that the target users work with Claude Code, Codex, or both—not browser-only Claude or ChatGPT subscriptions. If only one agent CLI is usable for summarization, use that one. If both Claude Code and Codex are usable, the user chooses one during setup. The selected agent may receive records originally produced by the other provider, but only within the user's approved data scope; source origin does not determine the summarizer.
 
-Josh initially proposed Codex as the default when both agents are present, then revised that choice: neither agent is the default when both are usable. On 2026-09-17, Josh further decided that installation should request maximum external-summarization permission once, so a selected agent that fails can automatically fall back to the other usable CLI. The user can later adjust that permission in the interface; changing the choice within already granted permission does not require new consent.
+Josh initially proposed Codex as the default when both agents are present, then revised that choice: neither agent is the default when both are usable. On 2026-09-17, Josh decided to use Codex as the installation-time default when both are usable and to request maximum external-summarization permission once, so a selected agent that fails can automatically fall back to the other usable CLI. The user can later choose Claude Code in the interface or adjust that permission; changing the choice within already granted permission does not require new consent.
 
 ## Privacy boundary
 
