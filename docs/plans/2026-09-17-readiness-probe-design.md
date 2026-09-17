@@ -357,6 +357,13 @@ No test runs a real CLI.
   because its configuration differs; the settings file moves to version 2 with
   an `efforts` map, and version 1 files remain readable.
 
+## Test cases for attempt display (confirmed by Josh, 2026-09-18)
+
+| ID | File | Intended behavior |
+| --- | --- | --- |
+| PR-18 | `test/summarizer/readiness-probe.test.ts`, `test/server/provider-login.test.ts` | A passing probe reports which attempt passed (`lowest-cost-model` or `summary-model`); the service holds it with Ready in memory, and the status endpoint returns it as a whitelisted field. |
+| PR-19 | `test/web/build-output.test.ts` | The panel shows "Ready via lowest-cost model (checked HH:MM)" or "Ready via summary model (checked HH:MM)". |
+
 ## Test cases for Task P3 (IDs fixed; confirmed by Josh with the edge-case defaults, 2026-09-18)
 
 Status: Task P3 is implemented and passes EC-1 to EU-1 with fakes only. No real
@@ -455,7 +462,19 @@ control.
   - `codex debug prompt-input -c model_reasoning_effort=...` exited 0 for
     `high`, `ultra`, and a deliberately invalid `bogus`, so it does not
     validate effort values and cannot verify item 4.
-- Still unverified: whether any Codex tool remains available (needs a real
-  canary run), whether Codex accepts `max` or `ultra` effort in a real run
-  (Josh limited this item to checks without a model call), quota-exhaustion
-  exit codes, and which probe attempt passed.
+- Codex canary run (Josh approved one real run, 2026-09-18): the exact probe
+  first-attempt command (`gpt-5.6-luna`, read-only sandbox, eight `--disable`
+  switches, empty working directory) was asked to read a fictional random
+  token from a file in a different temporary directory. It exited 0 after 13
+  seconds and replied `NOACCESS`; the token did not appear. This is evidence
+  that file reading outside the working directory was unavailable in this
+  configuration; a single run does not prove no other tool remains.
+- Leak found: three empty `daily-achievements-probe-*` temporary directories
+  from 00:14–00:15 remained, before the current dev server started; the most
+  likely cause is the server being stopped or restarted while a startup
+  model-list fetch was in flight, so the cleanup step never ran. They held no
+  data and were removed. A fix has not been designed.
+- Still unverified: whether Codex accepts `max` or `ultra` effort in a real run
+  (Josh limited this item to checks without a model call; recorded as a known
+  limitation), quota-exhaustion exit codes, and which probe attempt passed
+  (Task PR-18/PR-19 approved).

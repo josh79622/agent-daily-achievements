@@ -86,6 +86,11 @@
     before/after snapshot around one real check per provider found no new
     session files; local `codex debug prompt-input` checks could not verify
     tool removal or effort values.
+  - One approved Codex canary run replied `NOACCESS` and could not read a
+    fictional token outside its working directory. Codex `max`/`ultra` effort
+    acceptance is a known limitation (no model-call verification approved).
+    Found three empty leaked probe temporary directories from interrupted
+    startup fetches; removed, fix not yet designed.
 - [x] Define the report contract: 0–5 achievements (Josh changed the cap from three on 2026-09-17), evidence links, incomplete coverage, and achievement-level deduplication.
   - Design, decisions D1–D3, and RC/RA/RS/EV cases approved in
     [the report contract design](docs/plans/2026-09-17-report-contract-design.md).
