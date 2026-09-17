@@ -23,6 +23,11 @@ import {
   writeSummaryPermission,
   type SummaryProvider,
 } from "../storage/summary-permission.js";
+import {
+  isSummaryProvider,
+  type ProviderLoginService,
+  type ProviderLoginStatus,
+} from "../summarizer/provider-login.js";
 
 export interface SummaryRequest {
   conversations: Array<{ id: string; source: SummaryProvider; text: string }>;
@@ -51,6 +56,7 @@ interface AppOptions {
   summaryRunner?: SummaryRunner;
   summaryRequestFactory?: SummaryRequestFactory;
   availableSummaryProviders?: SummaryProvider[];
+  providerLoginService?: ProviderLoginService;
 }
 
 export function createApp({
@@ -64,6 +70,7 @@ export function createApp({
   summaryRunner,
   summaryRequestFactory,
   availableSummaryProviders = [],
+  providerLoginService,
 }: AppOptions): Server {
   let generation = 0;
   let activeCollections = 0;
@@ -251,6 +258,76 @@ export function createApp({
           });
           return;
         }
+      }
+
+      if (
+        pathname === "/api/summarizer/providers" ||
+        pathname.startsWith("/api/summarizer/providers/")
+      ) {
+        const origin = localOrigin(request);
+        if (
+          !origin ||
+          (request.headers.origin && request.headers.origin !== origin) ||
+          request.headers["sec-fetch-site"] === "cross-site"
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Use the local app to manage sign-in." },
+          });
+          return;
+        }
+        if (pathname === "/api/summarizer/providers") {
+          if (request.method !== "GET") {
+            sendJson(response, 405, {
+              error: { message: "Method not allowed." },
+            });
+            return;
+          }
+          if (!providerLoginService) {
+            providerLoginUnavailable(response);
+            return;
+          }
+          const providers = await providerLoginService.list();
+          sendJson(response, 200, { providers: providers.map(safeStatus) });
+          return;
+        }
+        const loginMatch = pathname.match(
+          /^\/api\/summarizer\/providers\/([^/]+)\/login$/,
+        );
+        const provider = loginMatch?.[1];
+        if (!isSummaryProvider(provider)) {
+          sendJson(response, 404, {
+            error: { code: "not_found", message: "Unknown provider." },
+          });
+          return;
+        }
+        if (request.method !== "POST") {
+          sendJson(response, 405, {
+            error: { message: "Method not allowed." },
+          });
+          return;
+        }
+        if (request.headers.origin !== origin) {
+          sendJson(response, 403, {
+            error: { message: "Start sign-in from the local app." },
+          });
+          return;
+        }
+        if (
+          request.headers["transfer-encoding"] ||
+          Number(request.headers["content-length"] ?? 0) !== 0
+        ) {
+          sendJson(response, 400, {
+            error: { message: "Sign-in requests take no body." },
+          });
+          return;
+        }
+        if (!providerLoginService) {
+          providerLoginUnavailable(response);
+          return;
+        }
+        const status = await providerLoginService.startLogin(provider);
+        sendJson(response, 202, { provider: safeStatus(status) });
+        return;
       }
 
       if (
@@ -461,6 +538,22 @@ export function createApp({
         },
       });
     }
+  });
+}
+
+function safeStatus(status: ProviderLoginStatus): ProviderLoginStatus {
+  const { provider, label, state, installUrl, reason } = status;
+  return reason === undefined
+    ? { provider, label, state, installUrl }
+    : { provider, label, state, installUrl, reason };
+}
+
+function providerLoginUnavailable(response: ServerResponse): void {
+  sendJson(response, 503, {
+    error: {
+      code: "provider_login_unavailable",
+      message: "Provider sign-in is unavailable on this machine.",
+    },
   });
 }
 
