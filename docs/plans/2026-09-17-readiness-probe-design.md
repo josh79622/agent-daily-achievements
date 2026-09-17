@@ -211,6 +211,13 @@ Option E1:
   a fixed list only (I2, goes stale).
 - Not yet decided: validation rule, and behavior when the file is unreadable or
   invalid.
+- Effort (Josh, 2026-09-17): a per-provider effort setting is split into a
+  separate Task P3 after P2. Evidence so far: `claude --help` lists `--effort`
+  with `low`, `medium`, `high`, `xhigh`, `max`; Codex has no `--effort` flag,
+  and the setting name `model_reasoning_effort` was found in the user's local
+  Codex config (name only, value not read), so `-c model_reasoning_effort=...`
+  is the likely route. Codex's allowed values and per-model support are
+  unverified.
 
 ## Test cases for Task P1 (IDs fixed; confirmed)
 
