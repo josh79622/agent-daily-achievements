@@ -47,8 +47,16 @@
     Task P1 (`fa9e628`, `5b9c77a`, `8bd1ef5`, `b134e73`): PR-1 through PR-17
     pass with fake runners and a fake service; `npm run check` passed (168
     tests); the panel was checked in the browser against a fake service. No
-    real probe has run, so Ready is unverified with a real CLI. Still open:
-    Josh's first real "Check readiness" click, and Task P2 (UI summary model
+    real probe had run at that point.
+  - Josh's first real checks on 2026-09-17 (after restarting the server):
+    Codex showed "Ready (checked 22:43)" and Claude Code "Ready (checked
+    22:45)". This verifies that both real CLIs accepted the approved commands
+    and that the reply channels (Codex `-o` file, Claude Code JSON reply field)
+    produced a non-empty reply; no probe temporary directory was left behind.
+    Not verified: which attempt passed (the panel does not show whether the
+    lowest-cost or summary model succeeded), whether the Codex `--disable`
+    switches remove every tool, failure-path exit codes with real CLIs, and
+    that no session was persisted. Still open: Task P2 (UI summary model
     setting; where it is saved is undecided).
 - [ ] Define the report contract: 0–5 achievements (Josh changed the cap from three on 2026-09-17), evidence links, incomplete coverage, and achievement-level deduplication.
   - Design, decisions D1–D3, and RC/RA/RS/EV cases approved in

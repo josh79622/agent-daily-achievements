@@ -3,7 +3,8 @@
 Status: **in progress — decided one item at a time with Josh.** Decision A is
 B, C, D, and E are approved (A amended by D). The Task P1/P2 split and test
 cases PR-1 to PR-17 were approved on 2026-09-17. Task P1 is implemented and
-passes PR-1 to PR-17 with fakes only. No real probe has run. No probe code is written and no real probe has
+passes PR-1 to PR-17 with fakes only. Josh's first real checks on 2026-09-17
+showed Ready for both Codex and Claude Code; see "Real-run findings". No probe code is written and no real probe has
 run.
 
 ## Task framing
@@ -231,3 +232,13 @@ Panel — `test/web/build-output.test.ts`:
 
 No test runs a real CLI. The first real probe happens only when Josh clicks the
 control.
+
+## Real-run findings (2026-09-17)
+
+- Verified: both installed CLIs accepted the approved commands, including
+  `--tools ""` for Claude Code and the eight `--disable` switches, `-o`, and
+  `--ephemeral` for Codex; each produced a non-empty reply through its reply
+  channel; no `daily-achievements-probe-*` temporary directory remained.
+- Not verified: which attempt passed (lowest-cost or summary model), whether
+  the Codex switches remove every tool, real exit codes for failure cases such
+  as rate limits or expired sign-in, and that no session was persisted.

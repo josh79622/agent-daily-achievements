@@ -66,15 +66,16 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-- Readiness probe: Josh's first real "Check readiness" click on this Mac, to
-  verify the unconfirmed CLI details (Claude Code reply field, Codex `-o`
-  output, tool-disable effect, exit codes); then Task P2 (per-provider summary
-  model setting; where it is saved is undecided).
+- Readiness probe Task P2: per-provider summary model setting in the UI; where
+  it is saved is undecided.
 - Report contract Task 5: record verified status for the report contract and
   eval-set items.
 
 ## Latest verification
 
+- Readiness probe real check (2026-09-17): Josh clicked Check readiness after
+  restarting the server; Codex and Claude Code both showed Ready. Which attempt
+  passed, tool-disable effectiveness, and real failure paths remain unverified.
 - Readiness probe Task P1: `npm run check` passed with format, lint,
   typecheck, 168 tests, and build. All probe, state, endpoint, and panel tests
   use fake runners or a fake service; the panel was viewed in the browser pane
