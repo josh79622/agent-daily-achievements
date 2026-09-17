@@ -4,7 +4,7 @@
 
 **Phase 3 — Consented local collection**
 
-The project has moved past an experience-only prototype. A local collector demo now reads Claude Code and Codex JSONL records for the Australia/Sydney day, presents source/session metadata, and exposes an on-demand local preview endpoint. This is not yet a shippable collector because first-read consent, parser-correctness validation on real records, and explicit failure handling are unfinished.
+The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the Australia/Sydney day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. This is not yet a shippable collector because parser-correctness validation on real records and explicit failure handling are unfinished.
 
 ## Completed
 
@@ -15,6 +15,11 @@ The project has moved past an experience-only prototype. A local collector demo 
   - Sydney-date filtering, source/session identity, and malformed-line issue reporting;
   - metadata-first local API and browser panel;
   - local message preview fetched only after the user selects a session.
+- Phase 3 first-read consent gate:
+  - server-enforced source choice stored as ignored local JSON with no conversation contents;
+  - absent, invalid, unreadable, or unsavable settings fail closed;
+  - a collection keeps its saved scope until completion, then later choices apply to a later collection;
+  - source selection and disclosure in the local page; completed results remain until a later collection succeeds.
 
 ## Important boundaries
 
@@ -24,15 +29,12 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-Implement the first-read local-source consent gate: the page must require an explicit source-scope choice before the collector API is enabled, persist only the choice locally, and disclose that no conversation text leaves the machine. The task must not add model invocation or scheduling.
-
-Josh confirmed the [consent design and acceptance cases](docs/plans/2026-09-16-local-source-consent-design.md), including an immutable source scope for each in-flight collection: a run completes with the scope saved when it began; source changes apply only to later runs. The task uses unit tests and the project quality gate; product-wide E2E tests are deferred until all planned functionality is complete. No private local history is used for tests.
+Verify Claude Code parsing against approved real local sessions: timestamps, role/content extraction, session identity, and partial/malformed input. Before implementation or parser changes, propose the task's observable acceptance cases for Josh to confirm. Use approved real sessions only for read-only verification; do not retain their content in fixtures, logs, commits, or documentation.
 
 ## Latest verification
 
-- Consent design only: targeted Prettier check and `git diff --check` passed. No application tests were run for this documentation change. The shell's default Node 25 fails to start because of a missing Homebrew library; use `/opt/homebrew/opt/node@24/bin` on `PATH` for the approved Node 24 runtime (verified v24.20.0).
-- `npm run check` passed after the local collector panel change: format, lint, typecheck, 12 tests, and build.
-- Browser inspection confirmed the local collector panel loaded metadata for both configured sources. Do not record conversation text or session contents in this file.
+- First-read consent gate: `npm run check` passed with format, lint, typecheck, 25 tests, and build. The 12 consent-specific tests cover first-read blocking, scoped collection and previews, persisted settings, malformed/unreadable/save-failure states, request validation, and immutable in-flight scope. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
+- The shell's default Node 25 fails to start because of a missing Homebrew library; use `/opt/homebrew/opt/node@24/bin` on `PATH` for the approved Node 24 runtime (verified v24.20.0).
 
 ## Handoff
 
