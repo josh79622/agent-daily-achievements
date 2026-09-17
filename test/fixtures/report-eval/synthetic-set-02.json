@@ -1,0 +1,392 @@
+{
+  "version": 1,
+  "description": "Fictional expectations for docs/evals/synthetic-set-02.md. Approved 2026-09-17. Not a model prompt.",
+  "date": "2026-09-18",
+  "timezone": "Australia/Sydney",
+  "cases": [
+    {
+      "id": "case-01",
+      "title": "explicit completion evidence",
+      "manifest": [
+        {
+          "source": "codex",
+          "recordId": "codex-201",
+          "messageIds": ["m1"]
+        }
+      ],
+      "coverage": [
+        {
+          "source": "codex",
+          "state": "included"
+        },
+        {
+          "source": "claude-code",
+          "state": "no-activity"
+        }
+      ],
+      "expect": {
+        "status": "complete",
+        "incompleteSources": [],
+        "selection": {
+          "mode": "all"
+        },
+        "activities": [
+          {
+            "id": "harbor-cache-fix",
+            "category": "progress",
+            "evidence": ["codex:codex-201"]
+          }
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "id": "case-02",
+      "title": "intention without execution evidence",
+      "manifest": [
+        {
+          "source": "claude-web",
+          "recordId": "claude-web-201",
+          "messageIds": ["m1"]
+        },
+        {
+          "source": "codex",
+          "recordId": "codex-202",
+          "messageIds": ["m1"]
+        }
+      ],
+      "coverage": [
+        {
+          "source": "claude-web",
+          "state": "included"
+        },
+        {
+          "source": "codex",
+          "state": "included"
+        }
+      ],
+      "expect": {
+        "status": "complete",
+        "incompleteSources": [],
+        "selection": {
+          "mode": "all"
+        },
+        "activities": [],
+        "forbidden": [
+          {
+            "kind": "evidence-only",
+            "evidence": ["claude-web:claude-web-201"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "case-03",
+      "title": "reasoned decision",
+      "manifest": [
+        {
+          "source": "claude-code",
+          "recordId": "claude-code-201",
+          "messageIds": ["m1"]
+        }
+      ],
+      "coverage": [
+        {
+          "source": "claude-code",
+          "state": "included"
+        }
+      ],
+      "expect": {
+        "status": "complete",
+        "incompleteSources": [],
+        "selection": {
+          "mode": "all"
+        },
+        "activities": [
+          {
+            "id": "json-cache-to-sqlite",
+            "category": "decision",
+            "evidence": ["claude-code:claude-code-201"]
+          }
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "id": "case-04",
+      "title": "demonstrated learning",
+      "manifest": [
+        {
+          "source": "chatgpt-web",
+          "recordId": "chatgpt-web-201",
+          "messageIds": ["m1"]
+        },
+        {
+          "source": "chatgpt-web",
+          "recordId": "chatgpt-web-202",
+          "messageIds": ["m1"]
+        }
+      ],
+      "coverage": [
+        {
+          "source": "chatgpt-web",
+          "state": "included"
+        }
+      ],
+      "expect": {
+        "status": "complete",
+        "incompleteSources": [],
+        "selection": {
+          "mode": "all"
+        },
+        "activities": [
+          {
+            "id": "idempotency-keys",
+            "category": "learning",
+            "evidence": ["chatgpt-web:chatgpt-web-201"]
+          }
+        ],
+        "forbidden": [
+          {
+            "kind": "evidence-only",
+            "category": "learning",
+            "evidence": ["chatgpt-web:chatgpt-web-202"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "case-05",
+      "title": "duplicate cross-source activity",
+      "manifest": [
+        {
+          "source": "codex",
+          "recordId": "codex-203",
+          "messageIds": ["m1"]
+        },
+        {
+          "source": "claude-code",
+          "recordId": "claude-code-202",
+          "messageIds": ["m1"]
+        }
+      ],
+      "coverage": [
+        {
+          "source": "codex",
+          "state": "included"
+        },
+        {
+          "source": "claude-code",
+          "state": "included"
+        }
+      ],
+      "expect": {
+        "status": "complete",
+        "incompleteSources": [],
+        "selection": {
+          "mode": "all"
+        },
+        "activities": [
+          {
+            "id": "retry-timeout-fix",
+            "category": "progress",
+            "evidence": ["codex:codex-203", "claude-code:claude-code-202"]
+          }
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "id": "case-06",
+      "title": "conflicting evidence",
+      "manifest": [
+        {
+          "source": "codex",
+          "recordId": "codex-204",
+          "messageIds": ["m1"]
+        },
+        {
+          "source": "claude-code",
+          "recordId": "claude-code-203",
+          "messageIds": ["m1"]
+        }
+      ],
+      "coverage": [
+        {
+          "source": "codex",
+          "state": "included"
+        },
+        {
+          "source": "claude-code",
+          "state": "included"
+        }
+      ],
+      "expect": {
+        "status": "complete",
+        "incompleteSources": [],
+        "selection": {
+          "mode": "all"
+        },
+        "activities": [],
+        "forbidden": [
+          {
+            "kind": "cites-without",
+            "cites": "codex:codex-204",
+            "mustAlsoCite": "claude-code:claude-code-203"
+          }
+        ]
+      }
+    },
+    {
+      "id": "case-07",
+      "title": "missing or failed selected source",
+      "manifest": [
+        {
+          "source": "codex",
+          "recordId": "codex-205",
+          "messageIds": ["m1"]
+        }
+      ],
+      "coverage": [
+        {
+          "source": "codex",
+          "state": "included"
+        },
+        {
+          "source": "claude-code",
+          "state": "incomplete",
+          "reason": "unreadable"
+        },
+        {
+          "source": "gemini-web",
+          "state": "incomplete",
+          "reason": "collection-failed"
+        },
+        {
+          "source": "chatgpt-web",
+          "state": "not-enabled"
+        }
+      ],
+      "expect": {
+        "status": "incomplete",
+        "incompleteSources": ["claude-code", "gemini-web"],
+        "selection": {
+          "mode": "all"
+        },
+        "activities": [
+          {
+            "id": "readme-install-steps",
+            "category": "progress",
+            "evidence": ["codex:codex-205"]
+          }
+        ],
+        "forbidden": []
+      }
+    },
+    {
+      "id": "case-08",
+      "title": "more than five plausible achievements",
+      "manifest": [
+        {
+          "source": "codex",
+          "recordId": "codex-206",
+          "messageIds": ["m1"]
+        },
+        {
+          "source": "claude-code",
+          "recordId": "claude-code-204",
+          "messageIds": ["m1"]
+        },
+        {
+          "source": "codex",
+          "recordId": "codex-207",
+          "messageIds": ["m1"]
+        },
+        {
+          "source": "chatgpt-web",
+          "recordId": "chatgpt-web-203",
+          "messageIds": ["m1"]
+        },
+        {
+          "source": "codex",
+          "recordId": "codex-208",
+          "messageIds": ["m1"]
+        },
+        {
+          "source": "claude-code",
+          "recordId": "claude-code-205",
+          "messageIds": ["m1"]
+        },
+        {
+          "source": "claude-web",
+          "recordId": "claude-web-202",
+          "messageIds": ["m1"]
+        }
+      ],
+      "coverage": [
+        {
+          "source": "codex",
+          "state": "included"
+        },
+        {
+          "source": "claude-code",
+          "state": "included"
+        },
+        {
+          "source": "chatgpt-web",
+          "state": "included"
+        },
+        {
+          "source": "claude-web",
+          "state": "included"
+        }
+      ],
+      "expect": {
+        "status": "complete",
+        "incompleteSources": [],
+        "selection": {
+          "mode": "choose",
+          "count": 5
+        },
+        "activities": [
+          {
+            "id": "pagination-fix",
+            "category": "progress",
+            "evidence": ["codex:codex-206"]
+          },
+          {
+            "id": "drop-node-20",
+            "category": "decision",
+            "evidence": ["claude-code:claude-code-204"]
+          },
+          {
+            "id": "flaky-test-cause",
+            "category": "clarification",
+            "evidence": ["codex:codex-207"]
+          },
+          {
+            "id": "index-tradeoff",
+            "category": "learning",
+            "evidence": ["chatgpt-web:chatgpt-web-203"]
+          },
+          {
+            "id": "csv-export",
+            "category": "progress",
+            "evidence": ["codex:codex-208"]
+          },
+          {
+            "id": "postpone-translations",
+            "category": "decision",
+            "evidence": ["claude-code:claude-code-205"]
+          }
+        ],
+        "forbidden": [
+          {
+            "kind": "evidence-only",
+            "evidence": ["claude-web:claude-web-202"]
+          }
+        ]
+      }
+    }
+  ]
+}

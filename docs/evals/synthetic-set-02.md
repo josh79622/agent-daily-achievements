@@ -7,6 +7,9 @@ All records are fictional. Expectations are fixed before any validator, scorer,
 prompt, or model run, and are not included in any model prompt. No Codex or
 Claude Code run is approved against this set yet.
 
+Machine-readable expectations: `test/fixtures/report-eval/synthetic-set-02.json`,
+scored by `src/report/eval-scorer.ts`.
+
 Each case is scored independently. Every case uses report date 2026-09-18 and
 timezone `Australia/Sydney`. "Coverage" lists every source's collector state;
 sources not listed are `not-enabled`.

@@ -53,8 +53,12 @@
     pass in the same file (22 tests); `npm run check` passed.
   - Task 3 re-analysis decision: RS-1 through RS-4 pass in
     `test/report/summary-retry.test.ts` (plus a limit constant and an
-    attempt-range guard); `npm run check` passed. No summarizer is run. Tasks
-    4–5 (eval scorer, status records) remain.
+    attempt-range guard); `npm run check` passed. No summarizer is run.
+  - Task 4 eval scorer: EV-1 through EV-9 pass in
+    `test/report/eval-scorer.test.ts` (13 tests) against
+    `test/fixtures/report-eval/synthetic-set-02.json`; six deliberate scorer
+    mutations were each caught; `npm run check` passed. No model was run
+    against the set. Task 5 (status records) remains.
 - [ ] Expand the pre-labelled evaluation set before prompt iteration.
 
 ### Phase 5 — Report control
