@@ -336,8 +336,15 @@ No test runs a real CLI.
   commands, so only Default effort is offered for Codex while its model is
   Default. Rejected: Default effort only for both (D1) and all levels (D3,
   which can select an unsupported level).
-- Not yet decided: behavior when a saved effort is not supported by the
-  effective model, and whether the probe passes an effort.
+- G — unsupported saved effort (approved by Josh, 2026-09-18, option G2):
+  when the user changes a provider's model through the local page, the server
+  keeps that provider's saved effort if the new model supports it and
+  otherwise resets it to Default in the same save. When the model list changes
+  so that a saved effort is no longer supported, the run uses Default effort
+  and the panel shows a warning (same pattern as F3). Rejected: always warning
+  even after the user's own model change (G1), and blocking the model change
+  (G3).
+- Not yet decided: whether the probe passes an effort.
 
 ## Test cases for Task P1 (IDs fixed; confirmed)
 
