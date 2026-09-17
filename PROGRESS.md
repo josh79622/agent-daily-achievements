@@ -54,7 +54,7 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-Define the Phase 4 external-summarization consent task: what the user sees when choosing an available Claude Code or Codex CLI, exactly which recipient and source scope they approve, and what happens when the selected CLI is unavailable or fails. Propose observable unit-test cases for Josh to confirm before writing tests or implementation.
+Define the Phase 4 installation-time external-summarization permission task: the maximum permission shown during installation, its source scope and automatic Claude Code/Codex fallback, and the later interface controls for changing it. Propose observable unit-test cases for Josh to confirm before writing tests or implementation.
 
 ## Latest verification
 
