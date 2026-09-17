@@ -30,6 +30,8 @@ files and returned at least one session with zero reported parse issues.
 | CC-8 | `CC-8: accepts a BOM and CRLF-terminated Claude JSONL file` |
 | CC-9 | `CC-9: aggregates multiple malformed records without mistaking them for no activity` |
 | CC-10 | `CC-10: reads a source without changing it or exposing malformed source text` |
+| CC-11 | `CC-11: ignores a fork context reference and retains the direct session` |
+| CC-12 | `CC-12: excludes agent and sidechain records that only have a parent session ID` |
 
 ## Fork-context verification
 

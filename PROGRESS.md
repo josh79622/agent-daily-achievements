@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 3 — Consented local collection**
+**Phase 4 — Report intelligence**
 
-The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the executing computer's local calendar day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. Phase 3 is ready for its exit review.
+The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the executing computer's local calendar day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. Phase 3 has passed its exit review; Phase 4 will define the separately consented report-generation path.
 
 ## Completed
 
@@ -40,6 +40,11 @@ The project has moved past an experience-only prototype. A local collector demo 
   - merges repeated or split files only within the same source and session ID;
   - preserves one exact duplicate message, merges distinct messages chronologically, and marks conflicting message IDs incomplete without guessing;
   - retains the report-day context rule after merging.
+- Phase 3 exit review:
+  - documented the evidence-backed local-source behavior, limitations, privacy
+    boundary, and later work in [the exit review](docs/reviews/2026-09-17-phase-3-exit-review.md);
+  - confirmed that Phase 3 does not claim a first-version release or support
+    for the Chrome sources.
 
 ## Important boundaries
 
@@ -49,11 +54,11 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-Run the Phase 3 exit review and document which source behavior is actually supported. Before implementation or parser changes, propose the task's observable acceptance cases for Josh to confirm. Use approved real sessions only for read-only verification; do not retain their content in fixtures, logs, commits, or documentation.
+Define the Phase 4 external-summarization consent task: what the user sees when choosing an available Claude Code or Codex CLI, exactly which recipient and source scope they approve, and what happens when the selected CLI is unavailable or fails. Propose observable unit-test cases for Josh to confirm before writing tests or implementation.
 
 ## Latest verification
 
-- Session-file deduplication: `npm run check` passed with format, lint, typecheck, 63 tests, and build. DD-1 through DD-6 use only temporary synthetic source files because the current local snapshot has no duplicate session ID. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
+- Phase 3 exit review: `npm run check` passed with format, lint, typecheck, 63 tests, and build. DD-1 through DD-6 use only temporary synthetic source files because the current local snapshot has no duplicate session ID. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
 - The shell's default Node 25 fails to start because of a missing Homebrew library; use `/opt/homebrew/opt/node@24/bin` on `PATH` for the approved Node 24 runtime (verified v24.20.0).
 
 ## Handoff

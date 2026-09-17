@@ -19,16 +19,17 @@ and inter-agent metadata. All sampled timestamps were parseable.
 The built collector parsed one session from each of the four files and reported
 zero parse issues.
 
-## Duplicate-session limitation
+## Duplicate-session behavior
 
 This day's metadata scan found no duplicate IDs across current active files or
 between active and archived files, although the earlier 2026-09-16 inventory
-had observed an active-file duplicate. CD-7 protects the behavior with
-synthetic files: when multiple Codex files expose the same ID for a report day,
-the collector excludes that ID and reports one issue instead of double counting
-it. This is a safe incomplete result, not a merge strategy. The separate Phase
-3 deduplication task remains responsible for deciding how repeated or resumed
-streams should be reconciled.
+had observed an active-file duplicate. The later Phase 3 reconciliation task
+now covers this behavior with synthetic files: files with the same source and
+session ID are merged, exact duplicate messages are retained once, and distinct
+messages are kept in chronological order. A reused message ID with conflicting
+content is reported as incomplete rather than guessed. The current local
+snapshot did not contain a duplicate to verify this behavior against a real
+Codex stream.
 
 ## Unit-test mapping
 
@@ -40,6 +41,6 @@ streams should be reconciled.
 | CD-4 | `CD-4: reports missing and invalid timestamps without failing the source` |
 | CD-5 | `CD-5: retains readable messages and reports a malformed JSONL line` |
 | CD-6 | `CD-6: retains session context through the report day` |
-| CD-7 | `CD-7: excludes a duplicate session ID` for active-active and active-archived placement |
+| CD-7 | `CD-7: merges a duplicate session ID across ...` for active-active and active-archived placement |
 | CD-8 | `CD-8: retains distinct active and archived sessions once each` |
 | CD-9 | `CD-9: reads a Codex source without changing it or exposing malformed text` |

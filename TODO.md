@@ -18,7 +18,8 @@
   - IC-1 through IC-6 distinguish not-installed, no-activity, and incomplete coverage with a reason, while preserving an available second source. No E2E test was run.
 - [x] Add session-file deduplication so one resumed or repeated stream is not counted twice. (`163dc08` and follow-up commit)
   - DD-1 through DD-6 merge exact and split streams, retain source boundaries, and mark conflicts incomplete. The current local snapshot has no duplicate ID, so this behavior uses synthetic unit tests only; no E2E test was run.
-- [ ] Run the Phase 3 exit review and document which source behavior is actually supported.
+- [x] Run the Phase 3 exit review and document which source behavior is actually supported.
+  - The evidence-backed support boundary and remaining limitations are in [the Phase 3 exit review](docs/reviews/2026-09-17-phase-3-exit-review.md). No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
 
 ## Later phases
 
