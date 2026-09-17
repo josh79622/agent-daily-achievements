@@ -1,7 +1,7 @@
 # Readiness probe design
 
 Status: **in progress — decided one item at a time with Josh.** Decision A is
-approved; B–E are not decided. No probe code is written and no real probe has
+and B are approved; C–E are not decided. No probe code is written and no real probe has
 run.
 
 ## Task framing
@@ -57,9 +57,26 @@ configuration intended for the real summarizer, so Ready reflects that
 configuration. The real summarizer's full invocation is still decided under
 blocked item #2.
 
+## B — Probe model (approved by Josh, 2026-09-17)
+
+- By default, pass no model option: each CLI uses its own default model. The
+  probe does not choose the real summarizer's model (blocked item #1).
+- The model is adjustable in the local UI per provider. When a model is set,
+  the probe passes it (`--model` for Claude Code, `-m` for Codex).
+- Limitations recorded: a default-model pass does not prove a different model
+  is entitled; a CLI update can change its default silently; Codex ignores the
+  user's config (decision A) while Claude Code may take its default from the
+  user's settings.
+- Safety rule for the UI value: it is passed only as a single argument to
+  `spawn` without a shell, and must be validated (for example, no leading `-`,
+  a conservative character set, and a length limit) so it cannot inject other
+  options. Exact validation is part of the test cases.
+
+Open question: whether a model set in the UI also applies to the real
+summarizer run, or only to the probe.
+
 ## Not yet decided
 
-- B — model (proposal: each CLI's default until a model is chosen).
 - C — when it runs (proposal: only when Josh clicks "Check readiness").
 - D — pass criteria (proposal: exit 0 within 60 seconds and exactly
   `{"ok": true}`; the reply is never shown, logged, or saved).
