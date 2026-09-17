@@ -244,7 +244,7 @@ Option E1:
   catalog's own `default` entry is not offered separately, because "Default"
   already means passing no model option.
 
-## Test cases for Task P2 (IDs fixed; awaiting confirmation)
+## Test cases for Task P2 (IDs fixed; confirmed by Josh with the edge-case defaults, 2026-09-17)
 
 Model catalog — `test/summarizer/model-catalog.test.ts`, fake spawner only:
 
