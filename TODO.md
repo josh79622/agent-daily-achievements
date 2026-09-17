@@ -23,7 +23,7 @@
 
 ## Later phases
 
-### Phase 4 — Report intelligence
+### Phase 4 — Report intelligence (complete as scoped, 2026-09-18)
 
 - [x] Confirm user consent for external summarization separately from local-source consent.
   - The local API stores a fail-closed maximum-permission grant with approved
@@ -135,6 +135,21 @@
 
 ### Phase 5 — Report control
 
+Phase 4 was closed as scoped on 2026-09-18 (Josh, option B in the
+[Phase 4 exit review](docs/reviews/2026-09-18-phase-4-exit-review.md)); report
+generation moved here and comes first.
+
+- [ ] Build the server-side report-day payload from collected sessions for the
+      summarizer. Undecided: payload format and its link to the evidence
+      manifest, splitting days that exceed model input limits without omission,
+      and whether secrets inside conversations are masked before sending.
+- [ ] Run the selected summarizer CLI on that payload under saved permission,
+      with the approved model, effort, tool restrictions, re-analysis limit
+      (three attempts), and fallback rules, assembling an `AchievementReportV1`.
+      Undecided: the exact non-interactive command and output handling for a
+      real summary run.
+- [ ] Write the summarizer prompt; run it on synthetic set 02 and score it with
+      `src/report/eval-scorer.ts` before one Josh-approved real day.
 - [ ] Source trace-back in the report UI.
 - [ ] Edit and remove incorrect achievements.
 - [ ] Define and enforce local retention.

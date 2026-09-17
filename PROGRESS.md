@@ -2,9 +2,15 @@
 
 ## Current phase
 
-**Phase 4 — Report intelligence** (not complete)
+**Phase 5 — Report control** (not started)
 
-Phase 3 passed its exit review. Phase 4 now has a separate external-summarization permission gate, a validated report contract with fictional evaluation cases, and local provider sign-in, readiness, model, and effort controls. No real summarizer runs against conversation content yet.
+Phase 4 closed as scoped on 2026-09-18 after its
+[exit review](docs/reviews/2026-09-18-phase-4-exit-review.md). The tool can
+collect consented local Claude Code and Codex records, gate external
+summarization behind a separate permission, validate and score model-shaped
+reports, and manage provider sign-in, readiness, model, and effort settings.
+**No report is generated from real conversations yet;** Phase 5 starts with
+that work.
 
 ## Completed
 
@@ -78,11 +84,23 @@ Phase 3 passed its exit review. Phase 4 now has a separate external-summarizatio
 
 ## Next task
 
-- Phase 4 exit review drafted in
-  [the review](docs/reviews/2026-09-18-phase-4-exit-review.md). All four Phase 4
-  items are checked, but no real report is generated yet. Josh must decide
-  whether the payload builder, summarizer runner, and prompt work keeps Phase 4
-  open (recommended) or starts Phase 5.
+Phase 5, first item: the server-side report-day payload builder (see `TODO.md`).
+Before any code, follow the workflow below: frame the task, bring each open
+decision to Josh one at a time, write the design and test cases, get approval,
+then implement test-first.
+
+Open decisions for the report-generation items (none approved yet):
+
+- payload format and how record/message IDs map to the evidence manifest
+  (`src/report/contract.ts`);
+- splitting a day that exceeds model input limits without omission;
+- whether and how secrets inside conversations are masked before sending;
+- the exact non-interactive summary command per CLI (the probe commands in
+  `docs/plans/2026-09-17-readiness-probe-design.md` are liveness-only), output
+  handling, and how the re-analysis decision and fallback are wired;
+- where generated reports are stored and how the existing sample report UI is
+  replaced;
+- the prompt, its synthetic-set evaluation, and which real day Josh approves.
 
 ## Latest verification
 
@@ -112,7 +130,31 @@ Phase 3 passed its exit review. Phase 4 now has a separate external-summarizatio
 
 ## Handoff
 
-- Active worktree: `.worktrees/ui-skeleton`
-- Branch: `codex/ui-skeleton`
-- Local demo: `http://127.0.0.1:4317/`
-- The server is running from the built worktree output. Restart it after server changes.
+- Worktree: `/Users/joshtsai/Documents/agent-daily-achievements/.worktrees/ui-skeleton`
+  on branch `codex/ui-skeleton` (no PR opened; do not merge to master unless
+  Josh asks). The working tree was clean at handoff.
+- Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
+  shell's default Node 25 is broken. Gate: `npm run check` (207 tests at
+  handoff).
+- Dev server: Josh starts it with `npm run dev` from the worktree
+  (`http://127.0.0.1:4317/`). On startup it sweeps stale probe temp
+  directories and fetches model lists (Codex `codex debug models`, Claude Code
+  initialize-only request; no prompt). Local settings live in ignored `data/`
+  files, including `data/summarizer-models.json`.
+- Key documents: [report contract design](docs/plans/2026-09-17-report-contract-design.md),
+  [synthetic set 02](docs/evals/synthetic-set-02.md),
+  [readiness probe, model, effort, and leak-fix design](docs/plans/2026-09-17-readiness-probe-design.md),
+  [Phase 4 exit review](docs/reviews/2026-09-18-phase-4-exit-review.md),
+  [roadmap amendment](docs/decisions/2026-09-16-revised-phase-roadmap.md).
+- Working agreement with Josh (from this session):
+  - follow AGENTS.md and the AI-assisted development process linked from
+    BRIEF.md;
+  - bring decisions one at a time with options and a recommendation; do not
+    bundle several decisions into one question;
+  - propose test cases with fixed IDs and wait for approval before test code;
+    run RED, then GREEN, then `npm run check`; mutation-check important tests;
+    commit each meaningful part; record only verified status;
+  - ask before any real CLI or model run, and state exactly what it sends;
+    never read or transmit conversation history; metadata-only checks need
+    approval;
+  - reply to Josh in both English and Traditional Chinese.

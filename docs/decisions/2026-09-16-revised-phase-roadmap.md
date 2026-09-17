@@ -21,3 +21,13 @@ Session/file identity deduplication belongs to local collection. Semantic dedupl
 ## Review
 
 Claude Code reviewed the roadmap on 2026-09-16 using only the phase outline; no local conversation records were supplied. Its recommendations to move consent into Phase 3 and report control before automation were accepted. The current development collector demo is covered by Josh's explicit conversational authorization; this does not replace the future product consent gate.
+
+## Amendment (2026-09-18)
+
+At the Phase 4 exit review, Josh chose to close Phase 4 as scoped and move the
+report-generation steps to the start of Phase 5: a server-side report-day
+payload builder, a summarizer runner for the selected CLI, and a prompt
+evaluated on the fictional set before one Josh-approved real day. Rejected:
+keeping Phase 4 open for these steps. Phase 5 therefore produces real reports
+before adding trace-back, editing, and retention. See the
+[Phase 4 exit review](../reviews/2026-09-18-phase-4-exit-review.md).

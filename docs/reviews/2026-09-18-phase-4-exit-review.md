@@ -1,7 +1,7 @@
 # Phase 4 exit review — report intelligence
 
-Status: **draft — awaiting Josh's decision on the scope gap below.** Phase 4 is
-not declared complete until that decision is recorded.
+Status: **Phase 4 is complete as scoped (Josh, 2026-09-18, option B).** Report
+generation was moved to the start of Phase 5; see "Scope gap and decision".
 
 ## Result
 
@@ -38,7 +38,7 @@ exists yet.** This is not a first-version release claim.
   identifiers; clickable trace-back is Phase 5.
 - No end-to-end test was run; product-wide E2E testing remains deferred.
 
-## Scope gap requiring a decision
+## Scope gap and decision
 
 BRIEF.md requires a daily report summarized by the chosen agent from complete
 report-day conversations. The roadmap's later phases (report control, daily
@@ -53,16 +53,17 @@ the steps that actually produce one:
 3. a prompt, first run against synthetic set 02 and scored, then one
    Josh-approved real day.
 
-Options:
+Options considered:
 
-- **A — Keep Phase 4 open** and add these as Phase 4 items, because they are
-  report intelligence. Phase 5 would then start with real reports to correct.
-- **B — Close Phase 4 as scoped** and add these items to the start of Phase 5.
+- A — keep Phase 4 open and add these as Phase 4 items (recommended in the
+  draft, because Phase 5 report control has little value without a real
+  report).
+- **B — close Phase 4 as scoped and add these items to the start of Phase 5
+  (chosen by Josh on 2026-09-18).**
 
-Recommendation: **A**. Phase 5's report control has little value without a real
-report, and these steps carry the remaining privacy decisions (payload
-contents, secret handling, real-day approval) that belong with report
-intelligence.
+Decision: Phase 4 closes with its four items complete and the known limitations
+above. Phase 5 begins with the payload builder, summarizer runner, and prompt
+work before trace-back, editing, and retention.
 
 ## Verification
 
