@@ -200,8 +200,17 @@ Option E1:
   the external-summarization permission file (S1), because that file records
   consent and would need a format change; memory only (S3), because unattended
   summaries would silently revert to the default after a restart.
-- Not yet decided: input style, validation rule, and behavior when the file is
-  unreadable or invalid.
+- I — input style (approved by Josh, 2026-09-17, option I3): a per-provider
+  dropdown of known models from the official docs plus "Default" and
+  "Other…", which reveals a text field. Known lists read 2026-09-17 — Claude
+  Code: `haiku`, `sonnet`, `opus`, `fable`, `best`, `opusplan`, `sonnet[1m]`,
+  `opus[1m]`; Codex: `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`,
+  `gpt-5.6-luna`, `gpt-5.3-codex-spark`. Any value still passes the validation
+  rule. Known risk: the probe tries the lowest-cost model first, so a mistyped
+  summary model can still show Ready. Rejected: free text only (I1, typos) and
+  a fixed list only (I2, goes stale).
+- Not yet decided: validation rule, and behavior when the file is unreadable or
+  invalid.
 
 ## Test cases for Task P1 (IDs fixed; confirmed)
 
