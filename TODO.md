@@ -50,8 +50,11 @@
     `test/report/report-contract.test.ts` (16 tests) and `npm run check`
     passed.
   - Task 2 assembly: RA-1 through RA-5, plus the RC-1/RC-2 status wording,
-    pass in the same file (22 tests); `npm run check` passed. Tasks 3–5
-    (re-analysis decision, eval scorer, status records) remain.
+    pass in the same file (22 tests); `npm run check` passed.
+  - Task 3 re-analysis decision: RS-1 through RS-4 pass in
+    `test/report/summary-retry.test.ts` (plus a limit constant and an
+    attempt-range guard); `npm run check` passed. No summarizer is run. Tasks
+    4–5 (eval scorer, status records) remain.
 - [ ] Expand the pre-labelled evaluation set before prompt iteration.
 
 ### Phase 5 — Report control
