@@ -17,6 +17,28 @@ import {
   writeConsent,
   validSources,
 } from "../storage/local-consent.js";
+import {
+  readSummaryPermission,
+  validSummaryPermissionInput,
+  writeSummaryPermission,
+  type SummaryProvider,
+} from "../storage/summary-permission.js";
+
+export interface SummaryRequest {
+  conversations: Array<{ id: string; source: SummaryProvider; text: string }>;
+  scheduled: boolean;
+}
+
+export interface SummaryRunner {
+  run(provider: SummaryProvider, request: SummaryRequest): Promise<void>;
+}
+
+export interface SummaryRequestFactory {
+  create(input: {
+    scheduled: boolean;
+    sourceScope: SummaryProvider[];
+  }): Promise<SummaryRequest>;
+}
 
 interface AppOptions {
   consentPath?: string;
@@ -25,6 +47,10 @@ interface AppOptions {
   collectorDate?: () => string;
   reportDate?: () => string;
   staticDirectory?: string;
+  summaryPermissionPath?: string;
+  summaryRunner?: SummaryRunner;
+  summaryRequestFactory?: SummaryRequestFactory;
+  availableSummaryProviders?: SummaryProvider[];
 }
 
 export function createApp({
@@ -34,6 +60,10 @@ export function createApp({
   collectorDate = currentLocalDate,
   reportDate = currentLocalDate,
   staticDirectory,
+  summaryPermissionPath,
+  summaryRunner,
+  summaryRequestFactory,
+  availableSummaryProviders = [],
 }: AppOptions): Server {
   let generation = 0;
   let activeCollections = 0;
@@ -223,6 +253,143 @@ export function createApp({
         }
       }
 
+      if (
+        pathname === "/api/summarizer/permission" ||
+        pathname === "/api/reports/generate"
+      ) {
+        const origin = localOrigin(request);
+        if (
+          !origin ||
+          (request.headers.origin && request.headers.origin !== origin) ||
+          request.headers["sec-fetch-site"] === "cross-site"
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Use the local app to manage summarization." },
+          });
+          return;
+        }
+        if (pathname === "/api/summarizer/permission") {
+          if (request.method === "GET") {
+            const permission = await readSummaryPermission(
+              summaryPermissionPath,
+            );
+            sendJson(response, 200, {
+              permission: permission ?? null,
+              disclosure: summaryDisclosure(),
+            });
+            return;
+          }
+          if (
+            request.method !== "PUT" ||
+            request.headers.origin !== origin ||
+            request.headers["content-type"]?.split(";")[0] !==
+              "application/json"
+          ) {
+            sendJson(response, 403, {
+              error: { message: "Save settings from the local app." },
+            });
+            return;
+          }
+          const permissionInput = await parseJsonBody(request);
+          if (!validSummaryPermissionInput(permissionInput)) {
+            sendJson(response, 400, {
+              error: { message: "Choose a valid summary permission." },
+            });
+            return;
+          }
+          const permission = {
+            ...permissionInput,
+            recipients: ["codex", "claude-code"] as const,
+          };
+          await writeSummaryPermission(summaryPermissionPath, permission);
+          sendJson(response, 200, {
+            permission,
+            disclosure: summaryDisclosure(),
+          });
+          return;
+        }
+        if (
+          request.method !== "POST" ||
+          request.headers.origin !== origin ||
+          request.headers["content-type"]?.split(";")[0] !== "application/json"
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Generate reports from the local app." },
+          });
+          return;
+        }
+        const permission = await readSummaryPermission(summaryPermissionPath);
+        if (!permission?.sourceScope.length) {
+          sendJson(response, 403, {
+            error: { message: "Save external summarization permission first." },
+          });
+          return;
+        }
+        const generationRequest = await parseGenerationRequest(request);
+        if (!generationRequest) {
+          sendJson(response, 400, {
+            error: { message: "Provide valid report-day conversations." },
+          });
+          return;
+        }
+        if (!summaryRequestFactory) {
+          sendJson(response, 503, {
+            report: {
+              status: "incomplete",
+              reason:
+                "No server-side report-day conversation builder is available.",
+            },
+          });
+          return;
+        }
+        const summaryRequest = await summaryRequestFactory.create({
+          scheduled: generationRequest.scheduled,
+          sourceScope: permission.sourceScope,
+        });
+        if (
+          summaryRequest.conversations.some(
+            (conversation) =>
+              !permission.sourceScope.includes(conversation.source),
+          )
+        ) {
+          sendJson(response, 403, {
+            error: {
+              message: "Conversation source is outside the saved permission.",
+            },
+          });
+          return;
+        }
+        const providers = orderedProviders(
+          availableSummaryProviders,
+          permission.preferredCli,
+        );
+        if (!summaryRunner || !providers.length) {
+          sendJson(response, 503, {
+            report: {
+              status: "incomplete",
+              reason: "No approved summarizer CLI is available.",
+            },
+          });
+          return;
+        }
+        const failures: string[] = [];
+        for (const provider of providers) {
+          try {
+            await summaryRunner.run(provider, summaryRequest);
+            sendJson(response, 201, { provider });
+            return;
+          } catch (error) {
+            failures.push(
+              `${providerName(provider)} failed: ${errorMessage(error)}.`,
+            );
+          }
+        }
+        sendJson(response, 503, {
+          report: { status: "incomplete", reason: failures.join(" ") },
+        });
+        return;
+      }
+
       if (pathname === "/api/reports/sample") {
         if (request.method !== "POST") {
           sendJson(response, 405, {
@@ -295,6 +462,65 @@ export function createApp({
       });
     }
   });
+}
+
+function summaryDisclosure() {
+  return {
+    sourceScope: ["claude-code", "codex"],
+    conversationScope:
+      "Complete conversations with report-day activity, including context through the end of that day.",
+    possibleRecipients: ["codex", "claude-code"],
+  };
+}
+
+function orderedProviders(
+  available: SummaryProvider[],
+  preferredCli: SummaryProvider | undefined,
+): SummaryProvider[] {
+  const unique = [...new Set(available)];
+  const preferred = preferredCli ?? "codex";
+  return [
+    preferred,
+    ...unique.filter((provider) => provider !== preferred),
+  ].filter(
+    (provider, index, providers) =>
+      unique.includes(provider) && providers.indexOf(provider) === index,
+  );
+}
+
+function providerName(provider: SummaryProvider): string {
+  return provider === "codex" ? "Codex" : "Claude Code";
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown failure";
+}
+
+async function parseJsonBody(request: IncomingMessage): Promise<unknown> {
+  let body = "";
+  for await (const chunk of request) {
+    body += String(chunk);
+    if (body.length > 1_000_000) throw new Error("Too large");
+  }
+  return JSON.parse(body);
+}
+
+async function parseGenerationRequest(
+  request: IncomingMessage,
+): Promise<{ scheduled: boolean } | undefined> {
+  try {
+    const value = await parseJsonBody(request);
+    if (!value || typeof value !== "object") return undefined;
+    const candidate = value as { scheduled?: unknown };
+    if (
+      typeof candidate.scheduled !== "boolean" ||
+      Object.keys(candidate).length !== 1
+    )
+      return undefined;
+    return { scheduled: candidate.scheduled };
+  } catch {
+    return undefined;
+  }
 }
 
 function staticAssetFor(

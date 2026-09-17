@@ -45,6 +45,18 @@ The project has moved past an experience-only prototype. A local collector demo 
     boundary, and later work in [the exit review](docs/reviews/2026-09-17-phase-3-exit-review.md);
   - confirmed that Phase 3 does not claim a first-version release or support
     for the Chrome sources.
+- Phase 4 external-summarization permission:
+  - a separate, fail-closed local permission record stores the approved source
+    scope, both permitted recipients, and optional CLI preference, without
+    conversation contents;
+  - the local API discloses the maximum permission before it is saved, defaults
+    to Codex when both injected CLIs are usable, and permits a saved grant to
+    cover scheduled fallback to Claude Code;
+  - report-day conversation payloads must come from an injected server-side
+    builder rather than a browser request; if each approved available runner
+    fails, the API returns an incomplete result with both failure reasons. The
+    current builder and runner are test-only; no real CLI is detected or
+    invoked yet.
 
 ## Important boundaries
 
@@ -54,14 +66,11 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-Implement the Phase 4 installation-time external-summarization permission task. Josh confirmed these product-derived unit-test cases on 2026-09-17; first show the corresponding Vitest test code one-to-one, then run it RED before implementation:
-
-1. No installation-time permission prevents creation or transmission of a summarization request.
-2. Maximum-permission disclosure names the approved source scope, complete report-day conversations, and possible Codex/Claude Code recipients.
-3. Codex is the default when both CLIs are usable; Claude Code is used when it alone is usable.
-4. Saved maximum permission covers scheduled runs and CLI fallback without another consent prompt.
-5. A failed or unavailable Codex automatically tries Claude Code; if both fail, the report is incomplete with the failure reason.
-6. A later interface change to permission or the preferred CLI applies to later requests.
+Implement Phase 4 CLI availability detection and real, consent-gated runner
+integration. It must distinguish not installed, unavailable, and failed
+providers; keep the current no-fallback-without-permission boundary; and use
+synthetic inputs until a separate real-data authorization and payload contract
+are approved.
 
 ## Latest verification
 
