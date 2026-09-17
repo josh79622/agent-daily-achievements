@@ -66,13 +66,16 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-- Task P3: per-provider effort setting, starting with confirming Codex effort
-  values.
+- Optional real check of the effort dropdown after restarting the dev server
+  (the settings file moves to version 2 on the next save).
 - Report contract Task 5: record verified status for the report contract and
   eval-set items.
 
 ## Latest verification
 
+- Summary effort setting Task P3: `npm run check` passed with 200 tests; all
+  effort tests use fake lists or runners; the dropdown was viewed in the
+  browser pane against fake lists. No real CLI received an effort option.
 - Summary model setting real check (2026-09-17): after restarting the dev
   server, both providers showed fetched model lists without a fallback note,
   and a selection was saved through the dropdown.

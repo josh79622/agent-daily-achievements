@@ -70,8 +70,14 @@
     GPT-6-Astra, GPT-5.6-Terra, GPT-5.6-Luna, GPT-5.5; Claude Code Sonnet,
     Fable, Opus, Haiku. Josh's selections (Codex `gpt-5.6-terra`, Claude Code
     `opus`) were saved to the owner-only settings file. Not yet verified with a
-    real CLI: that the probe's second attempt passes the selected model. Still
-    open: Task P3 (per-provider effort setting).
+    real CLI: that the probe's second attempt passes the selected model.
+  - Task P3 summary effort setting (`247ebe5`, `4a8c3f4`, `990737a`,
+    `d4d39ce`): EC, ES, ER, EE, EP, and EU cases pass with fake lists and
+    runners; `npm run check` passed (200 tests); the effort dropdown was
+    checked in the browser against fake lists. Not yet verified with a real
+    CLI: that Codex accepts `-c model_reasoning_effort` values such as `max`
+    or `ultra`, and Claude Code `--effort`, in a probe second attempt or a
+    summary run.
 - [ ] Define the report contract: 0–5 achievements (Josh changed the cap from three on 2026-09-17), evidence links, incomplete coverage, and achievement-level deduplication.
   - Design, decisions D1–D3, and RC/RA/RS/EV cases approved in
     [the report contract design](docs/plans/2026-09-17-report-contract-design.md).

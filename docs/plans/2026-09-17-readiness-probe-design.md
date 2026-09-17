@@ -359,6 +359,9 @@ No test runs a real CLI.
 
 ## Test cases for Task P3 (IDs fixed; confirmed by Josh with the edge-case defaults, 2026-09-18)
 
+Status: Task P3 is implemented and passes EC-1 to EU-1 with fakes only. No real
+CLI has received an effort option yet.
+
 | ID | File | Intended behavior |
 | --- | --- | --- |
 | EC-1 | `test/summarizer/model-catalog.test.ts` | Claude Code's fetched list keeps the `default` entry's effort levels as the default-model levels (the entry is still not offered as a model); Codex has no default-model levels; the built-in fallback has Claude Code `low` to `max` and Codex none. |
