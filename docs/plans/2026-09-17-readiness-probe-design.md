@@ -359,6 +359,9 @@ No test runs a real CLI.
 
 ## Test cases for attempt display (confirmed by Josh, 2026-09-18)
 
+Status: implemented in `4fb350e`; PR-18 and PR-19 pass with fakes and
+`npm run check` passed (203 tests). The real panel text has not been observed.
+
 | ID | File | Intended behavior |
 | --- | --- | --- |
 | PR-18 | `test/summarizer/readiness-probe.test.ts`, `test/server/provider-login.test.ts` | A passing probe reports which attempt passed (`lowest-cost-model` or `summary-model`); the service holds it with Ready in memory, and the status endpoint returns it as a whitelisted field. |
@@ -473,7 +476,9 @@ control.
   from 00:14–00:15 remained, before the current dev server started; the most
   likely cause is the server being stopped or restarted while a startup
   model-list fetch was in flight, so the cleanup step never ran. They held no
-  data and were removed. A fix has not been designed.
+  data and were removed. Reproduced at 00:57: an empty directory was created
+  one second before the dev watcher restarted the server while code was being
+  edited. A fix has not been designed.
 - Still unverified: whether Codex accepts `max` or `ultra` effort in a real run
   (Josh limited this item to checks without a model call; recorded as a known
   limitation), quota-exhaustion exit codes, and which probe attempt passed
