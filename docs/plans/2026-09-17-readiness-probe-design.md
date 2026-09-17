@@ -230,8 +230,63 @@ Option E1:
 - V — validation (approved with M2): the server accepts only "Default" or a
   value exactly in that provider's current list, checked when saving and when
   reading the settings file. The regex-only rule V1 was not adopted.
-- Not yet decided: behavior when a saved model is no longer in the current list
-  or the settings file is unreadable or invalid.
+- F — problem settings (approved by Josh, 2026-09-17, option F3): if a saved
+  model is no longer available or the settings file is unreadable or invalid,
+  use the CLI default and show a warning in the panel. Known consequence
+  (stated before the choice): unattended summaries can change model without
+  anyone seeing the panel. Rejected: stopping that provider until a new choice
+  (F1) and silent fallback without a warning (F2).
+- Edge-case defaults (not separately confirmed): "no longer available" is judged
+  only against a successfully fetched list; while the built-in fallback list is
+  in use, a saved model that passes a basic safety check (first character a
+  letter or digit, only letters, digits, `.`, `_`, `-`, `[`, `]`, at most 64
+  characters) is still used, with a "model list unavailable" note. The
+  catalog's own `default` entry is not offered separately, because "Default"
+  already means passing no model option.
+
+## Test cases for Task P2 (IDs fixed; awaiting confirmation)
+
+Model catalog — `test/summarizer/model-catalog.test.ts`, fake spawner only:
+
+| ID | Intended behavior |
+| --- | --- |
+| MC-1 | Codex list comes from `codex debug models` spawned without a shell, time limit, and output cap; only `visibility: list` entries are kept, mapped to value (`slug`), label, and effort levels. |
+| MC-2 | Claude Code list comes from `claude -p --input-format stream-json --output-format stream-json --verbose --tools "" --no-session-persistence --strict-mcp-config` in a temporary directory; only one `initialize` control request is written and never a user message; the process is stopped after the response; entries map to value, label, and effort levels, and the catalog `default` entry is dropped. |
+| MC-3 | Spawn error, timeout, non-zero exit, unparseable output, a missing or empty models array, or no usable entries fall back to the built-in list with source `built-in`. |
+| MC-4 | Entries whose value fails the safety check are dropped. |
+| MC-5 | No other catalog fields (for example `account`, instructions, hidden models) appear in the catalog result. |
+
+Settings — `test/storage/summarizer-models.test.ts`:
+
+| ID | Intended behavior |
+| --- | --- |
+| SM-1 | An absent `summarizer-models.json` means Default for both providers. |
+| SM-2 | Saving writes the file atomically with owner-only permissions, and reading it back returns the saved choices. |
+| SM-3 | An unreadable or invalid file means Default for both providers plus a `settings-unreadable` warning; saving a valid choice replaces it. |
+
+Effective model — same settings test file:
+
+| ID | Intended behavior |
+| --- | --- |
+| SR-1 | A saved model present in a fetched list is used. |
+| SR-2 | A saved model absent from a fetched list uses Default with a `saved-model-unavailable` warning (F3). |
+| SR-3 | With the built-in fallback list, a saved model passing the safety check is used with a `model-list-unavailable` note; one failing it uses Default with a warning. |
+| SR-4 | The readiness probe's second attempt receives the effective model (none for Default). |
+
+Endpoints — `test/server/summarizer-models.test.ts`:
+
+| ID | Intended behavior |
+| --- | --- |
+| SE-1 | `GET /api/summarizer/models` (local origin only) returns, per provider, the options, list source, saved choice, effective model, and warning codes, and nothing else. |
+| SE-2 | `PUT /api/summarizer/models/:provider` accepts only a local-origin JSON body with exactly `model`, whose value is `default` or in that provider's current list; anything else is 400, 403, or 404 and is not saved. |
+
+Panel — `test/web/build-output.test.ts`:
+
+| ID | Intended behavior |
+| --- | --- |
+| SP-1 | Each provider has a model dropdown with Default and the listed options, no text input, saves only through the model endpoint, and shows the warning and note texts. |
+
+No test runs a real CLI.
 
 ### Dynamic model list research (2026-09-17, approved runs)
 
