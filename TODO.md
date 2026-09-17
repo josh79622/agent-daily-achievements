@@ -36,10 +36,15 @@
   - UI-first login demo (`22a043c`, `3e2d7e3`, `c861af4`, `9237703`): a
     "Report sign-in" panel shows both providers, launches only the fixed
     `codex login` / `claude auth login` command in Terminal on macOS, and
-    reports five safe states. Unit tests use fake executors only. Still open:
-    Josh's manual Terminal demo, verifying that the real `login status` /
-    `auth status` exit codes mean signed-in, and approval of a zero-conversation
-    readiness probe (none is configured, so no provider can reach `ready`).
+    reports five safe states. Unit tests use fake executors only.
+  - Josh's manual Codex demo passed on 2026-09-17: signed out showed
+    `sign-in-required`; the button opened Terminal, which started Codex's
+    browser login; after login, Check again showed signed in (not `ready`).
+    The intermediate `login-in-progress` display was not observed manually.
+    Claude Code's signed-in state was observed, but its signed-out state and
+    Terminal launch are not manually verified. Still open: approval of a
+    zero-conversation readiness probe (none is configured, so no provider can
+    reach `ready`).
 - [ ] Define the report contract: at most three achievements, evidence links, incomplete coverage, and achievement-level deduplication.
 - [ ] Expand the pre-labelled evaluation set before prompt iteration.
 
