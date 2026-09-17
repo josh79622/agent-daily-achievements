@@ -48,7 +48,9 @@
     pass with fake runners and a fake service; `npm run check` passed (168
     tests); the panel was checked in the browser against a fake service. No
     real probe had run at that point.
-  - Josh's first real checks on 2026-09-17 (after restarting the server):
+  - Josh's first real checks on 2026-09-17 (served by the running `npm run dev`
+    watcher, which had reloaded the P1 code; the Ready responses came from the
+    readiness route that exists only in P1):
     Codex showed "Ready (checked 22:43)" and Claude Code "Ready (checked
     22:45)". This verifies that both real CLIs accepted the approved commands
     and that the reply channels (Codex `-o` file, Claude Code JSON reply field)

@@ -73,8 +73,8 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Latest verification
 
-- Readiness probe real check (2026-09-17): Josh clicked Check readiness after
-  restarting the server; Codex and Claude Code both showed Ready. Which attempt
+- Readiness probe real check (2026-09-17): Josh clicked Check readiness on the
+  running dev server, which had reloaded the P1 code; Codex and Claude Code both showed Ready. Which attempt
   passed, tool-disable effectiveness, and real failure paths remain unverified.
 - Readiness probe Task P1: `npm run check` passed with format, lint,
   typecheck, 168 tests, and build. All probe, state, endpoint, and panel tests
