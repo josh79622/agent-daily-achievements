@@ -328,9 +328,16 @@ No test runs a real CLI.
   CLI accepts `max` and `ultra` through `-c` is unverified until a real run.
   Rejected: fixed lists from the docs (R2), which already disagree with the
   real catalog.
-- Not yet decided: effort choices while the model is Default, behavior when a
-  saved effort is not supported by the effective model, and whether the probe
-  passes an effort.
+- D — effort while the model is Default (approved by Josh, 2026-09-18, option
+  D2): use the default model's levels when the fetched list states them.
+  Claude Code's initialize list includes a `default` entry (observed resolving
+  to `claude-sonnet-5` with `low` to `max`), so its levels are offered. Codex's
+  catalog does not mark a default model, and Codex ignores user config in these
+  commands, so only Default effort is offered for Codex while its model is
+  Default. Rejected: Default effort only for both (D1) and all levels (D3,
+  which can select an unsupported level).
+- Not yet decided: behavior when a saved effort is not supported by the
+  effective model, and whether the probe passes an effort.
 
 ## Test cases for Task P1 (IDs fixed; confirmed)
 
