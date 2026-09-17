@@ -57,23 +57,49 @@ configuration intended for the real summarizer, so Ready reflects that
 configuration. The real summarizer's full invocation is still decided under
 blocked item #2.
 
-## B — Probe model (approved by Josh, 2026-09-17)
+## B — Probe and summary models (approved by Josh, 2026-09-17)
 
-- By default, pass no model option: each CLI uses its own default model. The
-  probe does not choose the real summarizer's model (blocked item #1).
-- The model is adjustable in the local UI per provider. When a model is set,
-  the probe passes it (`--model` for Claude Code, `-m` for Codex).
-- Limitations recorded: a default-model pass does not prove a different model
-  is entitled; a CLI update can change its default silently; Codex ignores the
-  user's config (decision A) while Claude Code may take its default from the
-  user's settings.
-- Safety rule for the UI value: it is passed only as a single argument to
-  `spawn` without a shell, and must be validated (for example, no leading `-`,
-  a conservative character set, and a length limit) so it cannot inject other
-  options. Exact validation is part of the test cases.
+Real summary model:
 
-Open question: whether a model set in the UI also applies to the real
-summarizer run, or only to the probe.
+- By default, pass no model option: each CLI uses its own default model.
+- Adjustable per provider in the local UI; when set, the summary run passes it
+  (`--model` for Claude Code, `-m` for Codex). This does not choose a default
+  model for everyone; blocked item #1 still covers comparing models.
+
+Probe order:
+
+1. Run the probe with the lowest-cost model: Claude Code alias `haiku`
+   ("smallest/cheapest" per Claude Code model-config docs; an alias follows the
+   latest Haiku) and Codex `gpt-5.6-luna` ("fast and affordable ... lowest cost
+   in the family" per Codex models docs, read 2026-09-17).
+2. Only if that fails, run the probe once more with the summary model (the UI
+   value, or no model option for the default).
+3. Ready if either attempt passes; Not ready if both fail.
+
+Defaults for edge cases (not separately confirmed):
+
+- If the summary model is the same as the lowest-cost model, the probe runs
+  once.
+- Any failure of the first attempt triggers the second, because output is not
+  read and failure causes cannot be told apart safely. Worst-case duration is
+  two probe time limits (see D).
+
+Recorded consequences:
+
+- Ready means the CLI, sign-in, quota, runtime, and network worked with at
+  least one of the two models. It does not guarantee the summary model when
+  only the lowest-cost attempt ran; a failed summary run still makes the report
+  incomplete (RA-3), with fallback under saved permission.
+- `gpt-5.6-luna` is a fixed ID and must be updated when retired; the second
+  attempt reduces false Not ready results in that case. Plan entitlement for
+  each model is unverified.
+- Decision A's "same configuration as the real summarizer" applies to tool
+  restrictions, not to the probe's first-attempt model.
+
+Safety rule for the UI model value: it is passed only as a single argument to
+`spawn` without a shell and is validated (for example, no leading `-`, a
+conservative character set, and a length limit) so it cannot inject other
+options. Exact validation is part of the test cases.
 
 ## Not yet decided
 
