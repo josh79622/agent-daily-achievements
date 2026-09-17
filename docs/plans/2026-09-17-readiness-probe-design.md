@@ -211,8 +211,6 @@ Option E1:
   (free text only). Known risks: the list goes stale until updated, and the
   probe tries the lowest-cost model first, so an unavailable summary model can
   still show Ready.
-- Not yet decided: validation rule, and behavior when the file is unreadable or
-  invalid.
 - Effort (Josh, 2026-09-17): a per-provider effort setting is split into a
   separate Task P3 after P2. Evidence so far: `claude --help` lists `--effort`
   with `low`, `medium`, `high`, `xhigh`, `max`; Codex has no `--effort` flag,
@@ -220,6 +218,20 @@ Option E1:
   Codex config (name only, value not read), so `-c model_reasoning_effort=...`
   is the likely route. Codex's allowed values and per-model support are
   unverified.
+
+- M — model list source (approved by Josh, 2026-09-17, option M2; refines
+  I2): at server startup, fetch the Codex list with `codex debug models`
+  (keeping only `visibility: list`) and the Claude Code list with an
+  initialize-only stream-json request (no prompt). Keep only model value,
+  display name, and effort levels; always discard everything else, including
+  `account`, built-in instructions, and hidden models. If a fetch fails or its
+  format is unexpected, use the built-in list Josh maintains and show a note in
+  the panel. Users still pick only from a dropdown; no free text.
+- V — validation (approved with M2): the server accepts only "Default" or a
+  value exactly in that provider's current list, checked when saving and when
+  reading the settings file. The regex-only rule V1 was not adopted.
+- Not yet decided: behavior when a saved model is no longer in the current list
+  or the settings file is unreadable or invalid.
 
 ### Dynamic model list research (2026-09-17, approved runs)
 
