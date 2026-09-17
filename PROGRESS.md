@@ -4,7 +4,7 @@
 
 **Phase 3 — Consented local collection**
 
-The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the executing computer's local calendar day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. This is not yet a shippable collector because parser-correctness validation on real records and explicit failure handling are unfinished.
+The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the executing computer's local calendar day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. This is not yet a shippable collector because agent/sidechain source behavior, Codex parser validation, and explicit failure handling are unfinished.
 
 ## Completed
 
@@ -25,6 +25,10 @@ The project has moved past an experience-only prototype. A local collector demo 
   - timezone boundary, non-Sydney, and invalid-timezone behavior are covered by synthetic unit tests.
 - Unit-test framework:
   - all existing unit tests use Vitest, with one `npm test` command and no `node:test` or `node:assert` imports in the test suite.
+- Phase 3 Claude Code parser verification, pending sidechain policy:
+  - verified common real local JSONL structure read-only with no content retained;
+  - added synthetic Vitest coverage for timestamp validity, BOM/CRLF input, structured content, malformed input, source read-only behavior, and report-day session context;
+  - found a known agent-related `parentSessionId` shape whose daily-report behavior needs a product decision before the source can be called fully supported.
 
 ## Important boundaries
 
@@ -34,11 +38,11 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-Verify Claude Code parsing against approved real local sessions: timestamps, role/content extraction, session identity, and partial/malformed input. Before implementation or parser changes, propose the task's observable acceptance cases for Josh to confirm. Use approved real sessions only for read-only verification; do not retain their content in fixtures, logs, commits, or documentation.
+Decide how daily reports treat Claude Code agent and sidechain sessions that use `parentSessionId`: exclude them, show them separately, or merge them with their parent. Then add a dedicated synthetic unit test and read-only structural verification before marking Claude Code parsing supported.
 
 ## Latest verification
 
-- Vitest migration: `npm run check` passed with format, lint, typecheck, 29 tests, and build. TZ-1 through TZ-4 retain their synthetic system-timezone default, midnight-boundary, non-Sydney, and invalid-timezone coverage. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
+- Claude Code parser checkpoint: `npm run check` passed with format, lint, typecheck, 39 tests, and build. A read-only structure-only check of three recent local files also passed; no content, identifiers, timestamps, or paths were retained. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
 - The shell's default Node 25 fails to start because of a missing Homebrew library; use `/opt/homebrew/opt/node@24/bin` on `PATH` for the approved Node 24 runtime (verified v24.20.0).
 
 ## Handoff

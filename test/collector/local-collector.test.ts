@@ -52,7 +52,7 @@ async function claudeCollector(
   };
 }
 
-test("local collector returns same-day Claude Code and Codex sessions with issues", async () => {
+test("local collector returns report-day sessions with their earlier context and issues", async () => {
   const root = await mkdtemp(join(tmpdir(), "daily-proof-collector-"));
   directories.push(root);
   const claudeDirectory = join(root, "claude");
@@ -123,8 +123,11 @@ test("local collector returns same-day Claude Code and Codex sessions with issue
   expect(summary.sessions[0]?.source).toBe("claude-code");
   expect(summary.sessions[0]?.messageCount).toBe(2);
   expect(summary.sessions[1]?.source).toBe("codex");
-  expect(summary.sessions[1]?.messageCount).toBe(1);
-  expect(summary.sessions[1]?.messages[0]?.text).toBe("Build it");
+  expect(summary.sessions[1]?.messageCount).toBe(2);
+  expect(summary.sessions[1]?.messages.map(({ text }) => text)).toEqual([
+    "Old message",
+    "Build it",
+  ]);
 });
 
 for (const selected of ["claude-code", "codex"] as const) {
@@ -306,7 +309,7 @@ test("CC-10: reads a source without changing it or exposing malformed source tex
   const secret = "SYNTHETIC_PRIVATE_MALFORMED_SOURCE_TEXT";
   const { collector, file } = await claudeCollector([
     claudeRecord("2026-09-16T09:00:00Z", "user", "Readable"),
-    `{\"private\":\"${secret}\"`,
+    `{"private":"${secret}"`,
   ]);
   await chmod(file, 0o444);
   const before = await stat(file);

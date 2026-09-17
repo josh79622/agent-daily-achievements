@@ -111,10 +111,13 @@ async function parseFile(
   } catch {
     return { issues: 1 };
   }
-  const messages: CollectedMessage[] = [];
   let sessionId = basename(file, ".jsonl");
   let issues = 0;
-  for (const [index, line] of contents.split("\n").entries()) {
+  const messages: CollectedMessage[] = [];
+  for (const [index, line] of contents
+    .replace(/^\uFEFF/, "")
+    .split("\n")
+    .entries()) {
     if (!line.trim()) continue;
     let record: Record<string, unknown>;
     try {
@@ -124,17 +127,29 @@ async function parseFile(
       continue;
     }
     sessionId = sessionIdFrom(source, record) ?? sessionId;
+    if (
+      hasConversationRole(source, record) &&
+      !validTimestamp(record.timestamp)
+    ) {
+      issues += 1;
+      continue;
+    }
     const message = messageFrom(
       source,
       record,
       `${basename(file)}:${index + 1}`,
     );
-    if (message && localDate(message.timestamp, timeZone) === date)
-      messages.push(message);
+    if (message) messages.push(message);
   }
-  if (messages.length === 0) return { issues };
-  messages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-  const firstMessage = messages[0];
+  const reportDayMessages = messages.filter(
+    (message) => localDate(message.timestamp, timeZone) === date,
+  );
+  if (reportDayMessages.length === 0) return { issues };
+  const reportMessages = messages.filter(
+    (message) => localDate(message.timestamp, timeZone) <= date,
+  );
+  reportMessages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  const firstMessage = reportMessages[0];
   if (!firstMessage) return { issues };
   return {
     issues,
@@ -143,10 +158,10 @@ async function parseFile(
       source,
       file,
       startedAt: firstMessage.timestamp,
-      endedAt: messages.at(-1)?.timestamp ?? firstMessage.timestamp,
-      messageCount: messages.length,
+      endedAt: reportMessages.at(-1)?.timestamp ?? firstMessage.timestamp,
+      messageCount: reportMessages.length,
       issueCount: issues,
-      messages,
+      messages: reportMessages,
     },
   };
 }
@@ -179,6 +194,19 @@ function messageFrom(
   const text = payload && textFrom(payload.content);
   if (!role || !text) return undefined;
   return { id: fallbackId, role, text, timestamp };
+}
+
+function hasConversationRole(
+  source: LocalSource,
+  record: Record<string, unknown>,
+): boolean {
+  if (source === "claude-code")
+    return Boolean(roleAt(objectAt(record.message)?.role));
+  return Boolean(roleAt(objectAt(record.payload)?.role));
+}
+
+function validTimestamp(value: unknown): value is string {
+  return typeof value === "string" && !Number.isNaN(new Date(value).getTime());
 }
 
 function objectAt(value: unknown): Record<string, unknown> | undefined {
