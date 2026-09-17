@@ -78,7 +78,10 @@ test("IC-3: reports a readable but unsupported source shape as incomplete", asyn
   const directory = await sourceDirectory("claude");
   await writeFile(
     join(directory, "session.jsonl"),
-    JSON.stringify({ type: "future-record", timestamp: "2026-09-16T09:00:00Z" }),
+    JSON.stringify({
+      type: "future-record",
+      timestamp: "2026-09-16T09:00:00Z",
+    }),
   );
   const collector = createLocalCollector({
     claudeDirectories: [directory],
@@ -142,7 +145,10 @@ test("IC-6: preserves an available source when another selected source is incomp
   const claudeDirectory = await sourceDirectory("claude");
   const root = await mkdtemp(join(tmpdir(), "daily-proof-coverage-"));
   directories.push(root);
-  await writeFile(join(claudeDirectory, "session.jsonl"), claudeMessage("Available"));
+  await writeFile(
+    join(claudeDirectory, "session.jsonl"),
+    claudeMessage("Available"),
+  );
   const collector = createLocalCollector({
     claudeDirectories: [claudeDirectory],
     codexDirectories: [join(root, "missing-codex")],

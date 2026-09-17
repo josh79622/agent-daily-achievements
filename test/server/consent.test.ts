@@ -70,7 +70,9 @@ test("consent: known sessions from an unselected source cannot be previewed", as
     async collect(date) {
       return {
         date,
-        sources: [{ source: "codex", sessions: 1, issues: 0 }],
+        sources: [
+          { source: "codex", sessions: 1, issues: 0, state: "available" },
+        ],
         sessions: [
           {
             id: "known-codex-session",

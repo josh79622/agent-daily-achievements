@@ -148,8 +148,8 @@ test("serves collector metadata before a selected local preview", async () => {
       return {
         date: "2026-09-16",
         sources: [
-          { source: "claude-code", sessions: 1, issues: 0 },
-          { source: "codex", sessions: 0, issues: 0 },
+          { source: "claude-code", sessions: 1, issues: 0, state: "available" },
+          { source: "codex", sessions: 0, issues: 0, state: "no-activity" },
         ],
         sessions: [
           {
@@ -196,9 +196,16 @@ test("serves collector metadata before a selected local preview", async () => {
   });
   const summary = await fetch(`${baseUrl}/api/collector/today`);
   const preview = await fetch(`${baseUrl}/api/collector/sessions/session-1`);
+  const summaryBody = (await summary.json()) as {
+    sources: Array<{ source: string; state: string }>;
+    sessions: unknown[];
+  };
 
   expect(summary.status).toBe(200);
-  expect(await summary.text()).not.toMatch(/Private preview/);
+  expect(summaryBody.sources).toEqual([
+    { source: "claude-code", sessions: 1, issues: 0, state: "available" },
+  ]);
+  expect(JSON.stringify(summaryBody)).not.toMatch(/Private preview/);
   expect(preview.status).toBe(200);
   expect(await preview.text()).toMatch(/Private preview/);
 });

@@ -115,6 +115,14 @@ interface CollectorSession {
   issueCount: number;
 }
 
+interface CollectorSource {
+  source: string;
+  sessions: number;
+  issues: number;
+  state: "available" | "incomplete" | "no-activity" | "not-installed";
+  reason?: string;
+}
+
 const consentForm = requiredElement<HTMLFormElement>("source-consent-form");
 const claudeChoice = requiredElement<HTMLInputElement>("source-claude-code");
 const codexChoice = requiredElement<HTMLInputElement>("source-codex");
@@ -215,14 +223,14 @@ async function loadCollection(
   collectorStatus.textContent = "Reading authorized local metadata…";
   try {
     const result = await api<{
-      sources: Array<{ source: string; sessions: number; issues: number }>;
+      sources: CollectorSource[];
       sessions: CollectorSession[];
     }>("/api/collector/today");
     if (revision !== collectorRevision) return;
     result.sources.forEach((source) => {
       const line = document.createElement("p");
       line.className = "collector-source";
-      line.textContent = `${source.source} · ${source.sessions} sessions · ${source.issues} issues`;
+      line.textContent = sourceCoverageText(source);
       sourceLines.push(line);
     });
     replaceCollection(
@@ -235,6 +243,15 @@ async function loadCollection(
   } finally {
     consentSave.disabled = false;
   }
+}
+
+function sourceCoverageText(source: CollectorSource): string {
+  if (source.state === "not-installed")
+    return `${source.source} · not installed`;
+  if (source.state === "no-activity") return `${source.source} · no activity`;
+  if (source.state === "incomplete")
+    return `${source.source} · incomplete: ${source.reason ?? "unknown"} · ${source.sessions} sessions · ${source.issues} issues`;
+  return `${source.source} · ${source.sessions} sessions · available`;
 }
 
 function showCollectorError(
