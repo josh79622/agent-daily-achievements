@@ -171,7 +171,10 @@ generation moved here and comes first.
     itself, so it tested the fake rather than the builder; a mutation that
     removed the builder's own scope check went undetected. The fake is now
     deliberately over-broad.
-  - Not wired into `/api/reports/generate` yet, and no day has been measured.
+  - Wired into `/api/reports/generate` as the default `SummaryRequestFactory`;
+    RG-1 to RG-5 in `test/server/report-generation.test.ts` cover the route, and
+    four wiring mutations were each caught. No day has been measured and no CLI
+    has run.
       Original scope: Format approved on 2026-09-18: simplified, minified
       JSON with structural IDs, no coverage or version fields inside the
       payload. Bulk tool output is capped head + tail, content-blind and

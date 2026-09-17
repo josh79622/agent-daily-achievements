@@ -90,10 +90,18 @@ verified against
 [the payload design](docs/plans/2026-09-18-report-day-payload-design.md).
 `npm run check` passes with 228 tests.
 
-Next: wire `buildReportDayPayload` into `/api/reports/generate` in place of the
-injected test-only factory, then the summarizer run itself. Neither the payload
-builder nor the collector change has been exercised against a real day, and no
-CLI has been invoked.
+`buildReportDayPayload` is now wired into `/api/reports/generate` as the default
+`SummaryRequestFactory` (RG-1 to RG-5), so the route no longer needs an injected
+test factory. `SummaryRequest` carries `{ payload, scheduled }`.
+
+Next: the real summarizer run — the non-interactive command per CLI, output
+handling, and assembling an `AchievementReportV1`. Nothing has been exercised
+against a real day, no CLI has been invoked, and no day's size has been measured,
+so the input-limit question is still open.
+
+Open observation for Josh: conversation order in the payload follows the approved
+source scope rather than the clock, so a later Codex session can precede an
+earlier Claude Code one.
 
 Josh confirmed the changed NT-5 rule on 2026-09-18: `thinking` and `reasoning`
 are excluded entirely, are never sent to the summarizer, and a message holding

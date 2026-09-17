@@ -11,7 +11,17 @@ import { createReportStore } from "../../src/storage/report-store.js";
 type Provider = "claude-code" | "codex";
 
 interface SummaryRequest {
-  conversations: Array<{ id: string; source: Provider; text: string }>;
+  payload: {
+    date: string;
+    payloadJson: string;
+    manifest: Array<{
+      source: Provider;
+      recordId: string;
+      messageIds: readonly string[];
+    }>;
+    coverage: unknown[];
+    byteLength: number;
+  };
   scheduled: boolean;
 }
 
@@ -68,11 +78,29 @@ async function setup(
 }
 
 function request(): SummaryRequest {
-  return {
+  const payloadJson = JSON.stringify({
+    date: "2026-09-18",
     conversations: [
-      { id: "synthetic-session", source: "codex", text: "Synthetic content" },
+      {
+        source: "codex",
+        recordId: "synthetic-session",
+        messages: [
+          { id: "m-1", role: "user", time: "09:12", text: "Synthetic content" },
+        ],
+      },
     ],
+  });
+  return {
     scheduled: true,
+    payload: {
+      date: "2026-09-18",
+      payloadJson,
+      manifest: [
+        { source: "codex", recordId: "synthetic-session", messageIds: ["m-1"] },
+      ],
+      coverage: [],
+      byteLength: Buffer.byteLength(payloadJson),
+    },
   };
 }
 
@@ -227,13 +255,13 @@ test("permission: the server-built report-day payload is the only payload sent t
     (
       await app.generate({
         scheduled: true,
-        conversations: [
-          {
-            id: "browser-supplied",
-            source: "codex",
-            text: "Must not be transmitted",
-          },
-        ],
+        payload: {
+          date: "2026-09-18",
+          payloadJson: '{"date":"2026-09-18","conversations":[]}',
+          manifest: [],
+          coverage: [],
+          byteLength: 41,
+        },
       })
     ).status,
   ).toBe(400);

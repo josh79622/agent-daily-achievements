@@ -88,7 +88,16 @@ async function setup(providerLoginService?: ProviderLoginService) {
     summaryRequestFactory: {
       async create() {
         touched.push("request-factory");
-        return { conversations: [], scheduled: false };
+        return {
+          scheduled: false,
+          payload: {
+            date: "2026-09-18",
+            payloadJson: '{"date":"2026-09-18","conversations":[]}',
+            manifest: [],
+            coverage: [],
+            byteLength: 41,
+          },
+        };
       },
     },
   } as Parameters<typeof createApp>[0]);

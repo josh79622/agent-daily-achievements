@@ -165,3 +165,35 @@ with the summary-run task.
 | PB-11 | the same input builds a byte-identical payload twice, so all three re-analysis attempts reuse one payload |
 | PB-12 | a day with no sessions yields empty conversations and an empty manifest, so any evidence fails validation |
 | PB-13 | building transmits nothing and does not modify any source file |
+
+## Route wiring
+
+`/api/reports/generate` now defaults its `SummaryRequestFactory` to
+`buildReportDayPayload` whenever a collector is configured, so the previous
+test-only factory is no longer required for the route to work. `SummaryRequest`
+carries `{ payload, scheduled }` instead of a browser-shaped conversations array.
+Injection remains available for tests.
+
+Cases RG-1 to RG-5 in `test/server/report-generation.test.ts` cover this; they
+were added during implementation because every existing permission test injected
+a factory, so nothing proved the route used the real builder.
+
+| ID | Case |
+| --- | --- |
+| RG-1 | the route builds the payload from collected sessions with no injected factory |
+| RG-2 | the built payload covers only the sources in the saved permission |
+| RG-3 | an over-broad collector cannot widen the built payload |
+| RG-4 | with no collector configured the route reports no server-side builder |
+| RG-5 | a payload whose manifest carries an unpermitted source is refused |
+
+Two observations from wiring, neither resolved here:
+
+- **Conversation order follows the source scope, not the clock.** A 09:30 Codex
+  session precedes a 09:12 Claude Code one, because the collector iterates
+  sources in scope order. Ordering conversations chronologically across sources
+  would read as one day rather than as two per-source blocks. Not changed,
+  because it affects how the day is presented to the summarizer and was not part
+  of the approved design.
+- **The route's own scope check is unreachable through the default builder**,
+  which filters by scope first. It is kept for any injected builder and is
+  covered by RG-5.

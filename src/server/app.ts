@@ -23,6 +23,10 @@ import {
   writeSummaryPermission,
   type SummaryProvider,
 } from "../storage/summary-permission.js";
+import {
+  buildReportDayPayload,
+  type ReportDayPayload,
+} from "../report/report-day-payload.js";
 import type { SummarizerModelsService } from "../summarizer/model-settings.js";
 import {
   isSummaryProvider,
@@ -31,7 +35,8 @@ import {
 } from "../summarizer/provider-login.js";
 
 export interface SummaryRequest {
-  conversations: Array<{ id: string; source: SummaryProvider; text: string }>;
+  /** Built server-side; a browser can never supply it. */
+  payload: ReportDayPayload;
   scheduled: boolean;
 }
 
@@ -70,7 +75,20 @@ export function createApp({
   staticDirectory,
   summaryPermissionPath,
   summaryRunner,
-  summaryRequestFactory,
+  summaryRequestFactory = collector
+    ? {
+        async create({ scheduled, sourceScope }) {
+          return {
+            scheduled,
+            payload: await buildReportDayPayload({
+              collector,
+              date: reportDate(),
+              sourceScope,
+            }),
+          };
+        },
+      }
+    : undefined,
   availableSummaryProviders = [],
   providerLoginService,
   summarizerModels,
@@ -526,9 +544,11 @@ export function createApp({
           sourceScope: permission.sourceScope,
         });
         if (
-          summaryRequest.conversations.some(
-            (conversation) =>
-              !permission.sourceScope.includes(conversation.source),
+          summaryRequest.payload.manifest.some(
+            (record) =>
+              !permission.sourceScope.includes(
+                record.source as SummaryProvider,
+              ),
           )
         ) {
           sendJson(response, 403, {
