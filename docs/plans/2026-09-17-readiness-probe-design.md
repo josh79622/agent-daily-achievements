@@ -221,6 +221,29 @@ Option E1:
   is the likely route. Codex's allowed values and per-model support are
   unverified.
 
+### Dynamic model list research (2026-09-17, approved runs)
+
+- Codex: `codex debug models` ("Render the raw model catalog as JSON") was run
+  three times (Josh approved one; two extra runs only re-checked exit code and
+  timing): exit 0, about 0.09 seconds, a `models` array of 7 entries with
+  `slug`, `display_name`, `visibility` (`list` or `hide`), and
+  `supported_reasoning_levels` (for example `low` to `ultra`), plus large
+  built-in instructions that must be discarded. It differed from the docs page
+  (included `gpt-5.5`, omitted `gpt-5.3-codex-spark`). It is a debug command,
+  so its format is not a stable contract.
+- Claude Code: no `models` subcommand; the Anthropic `GET /v1/models` API
+  requires an API key (not approved). The Claude Agent SDK exposes a
+  `ModelInfo` type (value, resolved model, display name, supported effort
+  levels). One approved run started the local `claude` in stream-json mode with
+  no tools and no session persistence, sent only an `initialize` control
+  request and no prompt: the only message was a successful control response
+  whose `models` array had 5 entries (`default` resolving to
+  `claude-sonnet-5`, `sonnet`, `claude-fable-5[1m]`, `opus`, `haiku`), with
+  effort levels for all but `haiku`. The response also contained an `account`
+  field, which was not printed and must always be discarded. This protocol is
+  undocumented and may change; whether `initialize` uses quota is unverified
+  (no model output was observed).
+
 ## Test cases for Task P1 (IDs fixed; confirmed)
 
 Probe runner — `test/summarizer/readiness-probe.test.ts`, fake spawner, fake
