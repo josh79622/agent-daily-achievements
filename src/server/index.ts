@@ -14,9 +14,13 @@ import { createSummarizerModelsService } from "../summarizer/model-settings.js";
 import {
   createProcessRunner,
   createReadinessProbe,
-  osProbeTempDirs,
   readReplyFileFromDisk,
 } from "../summarizer/readiness-probe.js";
+import {
+  createTrackedTempDirs,
+  installShutdownCleanup,
+  sweepStaleTempDirs,
+} from "../summarizer/temp-dirs.js";
 
 const host = "127.0.0.1";
 const port = Number.parseInt(process.env.PORT ?? "4317", 10);
@@ -33,11 +37,15 @@ const collector = createLocalCollector({
 // the local page (docs/plans/2026-09-17-readiness-probe-design.md).
 const executor = createLocalCommandExecutor();
 const macOS = process.platform === "darwin";
+// Remove leftovers from runs interrupted earlier, then clean up on stop.
+await sweepStaleTempDirs();
+const tempDirs = createTrackedTempDirs();
+installShutdownCleanup({ tempDirs });
 const modelCatalog = macOS
   ? createModelCatalogLoader({
       locate: (name) => executor.locate(name),
       runner: createProcessRunner(),
-      tempDirs: osProbeTempDirs,
+      tempDirs,
     })()
   : undefined;
 const summarizerModels = modelCatalog
@@ -52,7 +60,7 @@ const providerLoginService = macOS
       launcher: createMacTerminalLauncher(),
       probe: createReadinessProbe({
         runner: createProcessRunner(),
-        tempDirs: osProbeTempDirs,
+        tempDirs,
         readReplyFile: readReplyFileFromDisk,
       }),
       summarySettings: async (provider) =>
