@@ -147,6 +147,7 @@ test("serves collector metadata before a selected local preview", async () => {
     async collect() {
       return {
         date: "2026-09-16",
+        timeZone: "UTC",
         sources: [
           { source: "claude-code", sessions: 1, issues: 0, state: "available" },
           { source: "codex", sessions: 0, issues: 0, state: "no-activity" },

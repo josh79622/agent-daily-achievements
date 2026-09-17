@@ -84,10 +84,16 @@ that work.
 
 ## Next task
 
-Phase 5. Task NT (collector non-text placeholders) is complete and verified
-(`2a652d5`). Next is Task PB, the server-side payload builder and evidence
-manifest, whose cases PB-1 to PB-13 Josh approved in
+Phase 5. Task NT (collector non-text placeholders, `2a652d5`) and Task PB
+(server-side payload builder and evidence manifest) are both complete and
+verified against
 [the payload design](docs/plans/2026-09-18-report-day-payload-design.md).
+`npm run check` passes with 228 tests.
+
+Next: wire `buildReportDayPayload` into `/api/reports/generate` in place of the
+injected test-only factory, then the summarizer run itself. Neither the payload
+builder nor the collector change has been exercised against a real day, and no
+CLI has been invoked.
 
 Josh confirmed the changed NT-5 rule on 2026-09-18: `thinking` and `reasoning`
 are excluded entirely, are never sent to the summarizer, and a message holding

@@ -29,7 +29,7 @@ async function setup(collector?: LocalCollector) {
       collector: collector ?? {
         async collect(date, sources = []) {
           calls.push([...sources]);
-          return { date, sources: [], sessions: [] };
+          return { date, timeZone: "UTC", sources: [], sessions: [] };
         },
       },
     });
@@ -70,6 +70,7 @@ test("consent: known sessions from an unselected source cannot be previewed", as
     async collect(date) {
       return {
         date,
+        timeZone: "UTC",
         sources: [
           { source: "codex", sessions: 1, issues: 0, state: "available" },
         ],
@@ -222,7 +223,7 @@ test("consent: source scope stays locked until an in-flight collection finishes"
       calls.push([...sources]);
       started();
       await waiting;
-      return { date, sources: [], sessions: [] };
+      return { date, timeZone: "UTC", sources: [], sessions: [] };
     },
   });
   expect((await app.save(["codex"])).status).toBe(200);
@@ -251,7 +252,7 @@ test("consent: a source change begun before collection is rejected if its body f
     async collect(date) {
       started();
       await waiting;
-      return { date, sources: [], sessions: [] };
+      return { date, timeZone: "UTC", sources: [], sessions: [] };
     },
   });
   expect((await app.save(["codex"])).status).toBe(200);

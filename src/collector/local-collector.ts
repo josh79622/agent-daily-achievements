@@ -56,6 +56,8 @@ export interface SourceCoverage {
 
 export interface CollectionSummary {
   date: string;
+  /** The zone the day boundaries were computed in. */
+  timeZone: string;
   sources: SourceCoverage[];
   sessions: CollectedSession[];
 }
@@ -93,7 +95,7 @@ export function createLocalCollector(
         sources.push(sourceCoverage(source, result));
         sessions.push(...result.sessions);
       }
-      return { date, sources, sessions };
+      return { date, timeZone, sources, sessions };
     },
   };
 }

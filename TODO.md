@@ -159,8 +159,20 @@ generation moved here and comes first.
       removes the execution evidence that separates a stated intention from a
       completed task. Test cases NT-1 to NT-8 in
       [the payload design](docs/plans/2026-09-18-report-day-payload-design.md).
-- [ ] Build the server-side report-day payload and evidence manifest from
-      collected sessions. Format approved on 2026-09-18: simplified, minified
+- [x] Build the server-side report-day payload and evidence manifest from
+      collected sessions. (see the commit for this item)
+  - PB-1 to PB-13 pass in `test/report/report-day-payload.test.ts`;
+    `npm run check` passed with 228 tests; twelve deliberate mutations were each
+    caught. Synthetic records only; nothing was transmitted and no CLI ran.
+  - `CollectionSummary` now carries the `timeZone` its day boundaries were
+    computed in, so payload times cannot be labelled in a different zone, and
+    the contract's coverage reasons were extended per D2.
+  - PB-5 initially passed against a fake collector that filtered by scope
+    itself, so it tested the fake rather than the builder; a mutation that
+    removed the builder's own scope check went undetected. The fake is now
+    deliberately over-broad.
+  - Not wired into `/api/reports/generate` yet, and no day has been measured.
+      Original scope: Format approved on 2026-09-18: simplified, minified
       JSON with structural IDs, no coverage or version fields inside the
       payload. Bulk tool output is capped head + tail, content-blind and
       disclosed, per

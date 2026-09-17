@@ -28,7 +28,13 @@ export interface ReportCoverage {
   source: ReportSource;
   state: CoverageState;
   reason?:
-    "unreadable" | "unsupported-format" | "partial-write" | "collection-failed";
+    | "collection-failed"
+    | "duplicate-conflict"
+    | "duplicate-session"
+    | "malformed-record"
+    | "partial-write"
+    | "unreadable"
+    | "unsupported-format";
 }
 
 /** The records actually sent to the summarizer, built server-side. */
