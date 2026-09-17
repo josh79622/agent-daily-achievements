@@ -158,9 +158,10 @@ test("consent: malformed input and foreign origin/host cannot authorize reads", 
   assert.deepEqual(app.calls, []);
 });
 
-test("consent: withdrawal discards an in-flight response and blocks later preview", async (t) => {
+test("consent: source scope stays locked until an in-flight collection finishes", async (t) => {
   let release!: () => void;
   let started!: () => void;
+  const calls: LocalSource[][] = [];
   const waiting = new Promise<void>((resolve) => {
     release = resolve;
   });
@@ -168,7 +169,8 @@ test("consent: withdrawal discards an in-flight response and blocks later previe
     started = resolve;
   });
   const app = await setup(t, {
-    async collect(date) {
+    async collect(date, sources = []) {
+      calls.push([...sources]);
       started();
       await waiting;
       return { date, sources: [], sessions: [] };
@@ -177,8 +179,12 @@ test("consent: withdrawal discards an in-flight response and blocks later previe
   assert.equal((await app.save(["codex"])).status, 200);
   const pending = app.get("/api/collector/today");
   await reading;
-  assert.equal((await app.save([])).status, 200);
+  const scopeChange = await app.save(["claude-code"]);
   release();
-  assert.equal((await pending).status, 403);
-  assert.equal((await app.get("/api/collector/sessions/known")).status, 403);
+  assert.equal(scopeChange.status, 409);
+  assert.equal((await pending).status, 200);
+  assert.deepEqual(calls, [["codex"]]);
+  assert.equal((await app.save(["claude-code"])).status, 200);
+  assert.equal((await app.get("/api/collector/today")).status, 200);
+  assert.deepEqual(calls, [["codex"], ["claude-code"]]);
 });
