@@ -1,7 +1,8 @@
 # Readiness probe design
 
 Status: **in progress — decided one item at a time with Josh.** Decision A is
-B, and C are approved; D–E are not decided. No probe code is written and no real probe has
+B, C, and the purpose and pass rule of D are approved (A amended by D); the
+remaining D details and E are not decided. No probe code is written and no real probe has
 run.
 
 ## Task framing
@@ -15,15 +16,16 @@ run.
 ## A — Probe command (approved by Josh, 2026-09-17)
 
 Both commands run from a new empty temporary directory, persist no session,
-and receive only a fixed fictional prompt asking for `{"ok": true}` constrained
-by a JSON schema. Option names come from the installed CLIs' `--help` output
+and receive only a fixed fictional prompt. **Amended by decision D:** no JSON
+schema option is passed, because the probe checks liveness, not format
+compliance. Option names come from the installed CLIs' `--help` output
 (Codex CLI 0.154.0, Claude Code 2.1.226); neither command has been run yet.
 
 Claude Code:
 
 ```text
 claude -p --tools "" --no-session-persistence --strict-mcp-config \
-  --output-format json --json-schema <schema> "<fixed prompt>"
+  --output-format json [--model <model>] "<fixed prompt>"
 ```
 
 - `--tools ""` disables all built-in tools per `--help`.
@@ -34,7 +36,8 @@ Codex (option A2, chosen over A1):
 
 ```text
 codex exec --ephemeral --skip-git-repo-check --ignore-user-config \
-  --sandbox read-only --color never --output-schema <schema> \
+  --sandbox read-only --color never \
+  -o <reply file in the temporary directory> [-m <model>] \
   -C <empty temporary directory> \
   --disable shell_tool --disable unified_exec --disable browser_use \
   --disable computer_use --disable apps --disable plugins \
@@ -119,10 +122,40 @@ Option C1: the probe runs only when Josh clicks "Check readiness".
   sends requests without a deliberate action. Running before each daily report
   (C4) is deferred to Phase 6 scheduling design.
 
+## D — Probe purpose and pass rule (approved by Josh, 2026-09-17)
+
+Option X: the probe is a **liveness check**, not a format-compliance check.
+
+- Question answered: can the CLI start, is it signed in, is there quota, does
+  the runtime and network work, and does a model respond?
+- An attempt passes when it finishes within the time limit, exits with code 0,
+  and a non-empty reply arrives through the reply channel (Codex: the `-o`
+  reply file; Claude Code: the reply field of `--output-format json`). Reply
+  content is not otherwise checked, and text is never searched for words such
+  as "ok".
+- Decision A is amended: `--output-schema` and `--json-schema` are removed.
+  Forcing a format would add a failure unrelated to liveness.
+- Rejected option Y (summary model only, exact `{"ok": true}` match): costlier
+  per check, would change B, and a tiny schema is weak evidence that a model
+  can produce a valid report.
+- Format compliance is established elsewhere: the eval set run before choosing
+  a model (blocked item #1, scored by `src/report/eval-scorer.ts`), and the
+  strict report validator on every real run (`src/report/contract.ts`).
+- Unverified: which exit codes each CLI returns for rate limits or expired
+  sign-in, the exact Claude Code reply field, and the exact `-o` file contents.
+  Parsing fails closed until confirmed after the first real run.
+
+Remaining D details proposed, not yet confirmed:
+
+- D1: time limit 60 seconds per attempt; stop, then force-kill on timeout.
+- D3: read only the reply channel, in memory, capped at 64 KB; never show,
+  log, or save it; delete the temporary directory afterwards.
+- D4: failure reasons are fixed codes per attempt (`timed out`,
+  `exited with error`, `empty reply`, `could not start`), with no reply or
+  error text.
+
 ## Not yet decided
 
-- D — pass criteria (proposal: exit 0 within 60 seconds and exactly
-  `{"ok": true}`; the reply is never shown, logged, or saved).
 - E — how long Ready lasts (proposal: memory only until restart or re-check).
 
 Test cases are proposed only after A–E are decided.
