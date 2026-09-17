@@ -78,7 +78,10 @@
     CLI: that Codex accepts `-c model_reasoning_effort` values such as `max`
     or `ultra`, and Claude Code `--effort`, in a probe second attempt or a
     summary run.
-- [ ] Define the report contract: 0–5 achievements (Josh changed the cap from three on 2026-09-17), evidence links, incomplete coverage, and achievement-level deduplication.
+  - Josh restarted the dev server on 2026-09-18 and confirmed the effort
+    dropdown options match each model. Still not verified with a real CLI:
+    an effort option actually passed in a probe second attempt or summary run.
+- [x] Define the report contract: 0–5 achievements (Josh changed the cap from three on 2026-09-17), evidence links, incomplete coverage, and achievement-level deduplication.
   - Design, decisions D1–D3, and RC/RA/RS/EV cases approved in
     [the report contract design](docs/plans/2026-09-17-report-contract-design.md).
   - Task 1 validation: RC-1 through RC-9 pass in
@@ -93,8 +96,21 @@
     `test/report/eval-scorer.test.ts` (13 tests) against
     `test/fixtures/report-eval/synthetic-set-02.json`; six deliberate scorer
     mutations were each caught; `npm run check` passed. No model was run
-    against the set. Task 5 (status records) remains.
-- [ ] Expand the pre-labelled evaluation set before prompt iteration.
+    against the set.
+  - Task 5 (2026-09-18): the 41 report tests and `npm run check` (200 tests)
+    passed again before marking this item complete. Scope as implemented:
+    evidence is traceable by source, record ID, and optional message IDs;
+    clickable trace-back links belong to Phase 5. Deterministic validation
+    rejects exact duplicates (same category and evidence set); semantic
+    duplicates across different evidence are checked by the eval scorer and
+    human review, not by the validator. No real summarizer is connected.
+- [x] Expand the pre-labelled evaluation set before prompt iteration.
+  - Eight fictional cases with predetermined required, forbidden, duplicate,
+    source-ID, and coverage expectations were approved on 2026-09-17 in
+    [synthetic set 02](docs/evals/synthetic-set-02.md) and made
+    machine-readable in `test/fixtures/report-eval/synthetic-set-02.json`,
+    scored by `src/report/eval-scorer.ts`. No Codex or Claude Code run has used
+    this set; prompt iteration has not started.
 
 ### Phase 5 — Report control
 

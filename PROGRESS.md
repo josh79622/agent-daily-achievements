@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 4 — Report intelligence**
+**Phase 4 — Report intelligence** (not complete)
 
-The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the executing computer's local calendar day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. Phase 3 has passed its exit review; Phase 4 will define the separately consented report-generation path.
+Phase 3 passed its exit review. Phase 4 now has a separate external-summarization permission gate, a validated report contract with fictional evaluation cases, and local provider sign-in, readiness, model, and effort controls. No real summarizer runs against conversation content yet.
 
 ## Completed
 
@@ -58,6 +58,18 @@ The project has moved past an experience-only prototype. A local collector demo 
     current builder and runner are test-only; no real CLI is detected or
     invoked yet.
 
+- Phase 4 report contract (2026-09-17/18):
+  - 0–5 achievements with traceable evidence; malformed or over-limit output
+    fails closed as incomplete; more than five triggers at most three attempts;
+    status and coverage come only from local facts;
+  - eight approved fictional evaluation cases and a deterministic scorer; no
+    model has been run against them.
+- Phase 4 provider readiness (2026-09-17/18):
+  - sign-in controls, a zero-conversation readiness probe run only on request,
+    and per-provider summary model and effort settings from fetched model
+    lists with a built-in fallback; both real CLIs showed Ready, and Josh
+    confirmed the real model and effort dropdowns.
+
 ## Important boundaries
 
 - The collector must not transmit records, persist conversation text, or commit private data.
@@ -66,13 +78,20 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-- Optional real check of the effort dropdown after restarting the dev server
-  (the settings file moves to version 2 on the next save).
-- Report contract Task 5: record verified status for the report contract and
-  eval-set items.
+- Decide with Josh whether "Detect available selected Claude Code/Codex CLI and
+  represent failures without silent fallback" is complete, given the
+  unverified items recorded in `TODO.md` (which probe attempt passed, Codex
+  tool-disable effect, real failure-path exit codes, effort passed to a real
+  CLI).
+- Phase 4 is not complete until that item is resolved and a Phase 4 exit
+  review is done.
 
 ## Latest verification
 
+- Report contract Task 5 (2026-09-18): 41 report tests and `npm run check`
+  with 200 tests passed on Node v24.20.0 before the report contract and
+  evaluation-set items were marked complete. Josh confirmed the real effort
+  dropdown after restarting the dev server.
 - Summary effort setting Task P3: `npm run check` passed with 200 tests; all
   effort tests use fake lists or runners; the dropdown was viewed in the
   browser pane against fake lists. No real CLI received an effort option.

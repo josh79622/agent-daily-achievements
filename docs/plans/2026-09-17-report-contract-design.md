@@ -1,7 +1,8 @@
 # Report contract and output validation design
 
 Status: **approved by Josh on 2026-09-17** (decisions D1–D3 and the RC, RA,
-RS, and EV test cases). Implementation proceeds task by task.
+RS, and EV test cases). Tasks 1–5 are complete as of 2026-09-18; see
+`TODO.md` for scope notes and verification.
 
 ## Task framing
 
