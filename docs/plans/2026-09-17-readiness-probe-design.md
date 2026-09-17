@@ -150,9 +150,19 @@ D details (approved by Josh, 2026-09-17):
 - D1: time limit 60 seconds per attempt; stop, then force-kill on timeout.
 - D3: read only the reply channel, in memory, capped at 64 KB; never show,
   log, or save it; delete the temporary directory afterwards.
-- D4: failure reasons are fixed codes per attempt (`timed out`,
-  `exited with error`, `empty reply`, `could not start`), with no reply or
-  error text.
+- D4: failure reasons are fixed codes per attempt, with no reply or error
+  text. Amended by Josh on 2026-09-17 (option R3) to six codes:
+  - `could not start` — the process could not be spawned;
+  - `timed out` — still running at the time limit;
+  - `exited with error` — non-zero exit code;
+  - `empty reply` — no reply, whitespace only, or no reply field;
+  - `unreadable reply` — the reply channel could not be parsed;
+  - `reply too large` — the reply exceeded 64 KB.
+
+  The codes are kept specific at the source so later CLI runs (for example the
+  summary run) can reuse them; the UI may group them for display. A code is
+  added only when the condition can be detected without reading reply or error
+  text; for example, rate limit and expired sign-in are not distinguished.
 
 ## E — How long Ready lasts (approved by Josh, 2026-09-17)
 
@@ -191,7 +201,7 @@ clock, and fake temporary directories only:
 | PR-4 | If the first attempt fails, a second attempt runs with the summary model (no model option for the default); if it passes, the result is Ready. |
 | PR-5 | If both attempts fail, the result is Not ready with one fixed reason code per attempt. |
 | PR-6 | If the summary model equals the lowest-cost model, only one attempt runs. |
-| PR-7 | An attempt passes only with exit code 0 and a non-empty reply from the reply channel (Codex `-o` file; Claude Code JSON reply field). Non-zero exit is `exited with error`; a missing, unparseable, whitespace-only, or over-64 KB reply is `empty reply`. |
+| PR-7 | An attempt passes only with exit code 0 and a non-empty reply from the reply channel (Codex `-o` file; Claude Code JSON reply field). Non-zero exit is `exited with error`; a missing, whitespace-only, or absent reply field is `empty reply`; an unparseable reply channel is `unreadable reply`; a reply over 64 KB is `reply too large`. |
 | PR-8 | An attempt still running at 60 seconds is stopped, force-killed if it does not exit, and reported as `timed out`. |
 | PR-9 | A spawn error is `could not start`. |
 | PR-10 | Reply text, stderr, and environment values never appear in any result, and the temporary directory is removed after pass, failure, timeout, and spawn error. |
