@@ -64,4 +64,5 @@ test("builds the report sign-in panel without credential or command surfaces", a
   expect(panel).not.toMatch(/conversation preview/i);
   expect(app).toMatch(/api\/summarizer\/providers/);
   expect(app).toMatch(/\/login`/);
+  expect(app).toMatch(/Not ready: /);
 });

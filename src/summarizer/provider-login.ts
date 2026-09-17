@@ -54,6 +54,10 @@ interface ProviderDefinition {
   installUrl: string;
   login: readonly string[];
   status: readonly string[];
+  // The status command's documented "not logged in" exit code. Any other
+  // non-zero exit (a crashed wrapper, a signal, a timeout) is not proof that
+  // sign-in is required.
+  unauthenticatedExitCode: number;
 }
 
 const definitions: Record<SummaryProvider, ProviderDefinition> = {
@@ -63,6 +67,9 @@ const definitions: Record<SummaryProvider, ProviderDefinition> = {
     installUrl: "https://github.com/openai/codex#quickstart",
     login: ["login"],
     status: ["login", "status"],
+    // codex-rs/cli/src/login.rs: "Not logged in" exits 1. An auth-file read
+    // error also exits 1 and cannot be told apart without reading output.
+    unauthenticatedExitCode: 1,
   },
   "claude-code": {
     label: "Claude Code",
@@ -70,6 +77,8 @@ const definitions: Record<SummaryProvider, ProviderDefinition> = {
     installUrl: "https://docs.claude.com/en/docs/claude-code/setup",
     login: ["auth", "login"],
     status: ["auth", "status"],
+    // CLI reference: "Exits with code 0 if logged in, 1 if not".
+    unauthenticatedExitCode: 1,
   },
 };
 
@@ -101,8 +110,7 @@ export function executableName(provider: SummaryProvider): string {
 
 const reasons = {
   statusUnavailable: "Sign-in status could not be checked.",
-  probeUnapproved:
-    "Signed in, but a readiness check has not been approved yet.",
+  probeUnapproved: "Signed in; no readiness check has been approved yet.",
   probeFailed: "The readiness check did not pass.",
   launchFailed: "Sign-in could not be started.",
 } as const;
@@ -138,14 +146,17 @@ export function createProviderLoginService({
       launched.delete(provider);
       return result(provider, "not-installed");
     }
-    let signedIn: boolean;
+    let exitCode: number | null;
     try {
       // Only the exit code is used; command output is never inspected.
-      signedIn = (await executor.run(path, definition.status)).exitCode === 0;
+      ({ exitCode } = await executor.run(path, definition.status));
     } catch {
       return result(provider, "probe-failed", reasons.statusUnavailable);
     }
-    if (!signedIn) {
+    if (exitCode !== 0 && exitCode !== definition.unauthenticatedExitCode) {
+      return result(provider, "probe-failed", reasons.statusUnavailable);
+    }
+    if (exitCode === definition.unauthenticatedExitCode) {
       return result(
         provider,
         launched.has(provider) ? "login-in-progress" : "sign-in-required",

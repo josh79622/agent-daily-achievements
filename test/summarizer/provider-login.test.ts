@@ -30,7 +30,7 @@ function fakeExecutor(options: FakeOptions = {}) {
       runs.push({ file, args });
       if (options.statusError) throw new Error(secret);
       return {
-        exitCode: options.statusExitCode ?? 0,
+        exitCode: "statusExitCode" in options ? options.statusExitCode! : 0,
         stdout: secret,
         stderr: secret,
       };
@@ -79,6 +79,26 @@ for (const provider of providers) {
     ]);
   });
 
+  test(`${provider}: an unexpected status exit is status-unavailable, never sign-in-required`, async () => {
+    // Codex source and Claude Code docs both use exit 1 for "not logged in";
+    // 134 is what a crashing CLI wrapper (SIGABRT) returns on this Mac.
+    for (const statusExitCode of [134, 2, 127, 255, null]) {
+      const { executor } = fakeExecutor({ statusExitCode });
+      const { launcher } = fakeLauncher();
+      const service = createProviderLoginService({ executor, launcher });
+
+      const status = await service.status(provider);
+      expect(status, `exit ${statusExitCode}`).toMatchObject({
+        state: "probe-failed",
+        reason: "Sign-in status could not be checked.",
+      });
+      expect(JSON.stringify(status)).not.toContain("SECRET");
+
+      await service.startLogin(provider);
+      expect((await service.status(provider)).state).toBe("probe-failed");
+    }
+  });
+
   test(`${provider}: signed in without an approved probe is never ready`, async () => {
     const { executor } = fakeExecutor({ statusExitCode: 0 });
     const service = createProviderLoginService({
@@ -89,7 +109,9 @@ for (const provider of providers) {
     const status = await service.status(provider);
     expect(status.state).not.toBe("ready");
     expect(status.state).toBe("probe-failed");
-    expect(status.reason).toMatch(/not been approved/);
+    expect(status.reason).toBe(
+      "Signed in; no readiness check has been approved yet.",
+    );
   });
 
   test(`${provider}: probe success is ready; probe failure is sanitized probe-failed`, async () => {

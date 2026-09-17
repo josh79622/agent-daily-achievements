@@ -518,7 +518,7 @@ function renderSignin(status: SigninStatus): void {
     "sign-in-required": "Sign-in required.",
     "login-in-progress": `Sign-in started. Complete it in the Terminal window, then choose Check again.`,
     ready: "Ready.",
-    "probe-failed": status.reason ?? "The readiness check did not pass.",
+    "probe-failed": `Not ready: ${status.reason ?? "The readiness check did not pass."}`,
   };
   requiredElement(`signin-status-${status.provider}`).textContent =
     messages[status.state] ?? "Unknown state.";
