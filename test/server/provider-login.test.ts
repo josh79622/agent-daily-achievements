@@ -55,6 +55,7 @@ function fakeService() {
       checks.push(provider);
       return {
         ...statusFor(provider, "probe-failed"),
+        signedIn: true,
         reason: "The readiness check did not pass.",
         checkedAt: "2026-09-18T04:32:00.000Z",
         probeFailures: [
@@ -271,6 +272,7 @@ test("PR-16: POST readiness runs only that provider's check and returns only saf
         label: provider === "codex" ? "Codex" : "Claude Code",
         state: "probe-failed",
         installUrl: "https://example.test/install",
+        signedIn: true,
         reason: "The readiness check did not pass.",
         checkedAt: "2026-09-18T04:32:00.000Z",
         probeFailures: [

@@ -628,6 +628,7 @@ describe("PR-11 to PR-15 readiness state", () => {
       label: "Claude Code",
       state: "ready",
       installUrl: expect.stringMatching(/^https:/),
+      signedIn: true,
       checkedAt: "2026-09-18T04:32:00.000Z",
     });
     expect(await service.status("claude-code")).toMatchObject({
@@ -720,4 +721,36 @@ describe("PR-11 to PR-15 readiness state", () => {
     });
     expect(JSON.stringify(status)).not.toMatch(/SECRET|sk-test/);
   });
+});
+
+test("PR-17 support: only signed-in statuses carry signedIn, so the page can enable Check readiness", async () => {
+  const { createProviderLoginService } =
+    await import("../../src/summarizer/provider-login.js");
+  const cases: Array<[number | "missing", boolean]> = [
+    [0, true],
+    [1, false],
+    [134, false],
+    ["missing", false],
+  ];
+  for (const [exitCode, signedIn] of cases) {
+    const service = createProviderLoginService({
+      executor: {
+        async locate(name) {
+          return exitCode === "missing" ? undefined : `/fake/bin/${name}`;
+        },
+        async run() {
+          return {
+            exitCode: exitCode === "missing" ? 1 : exitCode,
+            stdout: "",
+            stderr: "",
+          };
+        },
+      },
+      launcher: { async launch() {} },
+      probe: async () => ({ ok: true }),
+    });
+    const status = await service.status("codex");
+    if (signedIn) expect(status.signedIn).toBe(true);
+    else expect(status).not.toHaveProperty("signedIn");
+  }
 });

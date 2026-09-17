@@ -19,6 +19,8 @@ export interface ProviderLoginStatus {
   state: ProviderLoginState;
   installUrl: string;
   reason?: string;
+  /** Present only when the status command reported a signed-in provider. */
+  signedIn?: true;
   /** When the held readiness result was checked (ISO 8601). */
   checkedAt?: string;
   probeFailures?: ProbeAttemptFailure[];
@@ -190,25 +192,25 @@ export function createProviderLoginService({
       );
     }
     launched.delete(provider);
+    const signedIn = (
+      state: ProviderLoginState,
+      reason?: string,
+    ): ProviderLoginStatus => ({
+      ...result(provider, state, reason),
+      signedIn: true,
+    });
     if (checking.has(provider))
-      return {
-        ...result(provider, "probe-failed", reasons.checking),
-        checking: true,
-      };
+      return { ...signedIn("probe-failed", reasons.checking), checking: true };
     const readiness = held.get(provider);
     if (readiness?.kind === "ready")
-      return {
-        ...result(provider, "ready"),
-        checkedAt: readiness.checkedAt,
-      };
+      return { ...signedIn("ready"), checkedAt: readiness.checkedAt };
     if (readiness?.kind === "failed")
       return {
-        ...result(provider, "probe-failed", reasons.probeFailed),
+        ...signedIn("probe-failed", reasons.probeFailed),
         checkedAt: readiness.checkedAt,
         probeFailures: readiness.failures,
       };
-    return result(
-      provider,
+    return signedIn(
       "probe-failed",
       probe ? reasons.notChecked : reasons.probeUnavailable,
     );

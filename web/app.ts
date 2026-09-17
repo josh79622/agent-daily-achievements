@@ -432,7 +432,25 @@ interface SigninStatus {
     | "probe-failed";
   installUrl: string;
   reason?: string;
+  signedIn?: true;
+  checkedAt?: string;
+  probeFailures?: Array<{ attempt: string; reason: string }>;
+  checking?: true;
 }
+
+// Display labels for the fixed probe codes; no reply or error text is shown.
+const probeReasonLabels: Record<string, string> = {
+  "could-not-start": "could not start",
+  "timed-out": "timed out",
+  "exited-with-error": "exited with error",
+  "empty-reply": "empty reply",
+  "unreadable-reply": "unreadable reply",
+  "reply-too-large": "reply too large",
+};
+const probeAttemptLabels: Record<string, string> = {
+  "lowest-cost-model": "lowest-cost model",
+  "summary-model": "summary model",
+};
 
 const signinProviders: SigninProvider[] = ["codex", "claude-code"];
 const signinToggle = requiredElement<HTMLButtonElement>("signin-toggle");
@@ -453,6 +471,10 @@ for (const provider of signinProviders) {
   signinButton(provider).addEventListener(
     "click",
     () => void startSignin(provider),
+  );
+  readinessButton(provider).addEventListener(
+    "click",
+    () => void checkReadiness(provider),
   );
 }
 
@@ -511,18 +533,69 @@ async function startSignin(provider: SigninProvider): Promise<void> {
   }
 }
 
+function readinessButton(provider: SigninProvider): HTMLButtonElement {
+  return requiredElement<HTMLButtonElement>(`signin-readiness-${provider}`);
+}
+
+// Runs the zero-conversation probe only on this explicit click (decision C1).
+async function checkReadiness(provider: SigninProvider): Promise<void> {
+  readinessButton(provider).disabled = true;
+  requiredElement(`signin-status-${provider}`).textContent =
+    "Checking readiness…";
+  try {
+    const { provider: status } = await api<{ provider: SigninStatus }>(
+      `/api/summarizer/providers/${provider}/readiness`,
+      { method: "POST" },
+    );
+    if (!signinPanel.hidden) renderSignin(status);
+  } catch (error) {
+    if (signinPanel.hidden) return;
+    requiredElement(`signin-status-${provider}`).textContent =
+      error instanceof Error ? error.message : "Readiness check unavailable.";
+    readinessButton(provider).disabled = false;
+  }
+}
+
+function clockTime(checkedAt: string | undefined): string | undefined {
+  const date = checkedAt ? new Date(checkedAt) : undefined;
+  if (!date || Number.isNaN(date.getTime())) return undefined;
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function notReadyMessage(status: SigninStatus): string {
+  if (status.checking) return "Checking readiness…";
+  if (status.probeFailures?.length)
+    return `Not ready${
+      clockTime(status.checkedAt)
+        ? ` (checked ${clockTime(status.checkedAt)})`
+        : ""
+    }: ${status.probeFailures
+      .map(
+        (failure) =>
+          `${probeAttemptLabels[failure.attempt] ?? "attempt"} ${
+            probeReasonLabels[failure.reason] ?? "failed"
+          }`,
+      )
+      .join("; ")}.`;
+  return `Not ready: ${status.reason ?? "The readiness check did not pass."}`;
+}
+
 function renderSignin(status: SigninStatus): void {
   if (!signinProviders.includes(status.provider)) return;
   const messages: Record<SigninStatus["state"], string> = {
     "not-installed": `${status.label} is not installed.`,
     "sign-in-required": "Sign-in required.",
     "login-in-progress": `Sign-in started. Complete it in the Terminal window, then choose Check again.`,
-    ready: "Ready.",
-    "probe-failed": `Not ready: ${status.reason ?? "The readiness check did not pass."}`,
+    ready: `Ready (checked ${clockTime(status.checkedAt) ?? "just now"})`,
+    "probe-failed": notReadyMessage(status),
   };
   requiredElement(`signin-status-${status.provider}`).textContent =
     messages[status.state] ?? "Unknown state.";
   signinButton(status.provider).disabled = status.state === "not-installed";
+  readinessButton(status.provider).disabled =
+    status.signedIn !== true || status.checking === true;
   const install = requiredElement<HTMLAnchorElement>(
     `signin-install-${status.provider}`,
   );

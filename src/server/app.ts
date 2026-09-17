@@ -551,6 +551,7 @@ export function createApp({
 function safeStatus(status: ProviderLoginStatus): ProviderLoginStatus {
   const { provider, label, state, installUrl } = status;
   const safe: ProviderLoginStatus = { provider, label, state, installUrl };
+  if (status.signedIn === true) safe.signedIn = true;
   if (typeof status.reason === "string") safe.reason = status.reason;
   if (typeof status.checkedAt === "string") safe.checkedAt = status.checkedAt;
   if (Array.isArray(status.probeFailures))
