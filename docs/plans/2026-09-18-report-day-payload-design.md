@@ -1,7 +1,8 @@
 # Design: report-day payload and evidence manifest
 
-Date: 2026-09-18. Phase 5, first item. **Not yet approved — test cases below
-await Josh's confirmation before any test code is written.**
+Date: 2026-09-18. Phase 5, first item. Josh approved the decisions and all test
+cases on 2026-09-18; both tasks are implemented and verified, and the builder is
+wired into `/api/reports/generate`. Changes made after approval are marked below.
 
 ## What cannot be seen now → what will be visible when done
 
@@ -99,7 +100,7 @@ Placeholder forms (`text` parts are unchanged):
 | NT-2 | a message whose only content is an image is kept, with the placeholder as its text |
 | NT-3 | a `tool_use` block keeps its name and input verbatim in a `tool_use` part |
 | NT-4 | a `tool_result` block records success or error, then its content, in a `tool_result` part |
-| NT-5 | a `thinking` block is excluded, and a message left with no other part counts as an issue |
+| NT-5 | deliberation blocks are excluded without reporting an issue (changed after approval; see D1) |
 | NT-6 | a message with no representable content counts as an issue, so the source shows `incomplete` rather than `available` |
 | NT-7 | an unrecognized block kind becomes a generic placeholder rather than being dropped |
 | NT-8 | `text` remains the joined form of the parts, and existing session merging, ordering and report-day filtering are unchanged |
