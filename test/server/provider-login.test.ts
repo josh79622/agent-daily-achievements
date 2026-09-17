@@ -23,6 +23,7 @@ afterEach(async () => {
 
 function fakeService() {
   const logins: SummaryProvider[] = [];
+  const checks: SummaryProvider[] = [];
   const statusFor = (
     provider: SummaryProvider,
     state: ProviderLoginStatus["state"],
@@ -51,10 +52,19 @@ function fakeService() {
       return statusFor(provider, "login-in-progress");
     },
     async checkReadiness(provider) {
-      return statusFor(provider, "sign-in-required");
+      checks.push(provider);
+      return {
+        ...statusFor(provider, "probe-failed"),
+        reason: "The readiness check did not pass.",
+        checkedAt: "2026-09-18T04:32:00.000Z",
+        probeFailures: [
+          { attempt: "lowest-cost-model", reason: "timed-out", detail: secret },
+          { attempt: "summary-model", reason: "empty-reply" },
+        ],
+      } as ProviderLoginStatus;
     },
   };
-  return { service, logins };
+  return { service, logins, checks };
 }
 
 async function setup(providerLoginService?: ProviderLoginService) {
@@ -241,4 +251,80 @@ test("providers: routes never collect sessions or invoke summarization", async (
   });
 
   expect(app.touched).toEqual([]);
+});
+
+test("PR-16: POST readiness runs only that provider's check and returns only safe fields", async () => {
+  for (const provider of ["codex", "claude-code"] as const) {
+    const { service, checks, logins } = fakeService();
+    const app = await setup(service);
+
+    const response = await app.send(
+      "POST",
+      `/api/summarizer/providers/${provider}/readiness`,
+      { origin: app.origin },
+    );
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      provider: {
+        provider,
+        label: provider === "codex" ? "Codex" : "Claude Code",
+        state: "probe-failed",
+        installUrl: "https://example.test/install",
+        reason: "The readiness check did not pass.",
+        checkedAt: "2026-09-18T04:32:00.000Z",
+        probeFailures: [
+          { attempt: "lowest-cost-model", reason: "timed-out" },
+          { attempt: "summary-model", reason: "empty-reply" },
+        ],
+      },
+    });
+    expect(response.body).not.toContain("SECRET");
+    expect(checks).toEqual([provider]);
+    expect(logins).toEqual([]);
+    expect(app.touched).toEqual([]);
+  }
+});
+
+test("PR-16: readiness rejects unknown providers, bodies, non-local or cross-site requests, and other methods", async () => {
+  const { service, checks } = fakeService();
+  const app = await setup(service);
+  const readiness = "/api/summarizer/providers/codex/readiness";
+
+  const statuses = (
+    await Promise.all([
+      app.send("POST", "/api/summarizer/providers/bash/readiness", {
+        origin: app.origin,
+      }),
+      app.send(
+        "POST",
+        readiness,
+        { origin: app.origin, "content-type": "application/json" },
+        JSON.stringify({ model: "--dangerously-bypass-approvals-and-sandbox" }),
+      ),
+      app.send("POST", readiness, {}),
+      app.send("POST", readiness, { origin: "http://evil.test" }),
+      app.send("POST", readiness, { origin: app.origin, host: "evil.test" }),
+      app.send("POST", readiness, {
+        origin: app.origin,
+        "sec-fetch-site": "cross-site",
+      }),
+      app.send("GET", readiness, { origin: app.origin }),
+      app.send("POST", "/api/summarizer/providers/codex/other", {
+        origin: app.origin,
+      }),
+    ])
+  ).map((response) => response.status);
+
+  expect(statuses).toEqual([404, 400, 403, 403, 403, 403, 405, 404]);
+  expect(checks).toEqual([]);
+
+  const unavailable = await setup(undefined);
+  expect(
+    (
+      await unavailable.send("POST", readiness, {
+        origin: unavailable.origin,
+      })
+    ).status,
+  ).toBe(503);
 });

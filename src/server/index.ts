@@ -9,6 +9,12 @@ import {
   createMacTerminalLauncher,
   createProviderLoginService,
 } from "../summarizer/provider-login.js";
+import {
+  createProcessRunner,
+  createReadinessProbe,
+  osProbeTempDirs,
+  readReplyFileFromDisk,
+} from "../summarizer/readiness-probe.js";
 
 const host = "127.0.0.1";
 const port = Number.parseInt(process.env.PORT ?? "4317", 10);
@@ -20,13 +26,18 @@ const collector = createLocalCollector({
     join(homedir(), ".codex/archived_sessions"),
   ],
 });
-// No readiness probe is configured: a signed-in provider is not reported
-// ready until a zero-conversation probe is approved.
+// The approved zero-conversation readiness probe runs only when the user
+// requests it from the local page (docs/plans/2026-09-17-readiness-probe-design.md).
 const providerLoginService =
   process.platform === "darwin"
     ? createProviderLoginService({
         executor: createLocalCommandExecutor(),
         launcher: createMacTerminalLauncher(),
+        probe: createReadinessProbe({
+          runner: createProcessRunner(),
+          tempDirs: osProbeTempDirs,
+          readReplyFile: readReplyFileFromDisk,
+        }),
       })
     : undefined;
 const server = createApp({

@@ -290,10 +290,11 @@ export function createApp({
           sendJson(response, 200, { providers: providers.map(safeStatus) });
           return;
         }
-        const loginMatch = pathname.match(
-          /^\/api\/summarizer\/providers\/([^/]+)\/login$/,
+        const actionMatch = pathname.match(
+          /^\/api\/summarizer\/providers\/([^/]+)\/(login|readiness)$/,
         );
-        const provider = loginMatch?.[1];
+        const provider = actionMatch?.[1];
+        const action = actionMatch?.[2];
         if (!isSummaryProvider(provider)) {
           sendJson(response, 404, {
             error: { code: "not_found", message: "Unknown provider." },
@@ -323,6 +324,12 @@ export function createApp({
         }
         if (!providerLoginService) {
           providerLoginUnavailable(response);
+          return;
+        }
+        if (action === "readiness") {
+          // Decision C1: runs only on this explicit request.
+          const status = await providerLoginService.checkReadiness(provider);
+          sendJson(response, 200, { provider: safeStatus(status) });
           return;
         }
         const status = await providerLoginService.startLogin(provider);
@@ -542,10 +549,17 @@ export function createApp({
 }
 
 function safeStatus(status: ProviderLoginStatus): ProviderLoginStatus {
-  const { provider, label, state, installUrl, reason } = status;
-  return reason === undefined
-    ? { provider, label, state, installUrl }
-    : { provider, label, state, installUrl, reason };
+  const { provider, label, state, installUrl } = status;
+  const safe: ProviderLoginStatus = { provider, label, state, installUrl };
+  if (typeof status.reason === "string") safe.reason = status.reason;
+  if (typeof status.checkedAt === "string") safe.checkedAt = status.checkedAt;
+  if (Array.isArray(status.probeFailures))
+    safe.probeFailures = status.probeFailures.map(({ attempt, reason }) => ({
+      attempt,
+      reason,
+    }));
+  if (status.checking === true) safe.checking = true;
+  return safe;
 }
 
 function providerLoginUnavailable(response: ServerResponse): void {
