@@ -190,6 +190,19 @@ Option E1:
   the probe's second attempt and later summary runs use. Where the setting is
   saved is not yet decided and will be proposed before P2.
 
+## Task P2 decisions (one at a time)
+
+- S — storage (approved by Josh, 2026-09-17, option S2): the per-provider
+  summary model is saved in a new ignored local file
+  `data/summarizer-models.json`, using the same atomic-write pattern as the
+  other local settings. It holds only provider-to-model values (no entry means
+  the CLI default) and no conversation or account data. Rejected: adding it to
+  the external-summarization permission file (S1), because that file records
+  consent and would need a format change; memory only (S3), because unattended
+  summaries would silently revert to the default after a restart.
+- Not yet decided: input style, validation rule, and behavior when the file is
+  unreadable or invalid.
+
 ## Test cases for Task P1 (IDs fixed; confirmed)
 
 Probe runner — `test/summarizer/readiness-probe.test.ts`, fake spawner, fake
