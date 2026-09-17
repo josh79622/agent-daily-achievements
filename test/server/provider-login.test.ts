@@ -50,6 +50,9 @@ function fakeService() {
       logins.push(provider);
       return statusFor(provider, "login-in-progress");
     },
+    async checkReadiness(provider) {
+      return statusFor(provider, "sign-in-required");
+    },
   };
   return { service, logins };
 }

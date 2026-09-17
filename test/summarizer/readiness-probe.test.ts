@@ -510,3 +510,214 @@ test("regression (not an approved product case): disk reply reader and temporary
   }
   await expect(stat(directory)).rejects.toMatchObject({ code: "ENOENT" });
 });
+
+describe("PR-11 to PR-15 readiness state", () => {
+  async function loginModule() {
+    return import("../../src/summarizer/provider-login.js");
+  }
+
+  function signIn(initial: "signed-in" | "signed-out" | "missing") {
+    let state = initial;
+    const spawnedStatus: string[] = [];
+    return {
+      set(next: typeof state) {
+        state = next;
+      },
+      spawnedStatus,
+      executor: {
+        async locate(name: string) {
+          return state === "missing" ? undefined : `/fake/bin/${name}`;
+        },
+        async run(file: string) {
+          spawnedStatus.push(file);
+          return {
+            exitCode: state === "signed-in" ? 0 : 1,
+            stdout: secret,
+            stderr: secret,
+          };
+        },
+      },
+    };
+  }
+
+  const launcher = { async launch() {} };
+  const clock = () => new Date("2026-09-18T04:32:00.000Z");
+
+  test("PR-11: a probe starts only for a signed-in provider", async () => {
+    const { createProviderLoginService } = await loginModule();
+    for (const initial of ["signed-out", "missing"] as const) {
+      const account = signIn(initial);
+      let probes = 0;
+      const service = createProviderLoginService({
+        executor: account.executor,
+        launcher,
+        probe: async () => {
+          probes += 1;
+          return { ok: true };
+        },
+        now: clock,
+      });
+      for (const provider of ["codex", "claude-code"] as const) {
+        const status = await service.checkReadiness(provider);
+        expect(status.state).toBe(
+          initial === "missing" ? "not-installed" : "sign-in-required",
+        );
+      }
+      expect(probes).toBe(0);
+    }
+  });
+
+  test("PR-12: a second request while a probe runs does not start another and reports checking", async () => {
+    const { createProviderLoginService } = await loginModule();
+    const account = signIn("signed-in");
+    let probes = 0;
+    let release: (() => void) | undefined;
+    const service = createProviderLoginService({
+      executor: account.executor,
+      launcher,
+      probe: () => {
+        probes += 1;
+        return new Promise((resolve) => {
+          release = () => resolve({ ok: true });
+        });
+      },
+      now: clock,
+    });
+
+    const first = service.checkReadiness("codex");
+    await vi.waitFor(() => expect(release).toBeDefined());
+    const second = await service.checkReadiness("codex");
+    expect(second).toMatchObject({ state: "probe-failed", checking: true });
+    expect((await service.status("codex")).checking).toBe(true);
+    expect(probes).toBe(1);
+
+    release?.();
+    expect(await first).toMatchObject({ state: "ready" });
+    expect(await service.status("codex")).not.toHaveProperty("checking");
+  });
+
+  test("PR-13: Ready is held in memory with its check time, replaced by the next result, and absent after restart", async () => {
+    const { createProviderLoginService } = await loginModule();
+    const account = signIn("signed-in");
+    const outcomes = [
+      { ok: true as const },
+      {
+        ok: false as const,
+        failures: [
+          {
+            attempt: "lowest-cost-model" as const,
+            reason: "timed-out" as const,
+          },
+          { attempt: "summary-model" as const, reason: "empty-reply" as const },
+        ],
+      },
+    ];
+    let time = 0;
+    const times = ["2026-09-18T04:32:00.000Z", "2026-09-18T05:00:00.000Z"];
+    const makeService = () =>
+      createProviderLoginService({
+        executor: account.executor,
+        launcher,
+        probe: async () => outcomes.shift() ?? { ok: true },
+        now: () => new Date(times[time++] ?? times[0]!),
+      });
+    const service = makeService();
+
+    expect(await service.checkReadiness("claude-code")).toEqual({
+      provider: "claude-code",
+      label: "Claude Code",
+      state: "ready",
+      installUrl: expect.stringMatching(/^https:/),
+      checkedAt: "2026-09-18T04:32:00.000Z",
+    });
+    expect(await service.status("claude-code")).toMatchObject({
+      state: "ready",
+      checkedAt: "2026-09-18T04:32:00.000Z",
+    });
+
+    expect(await service.checkReadiness("claude-code")).toMatchObject({
+      state: "probe-failed",
+      checkedAt: "2026-09-18T05:00:00.000Z",
+      probeFailures: [
+        { attempt: "lowest-cost-model", reason: "timed-out" },
+        { attempt: "summary-model", reason: "empty-reply" },
+      ],
+    });
+
+    const restarted = makeService();
+    const fresh = await restarted.status("claude-code");
+    expect(fresh.state).toBe("probe-failed");
+    expect(fresh).not.toHaveProperty("checkedAt");
+    expect(fresh.reason).toBe("Signed in; readiness has not been checked.");
+  });
+
+  test("PR-14: a later status read showing the provider not signed in clears Ready", async () => {
+    const { createProviderLoginService } = await loginModule();
+    for (const next of ["signed-out", "missing"] as const) {
+      const account = signIn("signed-in");
+      const service = createProviderLoginService({
+        executor: account.executor,
+        launcher,
+        probe: async () => ({ ok: true }),
+        now: clock,
+      });
+      expect((await service.checkReadiness("codex")).state).toBe("ready");
+
+      account.set(next);
+      await service.status("codex");
+      account.set("signed-in");
+
+      const status = await service.status("codex");
+      expect(status.state).toBe("probe-failed");
+      expect(status).not.toHaveProperty("checkedAt");
+    }
+  });
+
+  test("PR-15: ready only while Ready is held and still signed in; otherwise the not-ready state", async () => {
+    const { createProviderLoginService } = await loginModule();
+    const account = signIn("signed-in");
+    const service = createProviderLoginService({
+      executor: account.executor,
+      launcher,
+      probe: async () => ({ ok: true }),
+      now: clock,
+    });
+    expect(await service.status("codex")).toMatchObject({
+      state: "probe-failed",
+      reason: "Signed in; readiness has not been checked.",
+    });
+    await service.checkReadiness("codex");
+    expect((await service.status("codex")).state).toBe("ready");
+    expect((await service.status("claude-code")).state).toBe("probe-failed");
+
+    const noProbe = createProviderLoginService({
+      executor: account.executor,
+      launcher,
+    });
+    expect(await noProbe.checkReadiness("codex")).toMatchObject({
+      state: "probe-failed",
+      reason: "Signed in; readiness check is unavailable.",
+    });
+  });
+
+  test("PR-10 (service): a throwing probe is a sanitized could-not-start failure", async () => {
+    const { createProviderLoginService } = await loginModule();
+    const account = signIn("signed-in");
+    const service = createProviderLoginService({
+      executor: account.executor,
+      launcher,
+      probe: async () => {
+        throw new Error(secret);
+      },
+      now: clock,
+    });
+    const status = await service.checkReadiness("codex");
+    expect(status).toMatchObject({
+      state: "probe-failed",
+      probeFailures: [
+        { attempt: "lowest-cost-model", reason: "could-not-start" },
+      ],
+    });
+    expect(JSON.stringify(status)).not.toMatch(/SECRET|sk-test/);
+  });
+});

@@ -4,6 +4,7 @@ import { access } from "node:fs/promises";
 import { basename, delimiter, isAbsolute, join } from "node:path";
 
 import type { SummaryProvider } from "../storage/summary-permission.js";
+import type { ProbeAttemptFailure, ReadinessProbe } from "./readiness-probe.js";
 
 export type ProviderLoginState =
   | "not-installed"
@@ -18,6 +19,10 @@ export interface ProviderLoginStatus {
   state: ProviderLoginState;
   installUrl: string;
   reason?: string;
+  /** When the held readiness result was checked (ISO 8601). */
+  checkedAt?: string;
+  probeFailures?: ProbeAttemptFailure[];
+  checking?: true;
 }
 
 export interface CommandResult {
@@ -35,17 +40,12 @@ export interface LoginLauncher {
   launch(file: string, args: readonly string[]): Promise<void>;
 }
 
-// A zero-conversation readiness check. Production has none until Josh
-// approves a concrete probe command.
-export type ProviderProbe = (
-  provider: SummaryProvider,
-  executablePath: string,
-) => Promise<void>;
-
 export interface ProviderLoginService {
   list(): Promise<ProviderLoginStatus[]>;
   status(provider: SummaryProvider): Promise<ProviderLoginStatus>;
   startLogin(provider: SummaryProvider): Promise<ProviderLoginStatus>;
+  /** Runs the readiness probe; only when the user asks (decision C1). */
+  checkReadiness(provider: SummaryProvider): Promise<ProviderLoginStatus>;
 }
 
 interface ProviderDefinition {
@@ -110,21 +110,38 @@ export function executableName(provider: SummaryProvider): string {
 
 const reasons = {
   statusUnavailable: "Sign-in status could not be checked.",
-  probeUnapproved: "Signed in; no readiness check has been approved yet.",
+  probeUnavailable: "Signed in; readiness check is unavailable.",
+  notChecked: "Signed in; readiness has not been checked.",
+  checking: "Readiness check in progress.",
   probeFailed: "The readiness check did not pass.",
   launchFailed: "Sign-in could not be started.",
 } as const;
+
+type HeldReadiness =
+  | { kind: "ready"; checkedAt: string }
+  | { kind: "failed"; checkedAt: string; failures: ProbeAttemptFailure[] };
+
+type SignIn =
+  | { kind: "not-installed" }
+  | { kind: "signed-out" }
+  | { kind: "unavailable" }
+  | { kind: "signed-in"; path: string };
 
 export function createProviderLoginService({
   executor,
   launcher,
   probe,
+  now = () => new Date(),
 }: {
   executor: CommandExecutor;
   launcher: LoginLauncher;
-  probe?: ProviderProbe;
+  probe?: ReadinessProbe;
+  now?: () => Date;
 }): ProviderLoginService {
   const launched = new Set<SummaryProvider>();
+  // Decision E1: readiness is held in memory only.
+  const held = new Map<SummaryProvider, HeldReadiness>();
+  const checking = new Set<SummaryProvider>();
 
   function result(
     provider: SummaryProvider,
@@ -137,40 +154,64 @@ export function createProviderLoginService({
       : { provider, label, state, installUrl };
   }
 
-  async function status(
-    provider: SummaryProvider,
-  ): Promise<ProviderLoginStatus> {
+  async function readSignIn(provider: SummaryProvider): Promise<SignIn> {
     const definition = definitionFor(provider);
     const path = await executor.locate(definition.executable);
-    if (!path) {
-      launched.delete(provider);
-      return result(provider, "not-installed");
-    }
+    if (!path) return { kind: "not-installed" };
     let exitCode: number | null;
     try {
       // Only the exit code is used; command output is never inspected.
       ({ exitCode } = await executor.run(path, definition.status));
     } catch {
-      return result(provider, "probe-failed", reasons.statusUnavailable);
+      return { kind: "unavailable" };
     }
-    if (exitCode !== 0 && exitCode !== definition.unauthenticatedExitCode) {
-      return result(provider, "probe-failed", reasons.statusUnavailable);
+    if (exitCode === 0) return { kind: "signed-in", path };
+    if (exitCode === definition.unauthenticatedExitCode)
+      return { kind: "signed-out" };
+    return { kind: "unavailable" };
+  }
+
+  async function status(
+    provider: SummaryProvider,
+  ): Promise<ProviderLoginStatus> {
+    const signIn = await readSignIn(provider);
+    if (signIn.kind === "not-installed") {
+      launched.delete(provider);
+      held.delete(provider);
+      return result(provider, "not-installed");
     }
-    if (exitCode === definition.unauthenticatedExitCode) {
+    if (signIn.kind === "unavailable")
+      return result(provider, "probe-failed", reasons.statusUnavailable);
+    if (signIn.kind === "signed-out") {
+      held.delete(provider);
       return result(
         provider,
         launched.has(provider) ? "login-in-progress" : "sign-in-required",
       );
     }
     launched.delete(provider);
-    if (!probe)
-      return result(provider, "probe-failed", reasons.probeUnapproved);
-    try {
-      await probe(provider, path);
-    } catch {
-      return result(provider, "probe-failed", reasons.probeFailed);
-    }
-    return result(provider, "ready");
+    if (checking.has(provider))
+      return {
+        ...result(provider, "probe-failed", reasons.checking),
+        checking: true,
+      };
+    const readiness = held.get(provider);
+    if (readiness?.kind === "ready")
+      return {
+        ...result(provider, "ready"),
+        checkedAt: readiness.checkedAt,
+      };
+    if (readiness?.kind === "failed")
+      return {
+        ...result(provider, "probe-failed", reasons.probeFailed),
+        checkedAt: readiness.checkedAt,
+        probeFailures: readiness.failures,
+      };
+    return result(
+      provider,
+      "probe-failed",
+      probe ? reasons.notChecked : reasons.probeUnavailable,
+    );
   }
 
   return {
@@ -188,6 +229,40 @@ export function createProviderLoginService({
       }
       launched.add(provider);
       return result(provider, "login-in-progress");
+    },
+    async checkReadiness(provider) {
+      definitionFor(provider);
+      if (checking.has(provider) || !probe) return status(provider);
+      checking.add(provider);
+      try {
+        const signIn = await readSignIn(provider);
+        if (signIn.kind !== "signed-in") {
+          checking.delete(provider);
+          return status(provider);
+        }
+        let outcome: Awaited<ReturnType<ReadinessProbe>>;
+        try {
+          // Task P1: the summary model is the CLI default until Task P2.
+          outcome = await probe({ provider, executablePath: signIn.path });
+        } catch {
+          outcome = {
+            ok: false,
+            failures: [
+              { attempt: "lowest-cost-model", reason: "could-not-start" },
+            ],
+          };
+        }
+        const checkedAt = now().toISOString();
+        held.set(
+          provider,
+          outcome.ok
+            ? { kind: "ready", checkedAt }
+            : { kind: "failed", checkedAt, failures: outcome.failures },
+        );
+      } finally {
+        checking.delete(provider);
+      }
+      return status(provider);
     },
   };
 }

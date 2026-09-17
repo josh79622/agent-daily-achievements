@@ -7,7 +7,6 @@ import {
   statusCommand,
   type CommandExecutor,
   type ProcessSpawner,
-  type ProviderProbe,
 } from "../../src/summarizer/provider-login.js";
 import type { SummaryProvider } from "../../src/storage/summary-permission.js";
 
@@ -99,7 +98,7 @@ for (const provider of providers) {
     }
   });
 
-  test(`${provider}: signed in without an approved probe is never ready`, async () => {
+  test(`${provider}: signed in without a configured readiness probe is never ready`, async () => {
     const { executor } = fakeExecutor({ statusExitCode: 0 });
     const service = createProviderLoginService({
       executor,
@@ -109,46 +108,29 @@ for (const provider of providers) {
     const status = await service.status(provider);
     expect(status.state).not.toBe("ready");
     expect(status.state).toBe("probe-failed");
-    expect(status.reason).toBe(
-      "Signed in; no readiness check has been approved yet.",
-    );
+    expect(status.reason).toBe("Signed in; readiness check is unavailable.");
   });
 
-  test(`${provider}: probe success is ready; probe failure is sanitized probe-failed`, async () => {
-    const { executor } = fakeExecutor({ statusExitCode: 0 });
-    const passing: ProviderProbe = async () => {};
-    const ready = createProviderLoginService({
-      executor,
-      launcher: fakeLauncher().launcher,
-      probe: passing,
-    });
-    expect(await ready.status(provider)).toMatchObject({ state: "ready" });
-
-    const failing: ProviderProbe = async () => {
-      throw new Error(secret);
-    };
-    const failed = createProviderLoginService({
-      executor,
-      launcher: fakeLauncher().launcher,
-      probe: failing,
-    });
-    const status = await failed.status(provider);
-    expect(status.state).toBe("probe-failed");
-    expect(JSON.stringify(status)).not.toContain("SECRET");
-  });
-
-  test(`${provider}: probe is not run while sign-in is required`, async () => {
-    const { executor } = fakeExecutor({ statusExitCode: 1 });
-    let probed = 0;
-    const service = createProviderLoginService({
-      executor,
-      launcher: fakeLauncher().launcher,
-      probe: async () => {
-        probed += 1;
-      },
-    });
-    await service.status(provider);
-    expect(probed).toBe(0);
+  test(`${provider}: reading status never runs the probe; only checkReadiness does (decision C1)`, async () => {
+    for (const statusExitCode of [0, 1]) {
+      const { executor } = fakeExecutor({ statusExitCode });
+      let probed = 0;
+      const service = createProviderLoginService({
+        executor,
+        launcher: fakeLauncher().launcher,
+        probe: async () => {
+          probed += 1;
+          return { ok: true };
+        },
+      });
+      await service.status(provider);
+      await service.list();
+      expect(probed).toBe(0);
+      if (statusExitCode === 0) {
+        expect((await service.checkReadiness(provider)).state).toBe("ready");
+        expect(probed).toBe(1);
+      }
+    }
   });
 
   test(`${provider}: starting login launches only the fixed command and shows login-in-progress`, async () => {
@@ -187,6 +169,7 @@ for (const provider of providers) {
         });
         const statuses = [
           await service.status(provider),
+          await service.checkReadiness(provider),
           await service.startLogin(provider),
           ...(await service.list()),
         ];
