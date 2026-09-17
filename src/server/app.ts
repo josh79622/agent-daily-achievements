@@ -36,6 +36,7 @@ export function createApp({
   staticDirectory,
 }: AppOptions): Server {
   let generation = 0;
+  let activeCollections = 0;
   let saving = 0;
   let saveFailed = false;
   let writes = Promise.resolve();
@@ -66,6 +67,16 @@ export function createApp({
             ) {
               sendJson(response, 403, {
                 error: { message: "Save settings from the local app." },
+              });
+              return;
+            }
+            if (activeCollections > 0) {
+              sendJson(response, 409, {
+                error: {
+                  code: "collection_in_progress",
+                  message:
+                    "Local collection is in progress. Change sources after it finishes.",
+                },
               });
               return;
             }
@@ -149,7 +160,13 @@ export function createApp({
             });
             return;
           }
-          const result = await collector.collect(collectorDate(), sources);
+          activeCollections += 1;
+          let result;
+          try {
+            result = await collector.collect(collectorDate(), sources);
+          } finally {
+            activeCollections -= 1;
+          }
           let latest;
           try {
             latest = await readConsent(consentPath);
