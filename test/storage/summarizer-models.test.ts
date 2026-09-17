@@ -59,6 +59,7 @@ describe("SM settings file", () => {
     const { path } = await tempPath();
     expect(await readSummarizerModels(path)).toEqual({
       models: {},
+      efforts: {},
       unreadable: false,
     });
   });
@@ -67,17 +68,19 @@ describe("SM settings file", () => {
     const { path } = await tempPath();
 
     await writeSummarizerModels(path, {
-      codex: "gpt-fiction-terra",
-      "claude-code": "fiction-opus",
+      models: { codex: "gpt-fiction-terra", "claude-code": "fiction-opus" },
+      efforts: {},
     });
 
     expect(await readSummarizerModels(path)).toEqual({
       models: { codex: "gpt-fiction-terra", "claude-code": "fiction-opus" },
+      efforts: {},
       unreadable: false,
     });
     expect(JSON.parse(await readFile(path, "utf8"))).toEqual({
-      version: 1,
+      version: 2,
       models: { codex: "gpt-fiction-terra", "claude-code": "fiction-opus" },
+      efforts: {},
     });
     expect((await stat(path)).mode & 0o777).toBe(0o600);
     expect(
@@ -90,7 +93,7 @@ describe("SM settings file", () => {
     await mkdir(join(root, "settings"), { recursive: true });
     const invalid = [
       "not json",
-      JSON.stringify({ version: 2, models: {} }),
+      JSON.stringify({ version: 3, models: {}, efforts: {} }),
       JSON.stringify({ version: 1, models: { codex: 7 } }),
       JSON.stringify({
         version: 1,
@@ -104,12 +107,14 @@ describe("SM settings file", () => {
       await writeFile(path, contents);
       expect(await readSummarizerModels(path), contents).toEqual({
         models: {},
+        efforts: {},
         unreadable: true,
       });
     }
     const directoryPath = join(root, "settings");
     expect(await readSummarizerModels(directoryPath)).toEqual({
       models: {},
+      efforts: {},
       unreadable: true,
     });
 
@@ -123,6 +128,7 @@ describe("SM settings file", () => {
     await service.save("codex", "gpt-fiction-luna");
     expect(await readSummarizerModels(path)).toEqual({
       models: { codex: "gpt-fiction-luna" },
+      efforts: {},
       unreadable: false,
     });
     expect((await service.view()).flatMap((view) => view.warnings)).toEqual([]);
@@ -147,6 +153,9 @@ describe("SR effective model", () => {
       ],
       selected: "gpt-fiction-luna",
       effective: "gpt-fiction-luna",
+      effortOptions: [],
+      selectedEffort: "default",
+      effectiveEffort: null,
       warnings: [],
     });
   });
@@ -228,15 +237,212 @@ describe("SR effective model", () => {
         received.push(summaryModel);
         return { ok: true };
       },
-      summaryModel: (provider) => models.effectiveModel(provider),
+      summaryModel: async (provider) =>
+        (await models.effectiveSettings(provider)).model,
     });
 
     await service.checkReadiness("codex");
     await models.save("codex", "gpt-fiction-terra");
     await service.checkReadiness("codex");
-    await writeSummarizerModels(path, { codex: "gpt-fiction-retired" });
+    await writeSummarizerModels(path, {
+      models: { codex: "gpt-fiction-retired" },
+      efforts: {},
+    });
     await service.checkReadiness("codex");
 
     expect(received).toEqual([undefined, "gpt-fiction-terra", undefined]);
+  });
+});
+
+describe("P3 effort settings", () => {
+  // Fictional lists with effort levels.
+  const withEfforts: ModelCatalog = {
+    codex: {
+      source: "fetched",
+      defaultEffortLevels: [],
+      options: [
+        {
+          value: "gpt-fiction-terra",
+          label: "Terra",
+          effortLevels: ["low", "ultra"],
+        },
+        { value: "gpt-fiction-mini", label: "Mini", effortLevels: [] },
+      ],
+    },
+    "claude-code": {
+      source: "fetched",
+      defaultEffortLevels: ["low", "max"],
+      options: [
+        { value: "fiction-opus", label: "Opus", effortLevels: ["low", "max"] },
+        { value: "fiction-haiku", label: "Haiku", effortLevels: [] },
+      ],
+    },
+  };
+
+  test("ES-1: efforts are stored per provider in version 2; version 1 still reads; invalid efforts are unreadable", async () => {
+    const { root, path } = await tempPath();
+    await writeSummarizerModels(path, {
+      models: { "claude-code": "fiction-opus" },
+      efforts: { "claude-code": "max" },
+    });
+    expect(await readSummarizerModels(path)).toEqual({
+      models: { "claude-code": "fiction-opus" },
+      efforts: { "claude-code": "max" },
+      unreadable: false,
+    });
+
+    await mkdir(join(root, "settings"), { recursive: true });
+    await writeFile(
+      path,
+      JSON.stringify({ version: 1, models: { codex: "gpt-fiction-terra" } }),
+    );
+    expect(await readSummarizerModels(path)).toEqual({
+      models: { codex: "gpt-fiction-terra" },
+      efforts: {},
+      unreadable: false,
+    });
+
+    for (const effort of ["MAX", "-x", "", "x".repeat(17), 3]) {
+      await writeFile(
+        path,
+        JSON.stringify({ version: 2, models: {}, efforts: { codex: effort } }),
+      );
+      expect(
+        (await readSummarizerModels(path)).unreadable,
+        String(effort),
+      ).toBe(true);
+    }
+    await writeFile(
+      path,
+      JSON.stringify({ version: 1, models: {}, efforts: { codex: "low" } }),
+    );
+    expect((await readSummarizerModels(path)).unreadable).toBe(true);
+  });
+
+  test("ER-1: effort options follow the effective model, or the default-model levels (D2)", () => {
+    expect(
+      resolveProviderModel({
+        provider: "codex",
+        catalog: withEfforts.codex,
+        saved: "gpt-fiction-terra",
+        unreadable: false,
+      }).effortOptions,
+    ).toEqual(["low", "ultra"]);
+    expect(
+      resolveProviderModel({
+        provider: "codex",
+        catalog: withEfforts.codex,
+        unreadable: false,
+      }).effortOptions,
+    ).toEqual([]);
+    expect(
+      resolveProviderModel({
+        provider: "claude-code",
+        catalog: withEfforts["claude-code"],
+        unreadable: false,
+      }).effortOptions,
+    ).toEqual(["low", "max"]);
+    expect(
+      resolveProviderModel({
+        provider: "claude-code",
+        catalog: withEfforts["claude-code"],
+        saved: "fiction-haiku",
+        unreadable: false,
+      }).effortOptions,
+    ).toEqual([]);
+  });
+
+  test("ER-2: a supported saved effort is used; an unsupported one per a fetched list uses Default with a warning", () => {
+    expect(
+      resolveProviderModel({
+        provider: "claude-code",
+        catalog: withEfforts["claude-code"],
+        saved: "fiction-opus",
+        savedEffort: "max",
+        unreadable: false,
+      }),
+    ).toMatchObject({
+      selectedEffort: "max",
+      effectiveEffort: "max",
+      warnings: [],
+    });
+
+    expect(
+      resolveProviderModel({
+        provider: "codex",
+        catalog: withEfforts.codex,
+        saved: "gpt-fiction-mini",
+        savedEffort: "ultra",
+        unreadable: false,
+      }),
+    ).toMatchObject({
+      selectedEffort: "default",
+      effectiveEffort: null,
+      warnings: ["saved-effort-unavailable"],
+    });
+  });
+
+  test("ER-3: with the built-in list, a safe saved effort is kept with the existing note", () => {
+    const builtInList = { ...withEfforts.codex, source: "built-in" as const };
+    expect(
+      resolveProviderModel({
+        provider: "codex",
+        catalog: builtInList,
+        saved: "gpt-fiction-mini",
+        savedEffort: "ultra",
+        unreadable: false,
+      }),
+    ).toMatchObject({
+      selectedEffort: "ultra",
+      effectiveEffort: "ultra",
+      effortOptions: ["ultra"],
+      warnings: ["model-list-unavailable"],
+    });
+  });
+
+  test("ER-4: saving a model keeps a supported effort and resets an unsupported one in the same save", async () => {
+    const { path } = await tempPath();
+    const service = createSummarizerModelsService({
+      catalog: async () => withEfforts,
+      settingsPath: path,
+    });
+
+    expect(await service.saveEffort("claude-code", "max")).toMatchObject({
+      selectedEffort: "max",
+    });
+    expect(await service.save("claude-code", "fiction-opus")).toMatchObject({
+      selected: "fiction-opus",
+      selectedEffort: "max",
+      warnings: [],
+    });
+    expect(await service.save("claude-code", "fiction-haiku")).toMatchObject({
+      selected: "fiction-haiku",
+      selectedEffort: "default",
+      effortOptions: [],
+      warnings: [],
+    });
+    expect(await readSummarizerModels(path)).toEqual({
+      models: { "claude-code": "fiction-haiku" },
+      efforts: {},
+      unreadable: false,
+    });
+
+    expect(await service.saveEffort("claude-code", "max")).toBeUndefined();
+    expect(await service.saveEffort("codex", "ultra")).toBeUndefined();
+    await service.save("codex", "gpt-fiction-terra");
+    expect(await service.saveEffort("codex", "ultra")).toMatchObject({
+      effectiveEffort: "ultra",
+    });
+    expect(await service.effectiveSettings("codex")).toEqual({
+      model: "gpt-fiction-terra",
+      effort: "ultra",
+    });
+    expect(await service.saveEffort("codex", "default")).toMatchObject({
+      selectedEffort: "default",
+    });
+    expect(await service.effectiveSettings("claude-code")).toEqual({
+      model: "fiction-haiku",
+      effort: undefined,
+    });
   });
 });

@@ -112,6 +112,9 @@ test("SE-1: GET returns per-provider options, source, selection, effective model
         ],
         selected: "default",
         effective: null,
+        effortOptions: [],
+        selectedEffort: "default",
+        effectiveEffort: null,
         warnings: [],
       },
       {
@@ -120,6 +123,9 @@ test("SE-1: GET returns per-provider options, source, selection, effective model
         options: [{ value: "fiction-opus", label: "Opus" }],
         selected: "default",
         effective: null,
+        effortOptions: [],
+        selectedEffort: "default",
+        effectiveEffort: null,
         warnings: ["model-list-unavailable"],
       },
     ],
@@ -160,11 +166,15 @@ test("SE-2: PUT saves a listed model or default for that provider only", async (
       ],
       selected: "gpt-fiction-luna",
       effective: "gpt-fiction-luna",
+      effortOptions: [],
+      selectedEffort: "default",
+      effectiveEffort: null,
       warnings: [],
     },
   });
   expect(await readSummarizerModels(app.settingsPath)).toEqual({
     models: { codex: "gpt-fiction-luna" },
+    efforts: {},
     unreadable: false,
   });
 
@@ -174,6 +184,7 @@ test("SE-2: PUT saves a listed model or default for that provider only", async (
   expect((await app.put("codex", { model: "default" })).status).toBe(200);
   expect(await readSummarizerModels(app.settingsPath)).toEqual({
     models: { "claude-code": "fiction-opus" },
+    efforts: {},
     unreadable: false,
   });
 });
@@ -222,6 +233,7 @@ test("SE-2: invalid, cross-provider, malformed, non-local, or unknown requests a
   ]);
   expect(await readSummarizerModels(app.settingsPath)).toEqual({
     models: {},
+    efforts: {},
     unreadable: false,
   });
 });

@@ -2,19 +2,31 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
-import { isSafeModelValue } from "../summarizer/model-catalog.js";
+import {
+  isSafeEffortLevel,
+  isSafeModelValue,
+} from "../summarizer/model-catalog.js";
 import type { SummaryProvider } from "./summary-permission.js";
 
-/** Saved per-provider summary models; a missing entry means the CLI default. */
+/** Per-provider values; a missing entry means the CLI default. */
 export type SavedModels = Partial<Record<SummaryProvider, string>>;
 
-export interface SavedModelsRead {
+export interface SavedSettings {
   models: SavedModels;
+  efforts: SavedModels;
+}
+
+export interface SavedModelsRead extends SavedSettings {
   /** True when the file exists but could not be read or validated. */
   unreadable: boolean;
 }
 
 const providers: readonly string[] = ["codex", "claude-code"];
+const empty = (unreadable: boolean): SavedModelsRead => ({
+  models: {},
+  efforts: {},
+  unreadable,
+});
 
 export async function readSummarizerModels(
   path: string,
@@ -23,43 +35,60 @@ export async function readSummarizerModels(
   try {
     contents = await readFile(path, "utf8");
   } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "ENOENT"
-      ? { models: {}, unreadable: false }
-      : { models: {}, unreadable: true };
+    return empty((error as NodeJS.ErrnoException).code !== "ENOENT");
   }
   try {
     const value = JSON.parse(contents) as unknown;
-    if (!isRecord(value) || value.version !== 1 || !isRecord(value.models))
-      throw new Error("Invalid summarizer model settings");
-    if (Object.keys(value).length !== 2)
-      throw new Error("Invalid summarizer model settings");
-    const models: SavedModels = {};
-    for (const [provider, model] of Object.entries(value.models)) {
-      if (!providers.includes(provider) || !isSafeModelValue(model))
-        throw new Error("Invalid summarizer model settings");
-      models[provider as SummaryProvider] = model;
-    }
-    return { models, unreadable: false };
+    if (!isRecord(value)) throw new Error("Invalid summarizer settings");
+    // Version 1 (models only) remains readable; version 2 adds efforts.
+    const keys = Object.keys(value).sort().join();
+    const version1 = value.version === 1 && keys === "models,version";
+    const version2 = value.version === 2 && keys === "efforts,models,version";
+    if (!version1 && !version2) throw new Error("Invalid summarizer settings");
+    return {
+      models: entries(value.models, isSafeModelValue),
+      efforts: version2 ? entries(value.efforts, isSafeEffortLevel) : {},
+      unreadable: false,
+    };
   } catch {
-    return { models: {}, unreadable: true };
+    return empty(true);
   }
 }
 
 export async function writeSummarizerModels(
   path: string,
-  models: SavedModels,
+  settings: SavedSettings,
 ): Promise<void> {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   const temporary = `${path}.${randomUUID()}.tmp`;
   try {
-    await writeFile(temporary, JSON.stringify({ version: 1, models }), {
-      flag: "wx",
-      mode: 0o600,
-    });
+    await writeFile(
+      temporary,
+      JSON.stringify({
+        version: 2,
+        models: settings.models,
+        efforts: settings.efforts,
+      }),
+      { flag: "wx", mode: 0o600 },
+    );
     await rename(temporary, path);
   } finally {
     await rm(temporary, { force: true });
   }
+}
+
+function entries(
+  value: unknown,
+  valid: (entry: unknown) => entry is string,
+): SavedModels {
+  if (!isRecord(value)) throw new Error("Invalid summarizer settings");
+  const result: SavedModels = {};
+  for (const [provider, entry] of Object.entries(value)) {
+    if (!providers.includes(provider) || !valid(entry))
+      throw new Error("Invalid summarizer settings");
+    result[provider as SummaryProvider] = entry;
+  }
+  return result;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -56,7 +56,7 @@ const providerLoginService = macOS
         readReplyFile: readReplyFileFromDisk,
       }),
       summaryModel: async (provider) =>
-        summarizerModels?.effectiveModel(provider),
+        (await summarizerModels?.effectiveSettings(provider))?.model,
     })
   : undefined;
 const server = createApp({

@@ -82,6 +82,11 @@ export const builtInDefaultEffortLevels: Record<SummaryProvider, string[]> = {
   codex: [],
 };
 
+/** An effort level: a short lowercase word, never an option. */
+export function isSafeEffortLevel(value: unknown): value is string {
+  return typeof value === "string" && /^[a-z]{1,16}$/.test(value);
+}
+
 /** A model value that can only ever be one CLI argument, never an option. */
 export function isSafeModelValue(value: unknown): value is string {
   return (
@@ -294,12 +299,7 @@ function effortLevels(value: unknown): string[] | undefined {
   if (value === undefined) return [];
   if (!Array.isArray(value)) return undefined;
   const levels = value.map((level) => (isRecord(level) ? level.effort : level));
-  return levels.every(
-    (level): level is string =>
-      typeof level === "string" && /^[a-z]{1,16}$/.test(level),
-  )
-    ? levels
-    : undefined;
+  return levels.every(isSafeEffortLevel) ? levels : undefined;
 }
 
 function option(
