@@ -58,8 +58,14 @@
     Not verified: which attempt passed (the panel does not show whether the
     lowest-cost or summary model succeeded), whether the Codex `--disable`
     switches remove every tool, failure-path exit codes with real CLIs, and
-    that no session was persisted. Still open: Task P2 (UI summary model
-    setting; where it is saved is undecided).
+    that no session was persisted.
+  - Task P2 summary model setting (`d9b114d`, `b59b41f`, `fc3d861`,
+    `3c61d29`): MC, SM, SR, SE, and SP cases pass with fake model lists and
+    runners; `npm run check` passed (189 tests); the dropdown was checked in
+    the browser against fake lists. Model lists load at server startup
+    (Codex `codex debug models`, Claude Code initialize-only request) with a
+    built-in fallback; the real startup fetch through the server has not been
+    observed yet. Still open: Task P3 (per-provider effort setting).
 - [ ] Define the report contract: 0–5 achievements (Josh changed the cap from three on 2026-09-17), evidence links, incomplete coverage, and achievement-level deduplication.
   - Design, decisions D1–D3, and RC/RA/RS/EV cases approved in
     [the report contract design](docs/plans/2026-09-17-report-contract-design.md).

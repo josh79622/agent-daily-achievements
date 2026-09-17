@@ -66,13 +66,17 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-- Readiness probe Task P2: per-provider summary model setting in the UI; where
-  it is saved is undecided.
+- Summary model setting: restart the dev server and confirm the real startup
+  model-list fetch and dropdown (Task P2); then Task P3 (per-provider effort
+  setting, starting with verifying Codex effort values).
 - Report contract Task 5: record verified status for the report contract and
   eval-set items.
 
 ## Latest verification
 
+- Summary model setting Task P2: `npm run check` passed with 189 tests; all
+  catalog, settings, endpoint, and panel tests use fake lists or runners; the
+  dropdown was viewed in the browser pane against fake lists.
 - Readiness probe real check (2026-09-17): Josh clicked Check readiness on the
   running dev server, which had reloaded the P1 code; Codex and Claude Code both showed Ready. Which attempt
   passed, tool-disable effectiveness, and real failure paths remain unverified.
