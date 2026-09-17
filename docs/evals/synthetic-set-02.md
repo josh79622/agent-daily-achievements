@@ -1,6 +1,6 @@
 # Synthetic set 02: labelled report cases
 
-Status: **draft — awaiting Josh's approval** with
+Status: **approved by Josh on 2026-09-17** with
 [the report contract design](../plans/2026-09-17-report-contract-design.md).
 
 All records are fictional. Expectations are fixed before any validator, scorer,

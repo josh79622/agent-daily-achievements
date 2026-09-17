@@ -1,7 +1,7 @@
 # Report contract and output validation design
 
-Status: **draft — awaiting Josh's approval.** No test or production code is
-written until the decisions and test cases below are confirmed.
+Status: **approved by Josh on 2026-09-17** (decisions D1–D3 and the RC, RA,
+RS, and EV test cases). Implementation proceeds task by task.
 
 ## Task framing
 
@@ -124,7 +124,7 @@ cover those.
 - Achievements from a valid candidate are kept when a source is incomplete;
   the report still says incomplete for that source.
 
-## Decisions requiring approval
+## Approved decisions
 
 - **D1 — Achievement count (Josh, 2026-09-17).** A report holds 0–5
   achievements. Output with more than five is invalid and must be re-analysed:
@@ -136,15 +136,22 @@ cover those.
   `summary-invalid` / `too-many-achievements`, and the existing fallback rule
   may then try the other usable CLI under maximum permission. Other invalid
   output is not retried.
-- **D2 — Conflicting evidence.** Proposed: when a later record contradicts a
-  completion (for example a test passed, then is reported failing again with no
-  later fix), the report must not claim completion. It may omit the activity or
-  include one item that cites both records and states the unresolved outcome.
-  Scoring treats citing only the earlier "done" record as forbidden.
-- **D3 — Coverage authority.** Proposed: the model cannot set status or
-  coverage; they are derived locally only.
+- **D2 — Completion is judged at report time (Josh, 2026-09-17).** Use the
+  latest evidence up to the end of the report day. If work is done and later
+  that same day evidence shows it broken again with no later fix, the report
+  must not claim completion; it may omit the activity or include one item that
+  cites both records and states the unresolved outcome. Evidence from a later
+  day never changes an already produced report. Scoring treats an item citing
+  only the earlier "done" record as forbidden.
+- **D3 — Coverage authority (Josh, 2026-09-17).** The summarizer cannot set
+  report status or coverage; they are derived only from local collector and
+  summarizer-run facts.
 
-## Test cases (IDs fixed; status: awaiting confirmation)
+## Test cases (IDs fixed; confirmed)
+
+Implementation order: Task 1 RC (validation result only; the `complete` /
+`incomplete` status wording in RC-1 and RC-2 is verified through assembly in
+Task 2), Task 2 RA, Task 3 RS, Task 4 EV, Task 5 status records.
 
 Contract validation — `test/report/report-contract.test.ts`:
 

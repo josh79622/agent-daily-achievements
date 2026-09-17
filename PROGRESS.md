@@ -66,12 +66,11 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-Phase 4 report contract: the design, test cases (RC, RA, EV), and the fictional
-eval set are drafted in
+Phase 4 report contract, approved on 2026-09-17 in
 [the report contract design](docs/plans/2026-09-17-report-contract-design.md)
-and [synthetic set 02](docs/evals/synthetic-set-02.md). They await Josh's
-approval, including decisions D1–D3 (D1 now a 0–5 range with re-analysis), before any test or production code. No
-model, CLI, probe, or real data is used for this work.
+with [synthetic set 02](docs/evals/synthetic-set-02.md). Tasks run in order:
+1 validation (RC), 2 assembly (RA), 3 re-analysis decision (RS), 4 eval scorer
+(EV), 5 status records. No model, CLI, probe, or real data is used.
 
 ## Latest verification
 
