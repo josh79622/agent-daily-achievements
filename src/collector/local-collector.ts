@@ -37,6 +37,7 @@ export interface LocalCollector {
 interface LocalCollectorOptions {
   claudeDirectories: string[];
   codexDirectories: string[];
+  timeZone?: string;
 }
 
 export function createLocalCollector(
@@ -44,6 +45,7 @@ export function createLocalCollector(
 ): LocalCollector {
   return {
     async collect(date, allowedSources) {
+      const timeZone = localTimeZone(options.timeZone);
       const sources: CollectionSummary["sources"] = [];
       const sessions: CollectedSession[] = [];
       for (const source of allowedSources) {
@@ -53,6 +55,7 @@ export function createLocalCollector(
             ? options.claudeDirectories
             : options.codexDirectories,
           date,
+          timeZone,
         );
         sources.push({
           source,
@@ -70,12 +73,13 @@ async function collectSource(
   source: LocalSource,
   paths: string[],
   date: string,
+  timeZone: string,
 ): Promise<{ sessions: CollectedSession[]; issues: number }> {
   const files = (await Promise.all(paths.map(jsonlFilesAt))).flat();
   let issues = 0;
   const sessions: CollectedSession[] = [];
   for (const file of files) {
-    const parsed = await parseFile(source, file, date);
+    const parsed = await parseFile(source, file, date, timeZone);
     issues += parsed.issues;
     if (parsed.session) sessions.push(parsed.session);
   }
@@ -99,6 +103,7 @@ async function parseFile(
   source: LocalSource,
   file: string,
   date: string,
+  timeZone: string,
 ): Promise<{ session?: CollectedSession; issues: number }> {
   let contents: string;
   try {
@@ -124,7 +129,7 @@ async function parseFile(
       record,
       `${basename(file)}:${index + 1}`,
     );
-    if (message && localDate(message.timestamp) === date)
+    if (message && localDate(message.timestamp, timeZone) === date)
       messages.push(message);
   }
   if (messages.length === 0) return { issues };
@@ -200,9 +205,21 @@ function textFrom(content: unknown): string | undefined {
   return texts.length > 0 ? texts.join("\n") : undefined;
 }
 
-function localDate(timestamp: string): string {
+function localTimeZone(configuredTimeZone: string | undefined): string {
+  const timeZone =
+    configuredTimeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (!timeZone) throw new Error("Local timezone is unavailable.");
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone }).format();
+    return timeZone;
+  } catch {
+    throw new Error(`Invalid local timezone: ${timeZone}`);
+  }
+}
+
+function localDate(timestamp: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Australia/Sydney",
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
