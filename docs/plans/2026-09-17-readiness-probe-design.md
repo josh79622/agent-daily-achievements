@@ -1,7 +1,8 @@
 # Readiness probe design
 
 Status: **in progress — decided one item at a time with Josh.** Decision A is
-B, C, and D are approved (A amended by D); E is not decided. No probe code is written and no real probe has
+B, C, D, and E are approved (A amended by D). Test cases below await
+confirmation; no probe code is written and no real probe has run. No probe code is written and no real probe has
 run.
 
 ## Task framing
@@ -153,8 +154,69 @@ D details (approved by Josh, 2026-09-17):
   `exited with error`, `empty reply`, `could not start`), with no reply or
   error text.
 
-## Not yet decided
+## E — How long Ready lasts (approved by Josh, 2026-09-17)
 
-- E — how long Ready lasts (proposal: memory only until restart or re-check).
+Option E1:
 
-Test cases are proposed only after A–E are decided.
+- Ready and its check time are kept in server memory only; nothing is written
+  to disk. A server restart clears them.
+- The next "Check readiness" result replaces the previous one.
+- If a later status read shows the provider is no longer signed in (signed
+  out or not installed), Ready is cleared immediately.
+- The panel shows the check time, for example "Ready (checked 14:32)".
+- Ready is only a panel indicator; a real summary run still validates its own
+  result and marks the report incomplete on failure.
+- Rejected: saving Ready to a local file (E2), because it can go stale while
+  sign-in or quota changes; automatic expiry (E3), because it needs an
+  arbitrary duration and can confuse.
+
+## Proposed task split
+
+- Task P1 — probe runner, readiness state, endpoint, and panel control, using
+  the summary model "default" (no model option) for the second attempt.
+- Task P2 — per-provider summary model setting in the UI (decision B), which
+  the probe's second attempt and later summary runs use. Where the setting is
+  saved is not yet decided and will be proposed before P2.
+
+## Test cases for Task P1 (IDs fixed; awaiting confirmation)
+
+Probe runner — `test/summarizer/readiness-probe.test.ts`, fake spawner, fake
+clock, and fake temporary directories only:
+
+| ID | Intended behavior |
+| --- | --- |
+| PR-1 | Claude Code attempt spawns `claude` without a shell, cwd a new empty temporary directory, with exactly `-p --tools "" --no-session-persistence --strict-mcp-config --output-format json`, the model option when given, and the fixed prompt; never `--bare`, `--json-schema`, or a permission-bypass option. |
+| PR-2 | Codex attempt spawns `codex exec` without a shell with exactly `--ephemeral --skip-git-repo-check --ignore-user-config --sandbox read-only --color never -o <file in the temporary directory> -C <temporary directory>`, the eight `--disable` features, the model option when given, and the fixed prompt; never `--output-schema` or a bypass option. |
+| PR-3 | The first attempt uses `haiku` (Claude Code) or `gpt-5.6-luna` (Codex); if it passes, the result is Ready and no second attempt runs. |
+| PR-4 | If the first attempt fails, a second attempt runs with the summary model (no model option for the default); if it passes, the result is Ready. |
+| PR-5 | If both attempts fail, the result is Not ready with one fixed reason code per attempt. |
+| PR-6 | If the summary model equals the lowest-cost model, only one attempt runs. |
+| PR-7 | An attempt passes only with exit code 0 and a non-empty reply from the reply channel (Codex `-o` file; Claude Code JSON reply field). Non-zero exit is `exited with error`; a missing, unparseable, whitespace-only, or over-64 KB reply is `empty reply`. |
+| PR-8 | An attempt still running at 60 seconds is stopped, force-killed if it does not exit, and reported as `timed out`. |
+| PR-9 | A spawn error is `could not start`. |
+| PR-10 | Reply text, stderr, and environment values never appear in any result, and the temporary directory is removed after pass, failure, timeout, and spawn error. |
+
+Readiness state — same file:
+
+| ID | Intended behavior |
+| --- | --- |
+| PR-11 | A probe starts only for a signed-in provider; a not-installed or sign-in-required provider is rejected without spawning. |
+| PR-12 | A second request for a provider whose probe is running does not start another probe and reports the checking state. |
+| PR-13 | Ready is held in memory with its check time and replaced by the next result; a new service instance (restart) starts without Ready. |
+| PR-14 | A later status read showing the provider not signed in clears Ready. |
+| PR-15 | While Ready is held and the provider is still signed in, the provider state is `ready`; otherwise signed-in providers keep the existing not-ready state. |
+
+Endpoint — `test/server/provider-login.test.ts`:
+
+| ID | Intended behavior |
+| --- | --- |
+| PR-16 | `POST /api/summarizer/providers/:provider/readiness` accepts only a local-origin request with no body and a known provider (otherwise 403, 400, or 404, and no probe); it returns only safe fields and never reply text. |
+
+Panel — `test/web/build-output.test.ts`:
+
+| ID | Intended behavior |
+| --- | --- |
+| PR-17 | Each provider has a "Check readiness" control that the page enables only for a signed-in provider and not while checking; the page calls only the readiness endpoint and shows "Ready (checked HH:MM)" or the fixed failure reasons. |
+
+No test runs a real CLI. The first real probe happens only when Josh clicks the
+control.
