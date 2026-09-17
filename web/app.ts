@@ -103,7 +103,10 @@ let expandedNodeId: string | undefined;
 let relatedNodeId: string | undefined;
 
 renderConstellation();
-collectorToggle.addEventListener("click", () => void showCollector());
+collectorToggle.addEventListener("click", () => {
+  hideSignin();
+  void showCollector();
+});
 collectorClose.addEventListener("click", hideCollector);
 
 interface CollectorSession {
@@ -414,6 +417,117 @@ function createControl(
   button.setAttribute("aria-pressed", String(pressed));
   button.addEventListener("click", onClick);
   return button;
+}
+
+type SigninProvider = "codex" | "claude-code";
+
+interface SigninStatus {
+  provider: SigninProvider;
+  label: string;
+  state:
+    | "not-installed"
+    | "sign-in-required"
+    | "login-in-progress"
+    | "ready"
+    | "probe-failed";
+  installUrl: string;
+  reason?: string;
+}
+
+const signinProviders: SigninProvider[] = ["codex", "claude-code"];
+const signinToggle = requiredElement<HTMLButtonElement>("signin-toggle");
+const signinPanel = requiredElement<HTMLElement>("signin-panel");
+const signinRefresh = requiredElement<HTMLButtonElement>("signin-refresh");
+let signinRevision = 0;
+
+signinToggle.addEventListener("click", () => {
+  hideCollector();
+  void showSignin();
+});
+requiredElement<HTMLButtonElement>("signin-close").addEventListener(
+  "click",
+  hideSignin,
+);
+signinRefresh.addEventListener("click", () => void refreshSignin());
+for (const provider of signinProviders) {
+  signinButton(provider).addEventListener(
+    "click",
+    () => void startSignin(provider),
+  );
+}
+
+function signinButton(provider: SigninProvider): HTMLButtonElement {
+  return requiredElement<HTMLButtonElement>(`signin-button-${provider}`);
+}
+
+async function showSignin(): Promise<void> {
+  signinPanel.hidden = false;
+  signinToggle.setAttribute("aria-expanded", "true");
+  await refreshSignin();
+}
+
+function hideSignin(): void {
+  signinRevision += 1;
+  signinPanel.hidden = true;
+  signinToggle.setAttribute("aria-expanded", "false");
+}
+
+async function refreshSignin(): Promise<void> {
+  const revision = ++signinRevision;
+  for (const provider of signinProviders) {
+    requiredElement(`signin-status-${provider}`).textContent = "Checking…";
+  }
+  try {
+    const { providers } = await api<{ providers: SigninStatus[] }>(
+      "/api/summarizer/providers",
+    );
+    if (revision !== signinRevision) return;
+    for (const status of providers) renderSignin(status);
+  } catch (error) {
+    if (revision !== signinRevision) return;
+    for (const provider of signinProviders) {
+      requiredElement(`signin-status-${provider}`).textContent =
+        error instanceof Error ? error.message : "Sign-in status unavailable.";
+    }
+  }
+}
+
+async function startSignin(provider: SigninProvider): Promise<void> {
+  const revision = ++signinRevision;
+  signinButton(provider).disabled = true;
+  requiredElement(`signin-status-${provider}`).textContent = "Starting…";
+  try {
+    const { provider: status } = await api<{ provider: SigninStatus }>(
+      `/api/summarizer/providers/${provider}/login`,
+      { method: "POST" },
+    );
+    if (revision !== signinRevision) return;
+    renderSignin(status);
+  } catch (error) {
+    if (revision !== signinRevision) return;
+    signinButton(provider).disabled = false;
+    requiredElement(`signin-status-${provider}`).textContent =
+      error instanceof Error ? error.message : "Sign-in could not be started.";
+  }
+}
+
+function renderSignin(status: SigninStatus): void {
+  if (!signinProviders.includes(status.provider)) return;
+  const messages: Record<SigninStatus["state"], string> = {
+    "not-installed": `${status.label} is not installed.`,
+    "sign-in-required": "Sign-in required.",
+    "login-in-progress": `Sign-in started. Complete it in the Terminal window, then choose Check again.`,
+    ready: "Ready.",
+    "probe-failed": status.reason ?? "The readiness check did not pass.",
+  };
+  requiredElement(`signin-status-${status.provider}`).textContent =
+    messages[status.state] ?? "Unknown state.";
+  signinButton(status.provider).disabled = status.state === "not-installed";
+  const install = requiredElement<HTMLAnchorElement>(
+    `signin-install-${status.provider}`,
+  );
+  install.hidden = status.state !== "not-installed";
+  if (/^https:\/\//.test(status.installUrl)) install.href = status.installUrl;
 }
 
 function requiredElement<T extends HTMLElement>(id: string): T {

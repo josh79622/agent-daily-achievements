@@ -30,3 +30,38 @@ test("builds the achievement constellation", async () => {
   expect(html).not.toMatch(/Generate sample report/);
   expect(css).toMatch(/\.constellation-node/);
 });
+
+test("builds the report sign-in panel without credential or command surfaces", async () => {
+  const build = spawnSync(process.execPath, ["scripts/build.mjs"], {
+    encoding: "utf8",
+  });
+
+  expect(build.status, build.stderr).toBe(0);
+  const html = await readFile("dist/web/index.html", "utf8");
+  const app = await readFile("dist/web/app.js", "utf8");
+  const panel =
+    html.match(/<aside[^>]*id="signin-panel"[\s\S]*?<\/aside>/)?.[0] ?? "";
+
+  expect(html).toMatch(/id="signin-toggle"/);
+  expect(panel).toMatch(/Report sign-in/);
+  expect(panel).toMatch(/Codex/);
+  expect(panel).toMatch(/Claude Code/);
+  for (const provider of ["codex", "claude-code"]) {
+    expect(panel).toMatch(
+      new RegExp(`id="signin-status-${provider}"[^>]*role="status"`),
+    );
+    expect(panel).toMatch(
+      new RegExp(`<button[^>]*id="signin-button-${provider}"`),
+    );
+    expect(panel).toMatch(
+      new RegExp(`<a[^>]*id="signin-install-${provider}"[^>]*href="https://`),
+    );
+  }
+  expect(panel).toMatch(/id="signin-refresh"/);
+  expect(panel).not.toMatch(/<input|<textarea|password/i);
+  expect(panel).not.toMatch(/api[ -]?key|token/i);
+  expect(panel).not.toMatch(/codex login|auth login|osascript/i);
+  expect(panel).not.toMatch(/conversation preview/i);
+  expect(app).toMatch(/api\/summarizer\/providers/);
+  expect(app).toMatch(/\/login`/);
+});

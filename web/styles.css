@@ -63,6 +63,12 @@ a:focus-visible {
   pointer-events: none;
 }
 
+.header-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+#signin-toggle,
 #collector-toggle {
   padding: 0;
   color: var(--muted);
@@ -109,6 +115,24 @@ a:focus-visible {
   border: 0;
   cursor: pointer;
   font: inherit;
+}
+.signin-provider {
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--line);
+}
+.signin-provider p {
+  margin: 0 0 0.5rem;
+}
+.signin-provider a {
+  margin-left: 1rem;
+  color: var(--muted);
+}
+.signin-provider a[hidden] {
+  display: none;
+}
+.collector-panel button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
 }
 .collector-session {
   padding: 0.8rem 0;
