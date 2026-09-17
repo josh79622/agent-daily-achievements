@@ -344,7 +344,36 @@ No test runs a real CLI.
   and the panel shows a warning (same pattern as F3). Rejected: always warning
   even after the user's own model change (G1), and blocking the model change
   (G3).
-- Not yet decided: whether the probe passes an effort.
+- E — probe effort (approved by Josh, 2026-09-18, option E1): the probe's
+  first attempt (lowest-cost model) passes no effort option, keeping the
+  command verified on a real run; the second attempt passes the effective
+  summary effort, mirroring the summary model. Known limitation: an invalid
+  effort is only exercised when the first attempt fails. Rejected: lowest
+  effort on the first attempt (E2) and no effort at all (E3).
+- Edge-case defaults (not separately confirmed): as with models, "no longer
+  supported" is judged only against a fetched list, and a safe saved effort is
+  kept while the built-in list is in use; if the summary model equals the
+  lowest-cost model but a summary effort is set, the second attempt still runs
+  because its configuration differs; the settings file moves to version 2 with
+  an `efforts` map, and version 1 files remain readable.
+
+## Test cases for Task P3 (IDs fixed; awaiting confirmation)
+
+| ID | File | Intended behavior |
+| --- | --- | --- |
+| EC-1 | `test/summarizer/model-catalog.test.ts` | Claude Code's fetched list keeps the `default` entry's effort levels as the default-model levels (the entry is still not offered as a model); Codex has no default-model levels; the built-in fallback has Claude Code `low` to `max` and Codex none. |
+| ES-1 | `test/storage/summarizer-models.test.ts` | The settings file stores per-provider efforts (version 2); version 1 files still read with no efforts; an effort that is not a short lowercase word makes the file unreadable. |
+| ER-1 | same | Effort options are the effective model's levels; with the Default model they are the default-model levels (Claude Code) or none (Codex) (D2). |
+| ER-2 | same | A saved effort supported by the effective model is used; one not supported per a fetched list uses Default effort with a `saved-effort-unavailable` warning (G2). |
+| ER-3 | same | With the built-in list, a safe saved effort is kept with the existing `model-list-unavailable` note. |
+| ER-4 | same | Saving a model keeps the saved effort if the new model supports it and resets it to Default otherwise, in the same save (G2). |
+| EE-1 | `test/server/summarizer-models.test.ts` | `PUT /api/summarizer/models/:provider` accepts exactly one of `model` or `effort`; an effort must be `default` or in the current effort options; anything else is 400 and not saved. |
+| EE-2 | same | `GET /api/summarizer/models` also returns effort options, the selected effort, and the effective effort. |
+| EP-1 | `test/summarizer/readiness-probe.test.ts` | The first attempt never passes an effort; the second attempt passes `--effort <level>` (Claude Code) or `-c model_reasoning_effort="<level>"` (Codex) when an effective effort exists, and nothing for Default. |
+| EP-2 | same | If the summary model equals the lowest-cost model but an effort is set, the second attempt still runs. |
+| EU-1 | `test/web/build-output.test.ts` | Each provider has an effort dropdown with Default and the current options, disabled when there are none, saved only through the model endpoint, with a fixed warning text for an unsupported saved effort. |
+
+No test runs a real CLI.
 
 ## Test cases for Task P1 (IDs fixed; confirmed)
 
