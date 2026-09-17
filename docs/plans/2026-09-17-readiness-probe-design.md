@@ -1,7 +1,7 @@
 # Readiness probe design
 
 Status: **in progress — decided one item at a time with Josh.** Decision A is
-and B are approved; C–E are not decided. No probe code is written and no real probe has
+B, and C are approved; D–E are not decided. No probe code is written and no real probe has
 run.
 
 ## Task framing
@@ -101,9 +101,26 @@ Safety rule for the UI model value: it is passed only as a single argument to
 conservative character set, and a length limit) so it cannot inject other
 options. Exact validation is part of the test cases.
 
+## C — When the probe runs (approved by Josh, 2026-09-17)
+
+Option C1: the probe runs only when Josh clicks "Check readiness".
+
+- Each provider has its own "Check readiness" control, so the user chooses
+  whose quota is used.
+- The control is available only for a signed-in provider; a not-installed or
+  signed-out provider never runs a probe.
+- While a check is running the control is disabled and the panel shows a
+  checking state; a second concurrent probe for the same provider is not
+  started.
+- "Check again" stays separate: it only re-reads sign-in status, calls no
+  model, and uses no quota.
+- Rejected: running on page or panel open (C2), automatically after sign-in
+  (C3), and periodic background checks (C5), because each spends quota or
+  sends requests without a deliberate action. Running before each daily report
+  (C4) is deferred to Phase 6 scheduling design.
+
 ## Not yet decided
 
-- C — when it runs (proposal: only when Josh clicks "Check readiness").
 - D — pass criteria (proposal: exit 0 within 60 seconds and exactly
   `{"ok": true}`; the reply is never shown, logged, or saved).
 - E — how long Ready lasts (proposal: memory only until restart or re-check).
