@@ -9,6 +9,8 @@ import {
   createMacTerminalLauncher,
   createProviderLoginService,
 } from "../summarizer/provider-login.js";
+import { createModelCatalogLoader } from "../summarizer/model-catalog.js";
+import { createSummarizerModelsService } from "../summarizer/model-settings.js";
 import {
   createProcessRunner,
   createReadinessProbe,
@@ -26,25 +28,43 @@ const collector = createLocalCollector({
     join(homedir(), ".codex/archived_sessions"),
   ],
 });
-// The approved zero-conversation readiness probe runs only when the user
-// requests it from the local page (docs/plans/2026-09-17-readiness-probe-design.md).
-const providerLoginService =
-  process.platform === "darwin"
-    ? createProviderLoginService({
-        executor: createLocalCommandExecutor(),
-        launcher: createMacTerminalLauncher(),
-        probe: createReadinessProbe({
-          runner: createProcessRunner(),
-          tempDirs: osProbeTempDirs,
-          readReplyFile: readReplyFileFromDisk,
-        }),
-      })
-    : undefined;
+// Model lists are fetched once at startup (decision M2); the approved
+// zero-conversation readiness probe runs only when the user requests it from
+// the local page (docs/plans/2026-09-17-readiness-probe-design.md).
+const executor = createLocalCommandExecutor();
+const macOS = process.platform === "darwin";
+const modelCatalog = macOS
+  ? createModelCatalogLoader({
+      locate: (name) => executor.locate(name),
+      runner: createProcessRunner(),
+      tempDirs: osProbeTempDirs,
+    })()
+  : undefined;
+const summarizerModels = modelCatalog
+  ? createSummarizerModelsService({
+      catalog: () => modelCatalog,
+      settingsPath: resolve("data/summarizer-models.json"),
+    })
+  : undefined;
+const providerLoginService = macOS
+  ? createProviderLoginService({
+      executor,
+      launcher: createMacTerminalLauncher(),
+      probe: createReadinessProbe({
+        runner: createProcessRunner(),
+        tempDirs: osProbeTempDirs,
+        readReplyFile: readReplyFileFromDisk,
+      }),
+      summaryModel: async (provider) =>
+        summarizerModels?.effectiveModel(provider),
+    })
+  : undefined;
 const server = createApp({
   collector,
   consentPath: resolve("data/local-sources.json"),
   providerLoginService,
   reportStore,
+  summarizerModels,
   staticDirectory: resolve("dist/web"),
 });
 

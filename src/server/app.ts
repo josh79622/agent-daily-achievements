@@ -23,6 +23,7 @@ import {
   writeSummaryPermission,
   type SummaryProvider,
 } from "../storage/summary-permission.js";
+import type { SummarizerModelsService } from "../summarizer/model-settings.js";
 import {
   isSummaryProvider,
   type ProviderLoginService,
@@ -57,6 +58,7 @@ interface AppOptions {
   summaryRequestFactory?: SummaryRequestFactory;
   availableSummaryProviders?: SummaryProvider[];
   providerLoginService?: ProviderLoginService;
+  summarizerModels?: SummarizerModelsService;
 }
 
 export function createApp({
@@ -71,6 +73,7 @@ export function createApp({
   summaryRequestFactory,
   availableSummaryProviders = [],
   providerLoginService,
+  summarizerModels,
 }: AppOptions): Server {
   let generation = 0;
   let activeCollections = 0;
@@ -258,6 +261,92 @@ export function createApp({
           });
           return;
         }
+      }
+
+      if (
+        pathname === "/api/summarizer/models" ||
+        pathname.startsWith("/api/summarizer/models/")
+      ) {
+        const origin = localOrigin(request);
+        if (
+          !origin ||
+          (request.headers.origin && request.headers.origin !== origin) ||
+          request.headers["sec-fetch-site"] === "cross-site"
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Use the local app to manage summary models." },
+          });
+          return;
+        }
+        if (pathname === "/api/summarizer/models") {
+          if (request.method !== "GET") {
+            sendJson(response, 405, {
+              error: { message: "Method not allowed." },
+            });
+            return;
+          }
+          if (!summarizerModels) {
+            summaryModelsUnavailable(response);
+            return;
+          }
+          sendJson(response, 200, { providers: await summarizerModels.view() });
+          return;
+        }
+        const provider = pathname.match(
+          /^\/api\/summarizer\/models\/([^/]+)$/,
+        )?.[1];
+        if (!isSummaryProvider(provider)) {
+          sendJson(response, 404, {
+            error: { code: "not_found", message: "Unknown provider." },
+          });
+          return;
+        }
+        if (request.method !== "PUT") {
+          sendJson(response, 405, {
+            error: { message: "Method not allowed." },
+          });
+          return;
+        }
+        if (
+          request.headers.origin !== origin ||
+          request.headers["content-type"]?.split(";")[0] !== "application/json"
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Save summary models from the local app." },
+          });
+          return;
+        }
+        if (!summarizerModels) {
+          summaryModelsUnavailable(response);
+          return;
+        }
+        let model: string | undefined;
+        try {
+          const body = await parseJsonBody(request);
+          if (
+            body &&
+            typeof body === "object" &&
+            !Array.isArray(body) &&
+            Object.keys(body).length === 1 &&
+            typeof (body as { model?: unknown }).model === "string"
+          )
+            model = (body as { model: string }).model;
+        } catch {
+          model = undefined;
+        }
+        // Only `default` or a model in this provider's current list is saved.
+        const view =
+          model === undefined
+            ? undefined
+            : await summarizerModels.save(provider, model);
+        if (!view) {
+          sendJson(response, 400, {
+            error: { message: "Choose a model from the list." },
+          });
+          return;
+        }
+        sendJson(response, 200, { provider: view });
+        return;
       }
 
       if (
@@ -561,6 +650,15 @@ function safeStatus(status: ProviderLoginStatus): ProviderLoginStatus {
     }));
   if (status.checking === true) safe.checking = true;
   return safe;
+}
+
+function summaryModelsUnavailable(response: ServerResponse): void {
+  sendJson(response, 503, {
+    error: {
+      code: "summary_models_unavailable",
+      message: "Summary model settings are unavailable on this machine.",
+    },
+  });
 }
 
 function providerLoginUnavailable(response: ServerResponse): void {
