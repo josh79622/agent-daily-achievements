@@ -315,6 +315,23 @@ No test runs a real CLI.
   undocumented and may change; whether `initialize` uses quota is unverified
   (no model output was observed).
 
+## Task P3 decisions (one at a time)
+
+- R — effort values and route (approved by Josh, 2026-09-18, option R1): the
+  effort levels offered for a model are that model's levels from the fetched
+  model list (decision M2). Claude Code receives `--effort <level>` (listed in
+  `claude --help`: `low`, `medium`, `high`, `xhigh`, `max`). Codex receives
+  `-c model_reasoning_effort=<level>` (`-c` documented in `codex exec --help`;
+  key documented in the Codex configuration reference). Known conflict: the
+  Codex reference lists `minimal | low | medium | high | xhigh`, while the real
+  catalog lists `low` to `max` and `ultra` depending on the model; whether the
+  CLI accepts `max` and `ultra` through `-c` is unverified until a real run.
+  Rejected: fixed lists from the docs (R2), which already disagree with the
+  real catalog.
+- Not yet decided: effort choices while the model is Default, behavior when a
+  saved effort is not supported by the effective model, and whether the probe
+  passes an effort.
+
 ## Test cases for Task P1 (IDs fixed; confirmed)
 
 Probe runner — `test/summarizer/readiness-probe.test.ts`, fake spawner, fake
