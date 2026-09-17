@@ -130,9 +130,9 @@ cover those.
   achievements. Output with more than five is invalid and must be re-analysed:
   the same summarizer is asked again with the same server-built payload.
   Nothing is truncated locally, so no hidden choice decides which achievements
-  matter, and no priority rule among eligible achievements is set. Proposed
-  retry limit, awaiting confirmation: at most two re-analyses (three attempts
-  in total); if every attempt exceeds five, the report is `incomplete` with
+  matter, and no priority rule among eligible achievements is set. Retry limit
+  (Josh, 2026-09-17): three attempts in total (at most two re-analyses); if
+  every attempt exceeds five, the report is `incomplete` with
   `summary-invalid` / `too-many-achievements`, and the existing fallback rule
   may then try the other usable CLI under maximum permission. Other invalid
   output is not retried.
