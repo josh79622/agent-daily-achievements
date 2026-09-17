@@ -4,7 +4,7 @@
 
 **Phase 3 — Consented local collection**
 
-The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the executing computer's local calendar day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. This is not yet a shippable collector because Codex parser validation and explicit failure handling are unfinished.
+The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the executing computer's local calendar day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. This is not yet a shippable collector because explicit failure handling and session-file deduplication are unfinished.
 
 ## Completed
 
@@ -29,6 +29,10 @@ The project has moved past an experience-only prototype. A local collector demo 
   - verified common real local JSONL structure read-only with no content retained;
   - added synthetic Vitest coverage for timestamp validity, BOM/CRLF input, structured content, malformed input, source read-only behavior, and report-day session context;
   - verified that a real `fork-context-ref` metadata record is ignored while the same file's direct session remains available; future parent-only sidechain conversations are excluded to avoid duplicate counting.
+- Phase 3 Codex parser verification:
+  - verified recent active and archived JSONL structure read-only with no content retained;
+  - added synthetic Vitest coverage for observed message and metadata shapes, timestamp and malformed input, report-day context, duplicates, and source read-only behavior;
+  - duplicate IDs produce an incomplete result rather than duplicate sessions; stream reconciliation remains a separate task.
 
 ## Important boundaries
 
@@ -38,11 +42,11 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-Verify Codex parsing against approved real local sessions: timestamps, role/content extraction, session identity, active/archived overlap, and partial/malformed input. Before implementation or parser changes, propose the task's observable acceptance cases for Josh to confirm. Use approved real sessions only for read-only verification; do not retain their content in fixtures, logs, commits, or documentation.
+Surface absent source, unreadable source, unsupported shape, and partial-write state as distinct incomplete coverage. Before implementation or parser changes, propose the task's observable acceptance cases for Josh to confirm. Use approved real sessions only for read-only verification; do not retain their content in fixtures, logs, commits, or documentation.
 
 ## Latest verification
 
-- Claude Code parser verification: `npm run check` passed with format, lint, typecheck, 41 tests, and build. Read-only structure-only checks of common session files and a fork-context file passed; no content, identifiers, timestamps, or paths were retained. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
+- Codex parser verification: `npm run check` passed with format, lint, typecheck, 51 tests, and build. Read-only structure-only checks of recent active and archived files passed; no content, identifiers, timestamps, or paths were retained. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
 - The shell's default Node 25 fails to start because of a missing Homebrew library; use `/opt/homebrew/opt/node@24/bin` on `PATH` for the approved Node 24 runtime (verified v24.20.0).
 
 ## Handoff

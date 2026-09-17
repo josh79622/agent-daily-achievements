@@ -27,8 +27,9 @@ function codexMessage(
   timestamp: string | undefined,
   role: "user" | "assistant",
   text: string,
-  contentType: "input_text" | "output_text" =
-    role === "user" ? "input_text" : "output_text",
+  contentType: "input_text" | "output_text" = role === "user"
+    ? "input_text"
+    : "output_text",
 ): string {
   return JSON.stringify({
     type: "response_item",
@@ -42,8 +43,8 @@ function codexMessage(
 }
 
 async function codexCollector(
-  activeFiles: string[][],
-  archivedFiles: string[][] = [],
+  activeFiles: readonly (readonly string[])[],
+  archivedFiles: readonly (readonly string[])[] = [],
 ) {
   const root = await mkdtemp(join(tmpdir(), "daily-proof-codex-shape-"));
   directories.push(root);
@@ -53,7 +54,10 @@ async function codexCollector(
   await mkdir(archivedDirectory);
   await Promise.all(
     activeFiles.map((lines, index) =>
-      writeFile(join(activeDirectory, `active-${index}.jsonl`), lines.join("\n")),
+      writeFile(
+        join(activeDirectory, `active-${index}.jsonl`),
+        lines.join("\n"),
+      ),
     ),
   );
   await Promise.all(
@@ -79,11 +83,7 @@ test("CD-1: reads session metadata and observed Codex message records", async ()
     [
       sessionMeta("synthetic-codex-session"),
       codexMessage("2026-09-16T09:00:00Z", "user", "Synthetic input"),
-      codexMessage(
-        "2026-09-16T09:01:00Z",
-        "assistant",
-        "Synthetic output",
-      ),
+      codexMessage("2026-09-16T09:01:00Z", "assistant", "Synthetic output"),
       codexMessage("2026-09-17T09:00:00Z", "user", "Future input"),
     ],
   ]);
@@ -136,7 +136,11 @@ test("CD-3: ignores observed Codex metadata event types", async () => {
         "token_usage_record",
         "inter_agent_communication_metadata",
       ].map((type) =>
-        JSON.stringify({ type, timestamp: "2026-09-16T09:00:00Z", payload: {} }),
+        JSON.stringify({
+          type,
+          timestamp: "2026-09-16T09:00:00Z",
+          payload: {},
+        }),
       ),
       codexMessage("2026-09-16T09:00:01Z", "user", "Conversation only"),
     ],
@@ -207,15 +211,31 @@ for (const [placement, activeFiles, archivedFiles] of [
   [
     "two active files",
     [
-      [sessionMeta("duplicate-session"), codexMessage("2026-09-16T09:00:00Z", "user", "First")],
-      [sessionMeta("duplicate-session"), codexMessage("2026-09-16T09:01:00Z", "assistant", "Second")],
+      [
+        sessionMeta("duplicate-session"),
+        codexMessage("2026-09-16T09:00:00Z", "user", "First"),
+      ],
+      [
+        sessionMeta("duplicate-session"),
+        codexMessage("2026-09-16T09:01:00Z", "assistant", "Second"),
+      ],
     ],
     [],
   ],
   [
     "an active and an archived file",
-    [[sessionMeta("duplicate-session"), codexMessage("2026-09-16T09:00:00Z", "user", "Active")]],
-    [[sessionMeta("duplicate-session"), codexMessage("2026-09-16T09:01:00Z", "assistant", "Archived")]],
+    [
+      [
+        sessionMeta("duplicate-session"),
+        codexMessage("2026-09-16T09:00:00Z", "user", "Active"),
+      ],
+    ],
+    [
+      [
+        sessionMeta("duplicate-session"),
+        codexMessage("2026-09-16T09:01:00Z", "assistant", "Archived"),
+      ],
+    ],
   ],
 ] as const) {
   test(`CD-7: excludes a duplicate session ID across ${placement}`, async () => {
@@ -230,8 +250,18 @@ for (const [placement, activeFiles, archivedFiles] of [
 
 test("CD-8: retains distinct active and archived sessions once each", async () => {
   const { collector } = await codexCollector(
-    [[sessionMeta("active-session"), codexMessage("2026-09-16T09:00:00Z", "user", "Active")]],
-    [[sessionMeta("archived-session"), codexMessage("2026-09-16T09:01:00Z", "assistant", "Archived")]],
+    [
+      [
+        sessionMeta("active-session"),
+        codexMessage("2026-09-16T09:00:00Z", "user", "Active"),
+      ],
+    ],
+    [
+      [
+        sessionMeta("archived-session"),
+        codexMessage("2026-09-16T09:01:00Z", "assistant", "Archived"),
+      ],
+    ],
   );
 
   const result = await collector.collect("2026-09-16", ["codex"]);

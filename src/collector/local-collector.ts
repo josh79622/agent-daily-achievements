@@ -83,6 +83,20 @@ async function collectSource(
     issues += parsed.issues;
     if (parsed.session) sessions.push(parsed.session);
   }
+  if (source === "codex") {
+    const counts = new Map<string, number>();
+    for (const session of sessions)
+      counts.set(session.id, (counts.get(session.id) ?? 0) + 1);
+    const duplicateIds = new Set(
+      [...counts].flatMap(([id, count]) => (count > 1 ? [id] : [])),
+    );
+    if (duplicateIds.size > 0) {
+      return {
+        sessions: sessions.filter((session) => !duplicateIds.has(session.id)),
+        issues: issues + duplicateIds.size,
+      };
+    }
+  }
   return { sessions, issues };
 }
 
