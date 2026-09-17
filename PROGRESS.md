@@ -84,10 +84,15 @@ that work.
 
 ## Next task
 
-Phase 5. Two tasks are designed and awaiting Josh's approval of their test cases
-in [the payload design](docs/plans/2026-09-18-report-day-payload-design.md):
-Task NT (collector non-text placeholders) first, then Task PB (server-side
-payload builder and evidence manifest). No code has been written.
+Phase 5. Task NT (collector non-text placeholders) is complete and verified
+(`2a652d5`). Next is Task PB, the server-side payload builder and evidence
+manifest, whose cases PB-1 to PB-13 Josh approved in
+[the payload design](docs/plans/2026-09-18-report-day-payload-design.md).
+
+Awaiting Josh's confirmation: NT-5 was changed from the approved wording. A
+message holding only excluded deliberation is now dropped without counting as an
+issue, because Codex writes a `reasoning` payload per turn and the approved
+version would have marked nearly every real Codex day incomplete.
 
 Decided on 2026-09-18:
 

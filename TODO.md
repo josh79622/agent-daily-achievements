@@ -139,8 +139,17 @@ Phase 4 was closed as scoped on 2026-09-18 (Josh, option B in the
 [Phase 4 exit review](docs/reviews/2026-09-18-phase-4-exit-review.md)); report
 generation moved here and comes first.
 
-- [ ] Represent non-text conversation content in the collector instead of
-      dropping it: `image`, `tool_use`, `tool_result` and unrecognized blocks
+- [x] Represent non-text conversation content in the collector instead of
+      dropping it: (`2a652d5`)
+  - NT-1 to NT-8 pass in `test/collector/non-text-content.test.ts`;
+    `npm run check` passed with 215 tests; six deliberate mutations were each
+    caught. All records are synthetic; no E2E test was run.
+  - Two corrections during implementation: Codex text blocks are `input_text`
+    and `output_text` (not `text`), and the approved NT-5 case was changed
+    because a deliberation-only message must be dropped without an issue —
+    Codex writes a `reasoning` payload per turn, so counting it would mark
+    nearly every real Codex day incomplete.
+  - Original scope: `image`, `tool_use`, `tool_result` and unrecognized blocks
       become visible placeholder parts, and a message left with no representable
       content counts as an issue rather than vanishing. Verified defect: of four
       synthetic messages, an image-only message and a `tool_use` message were
