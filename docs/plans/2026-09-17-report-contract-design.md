@@ -6,13 +6,13 @@ written until the decisions and test cases below are confirmed.
 ## Task framing
 
 - Now: nothing defines what a daily report may contain, so future summarizer
-  output could be stored with more than three items, invented source IDs, a
+  output could be stored with more than five items, invented source IDs, a
   plan presented as completed work, or a "complete" status the collector cannot
   support.
 - When done: a local TypeScript validator accepts only contract-conforming
   output and otherwise produces an incomplete report with zero achievements; a
   deterministic scorer grades a report against predetermined fictional eval
-  expectations. Acceptance: the RC, RA, and EV cases below pass under
+  expectations. Acceptance: the RC, RA, RS, and EV cases below pass under
   `npm run check`.
 
 Out of scope: running Codex or Claude Code, choosing a model, prompt changes,
@@ -80,7 +80,7 @@ interface AchievementReportV1 {
   date: string; // YYYY-MM-DD in the saved report timezone
   timezone: string;
   status: "complete" | "incomplete";
-  achievements: Achievement[]; // 0–3
+  achievements: Achievement[]; // 0–5
   coverage: ReportCoverage[];
   incomplete: Array<{ reason: IncompleteReason; source?: ReportSource; issue?: ValidationIssue }>;
 }
@@ -98,7 +98,7 @@ zero achievements and `summary-invalid` with the first issue code. Partially
 valid items are not kept, so nothing is selected or rewritten locally.
 
 1. The candidate is a JSON object with exactly the key `achievements`, an array.
-2. At most three achievements (see decision D1).
+2. Zero to five achievements (see decision D1).
 3. Every achievement has exactly the keys above; the category is one of the four.
 4. `id`, `title`, and `detail` are non-empty trimmed strings within limits; `id`
    values are unique.
@@ -126,11 +126,16 @@ cover those.
 
 ## Decisions requiring approval
 
-- **D1 — More than three achievements.** Proposed: fail closed as
-  `summary-invalid` rather than truncating locally, because truncation would
-  silently choose which achievements matter. The prompt must ask for at most
-  three. No priority rule among eligible achievements is set; the eval accepts
-  any three eligible, non-forbidden items.
+- **D1 — Achievement count (Josh, 2026-09-17).** A report holds 0–5
+  achievements. Output with more than five is invalid and must be re-analysed:
+  the same summarizer is asked again with the same server-built payload.
+  Nothing is truncated locally, so no hidden choice decides which achievements
+  matter, and no priority rule among eligible achievements is set. Proposed
+  retry limit, awaiting confirmation: at most two re-analyses (three attempts
+  in total); if every attempt exceeds five, the report is `incomplete` with
+  `summary-invalid` / `too-many-achievements`, and the existing fallback rule
+  may then try the other usable CLI under maximum permission. Other invalid
+  output is not retried.
 - **D2 — Conflicting evidence.** Proposed: when a later record contradicts a
   completion (for example a test passed, then is reported failing again with no
   later fix), the report must not claim completion. It may omit the activity or
@@ -145,9 +150,9 @@ Contract validation — `test/report/report-contract.test.ts`:
 
 | ID | Intended behavior |
 | --- | --- |
-| RC-1 | A valid candidate with 1–3 achievements, manifest evidence, and all sources included assembles as `complete` with those items unchanged. |
+| RC-1 | A valid candidate with 0–5 achievements (tested at 0, 1, and 5), manifest evidence, and all sources included assembles as `complete` with those items unchanged. |
 | RC-2 | Non-JSON-object input, a missing `achievements` array, or an extra top-level key (for example `status`) → incomplete, zero achievements, `summary-invalid`. |
-| RC-3 | Four achievements → `summary-invalid` `too-many-achievements`; none kept (D1). |
+| RC-3 | Six achievements → `summary-invalid` `too-many-achievements`, marked retryable; none kept (D1). |
 | RC-4 | An unknown category, including `intention` or `plan` → invalid. |
 | RC-5 | Empty, whitespace-only, overlong, or non-string title/detail/id; duplicate ids; extra achievement keys → invalid. |
 | RC-6 | Empty evidence, an unknown record ID, a source mismatch, or an unknown message ID → `unknown-evidence`. |
@@ -165,6 +170,16 @@ Assembly and coverage — same file:
 | RA-4 | Valid empty candidate with complete coverage → `complete` with zero achievements. |
 | RA-5 | Multiple incomplete reasons are all listed (source and summary). |
 
+Re-analysis decision — `test/report/summary-retry.test.ts`. This is a pure
+local decision function; it runs no summarizer:
+
+| ID | Intended behavior |
+| --- | --- |
+| RS-1 | After attempt 1 or 2 returns `too-many-achievements`, the decision is re-analyse with the same provider. |
+| RS-2 | After attempt 3 returns `too-many-achievements`, the decision is stop: incomplete `summary-invalid` / `too-many-achievements`. |
+| RS-3 | Any other validation issue is not retried; the decision is stop with that issue. |
+| RS-4 | A valid candidate on any attempt is accepted without further attempts. |
+
 Eval scorer — `test/report/eval-scorer.test.ts`, using hand-written candidate
 reports for the cases in `docs/evals/synthetic-set-02.md`:
 
@@ -176,7 +191,7 @@ reports for the cases in `docs/evals/synthetic-set-02.md`:
 | EV-4 | Two items covering one expected activity's evidence count as a duplicate failure. |
 | EV-5 | A required item missing one of its required source IDs is a source-ID failure. |
 | EV-6 | Wrong status or missing incomplete source vs expectations is a coverage failure. |
-| EV-7 | For the more-than-three case, any three eligible non-forbidden items pass; a forbidden one fails. |
+| EV-7 | For the more-than-five case, any five distinct eligible non-forbidden items pass; a forbidden one fails. |
 | EV-8 | For the conflict case, an item citing only the earlier completion record fails (D2). |
 | EV-9 | The expectation JSON for all eight cases loads and every referenced ID exists in its case's manifest. |
 

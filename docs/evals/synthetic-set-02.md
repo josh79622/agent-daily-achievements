@@ -120,7 +120,7 @@ Coverage: `codex` included; `claude-code` incomplete (`unreadable`);
   `gemini-web`. `chatgpt-web` must not be reported incomplete.
 - Manual: no text calls Claude Code or Gemini inactive.
 
-## Case 08 — more than three plausible achievements
+## Case 08 — more than five plausible achievements
 
 - `codex-206` — Codex, Harbor, 09:00. Fixed a pagination bug; test failed then
   passed; commit created.
@@ -130,15 +130,22 @@ Coverage: `codex` included; `claude-code` incomplete (`unreadable`);
   confirmed the cause was a shared temporary directory. No fix yet.
 - `chatgpt-web-203` — ChatGPT web, 16:00. Josh correctly explained in his own
   words why a database index speeds reads but slows writes; model confirmed.
+- `codex-208` — Codex, Harbor, 14:30. Added CSV export; its new tests failed
+  before the change and passed after; commit created.
+- `claude-code-205` — Claude Code, Harbor, 15:10. Josh decided to postpone
+  translations because every current user reads English.
 - `claude-web-202` — Claude web, 18:00. Josh wrote: "I'll fix the flaky test
   tomorrow."
 
 Coverage: `codex`, `claude-code`, `chatgpt-web`, and `claude-web` included.
 
-- Eligible: `progress` citing `codex-206`; `decision` citing `claude-code-204`;
-  `clarification` citing `codex-207`; `learning` citing `chatgpt-web-203`.
-- Required: exactly three items, each matching a different eligible activity.
+- Eligible (six): `progress` citing `codex-206`; `decision` citing
+  `claude-code-204`; `clarification` citing `codex-207`; `learning` citing
+  `chatgpt-web-203`; `progress` citing `codex-208`; `decision` citing
+  `claude-code-205`.
+- Required: exactly five items, each matching a different eligible activity.
   No priority among eligible activities is set (design decision D1).
 - Forbidden: any item whose evidence is only `claude-web-202`.
-- Status: `complete`. A candidate with four or more items is invalid and
-  assembles as `incomplete` with `summary-invalid`.
+- Status: `complete`. A candidate with six or more items is invalid and must be
+  re-analysed; if every allowed attempt exceeds five, the report is
+  `incomplete` with `summary-invalid`.
