@@ -46,7 +46,9 @@ test("TZ-1: uses the computer's current timezone when none is configured", async
   const timestamp = "2026-09-16T00:30:00Z";
   const collector = await collectorWithClaudeMessages(context, [timestamp]);
 
-  const result = await collector.collect(computerDate(timestamp), ["claude-code"]);
+  const result = await collector.collect(computerDate(timestamp), [
+    "claude-code",
+  ]);
 
   assert.equal(result.sessions.length, 1);
 });
@@ -62,7 +64,10 @@ test("TZ-2: separates messages on opposite sides of midnight in the selected tim
 
   assert.equal(result.sessions.length, 1);
   assert.equal(result.sessions[0]?.messageCount, 1);
-  assert.equal(result.sessions[0]?.messages[0]?.timestamp, "2026-09-16T07:00:00Z");
+  assert.equal(
+    result.sessions[0]?.messages[0]?.timestamp,
+    "2026-09-16T07:00:00Z",
+  );
 });
 
 test("TZ-3: classifies a UTC timestamp by a non-Sydney timezone", async (context) => {
