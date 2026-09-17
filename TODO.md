@@ -43,7 +43,13 @@
     never `ready`. The intermediate `login-in-progress` display was not
     observed manually. Still open: approval of a zero-conversation readiness
     probe (none is configured, so no provider can reach `ready`).
-- [ ] Define the report contract: at most three achievements, evidence links, incomplete coverage, and achievement-level deduplication.
+- [ ] Define the report contract: 0–5 achievements (Josh changed the cap from three on 2026-09-17), evidence links, incomplete coverage, and achievement-level deduplication.
+  - Design, decisions D1–D3, and RC/RA/RS/EV cases approved in
+    [the report contract design](docs/plans/2026-09-17-report-contract-design.md).
+  - Task 1 validation: RC-1 through RC-9 pass in
+    `test/report/report-contract.test.ts` (16 tests) and `npm run check`
+    passed. Tasks 2–5 (assembly, re-analysis decision, eval scorer, status
+    records) remain.
 - [ ] Expand the pre-labelled evaluation set before prompt iteration.
 
 ### Phase 5 — Report control

@@ -50,7 +50,7 @@ interface EvidenceRef {
 }
 
 interface Achievement {
-  id: string;
+  id: string; // 1–64 characters
   category: AchievementCategory;
   title: string; // 1–120 characters
   detail: string; // 1–500 characters
@@ -86,9 +86,11 @@ interface AchievementReportV1 {
 }
 ```
 
-`ValidationIssue` is a fixed code list (for example `too-many-achievements`,
-`unknown-evidence`). Reports and issues never echo candidate text that failed
-validation. Intentions have no category: a plan is not representable as an
+`ValidationIssue` is a fixed code list: `invalid-shape`,
+`too-many-achievements` (the only retryable issue), `invalid-category`,
+`invalid-achievement`, `duplicate-achievement-id`, `unknown-evidence`,
+`duplicate-evidence`, and `evidence-source-not-included`. Reports and issues
+never echo candidate text that failed validation. Intentions have no category: a plan is not representable as an
 achievement.
 
 ## Validation rules (fail closed)
