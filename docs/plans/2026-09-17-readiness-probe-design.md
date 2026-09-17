@@ -200,15 +200,17 @@ Option E1:
   the external-summarization permission file (S1), because that file records
   consent and would need a format change; memory only (S3), because unattended
   summaries would silently revert to the default after a restart.
-- I — input style (approved by Josh, 2026-09-17, option I3): a per-provider
-  dropdown of known models from the official docs plus "Default" and
-  "Other…", which reveals a text field. Known lists read 2026-09-17 — Claude
-  Code: `haiku`, `sonnet`, `opus`, `fable`, `best`, `opusplan`, `sonnet[1m]`,
-  `opus[1m]`; Codex: `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`,
-  `gpt-5.6-luna`, `gpt-5.3-codex-spark`. Any value still passes the validation
-  rule. Known risk: the probe tries the lowest-cost model first, so a mistyped
-  summary model can still show Ready. Rejected: free text only (I1, typos) and
-  a fixed list only (I2, goes stale).
+- I — input style (revised by Josh, 2026-09-17, option I2): a per-provider
+  dropdown with "Default" plus a fixed list of known models only; no free-text
+  entry. Josh will update the list periodically after release. Initial lists,
+  read from the official docs on 2026-09-17 — Claude Code: `haiku`, `sonnet`,
+  `opus`, `fable`, `best`, `opusplan`, `sonnet[1m]`, `opus[1m]`; Codex:
+  `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`,
+  `gpt-5.3-codex-spark`. Rejected: I3 (dropdown plus "Other…", previously
+  chosen), because Josh does not want users to enter arbitrary values; I1
+  (free text only). Known risks: the list goes stale until updated, and the
+  probe tries the lowest-cost model first, so an unavailable summary model can
+  still show Ready.
 - Not yet decided: validation rule, and behavior when the file is unreadable or
   invalid.
 - Effort (Josh, 2026-09-17): a per-provider effort setting is split into a
