@@ -1,8 +1,7 @@
 # Readiness probe design
 
 Status: **in progress — decided one item at a time with Josh.** Decision A is
-B, C, and the purpose and pass rule of D are approved (A amended by D); the
-remaining D details and E are not decided. No probe code is written and no real probe has
+B, C, and D are approved (A amended by D); E is not decided. No probe code is written and no real probe has
 run.
 
 ## Task framing
@@ -145,7 +144,7 @@ Option X: the probe is a **liveness check**, not a format-compliance check.
   sign-in, the exact Claude Code reply field, and the exact `-o` file contents.
   Parsing fails closed until confirmed after the first real run.
 
-Remaining D details proposed, not yet confirmed:
+D details (approved by Josh, 2026-09-17):
 
 - D1: time limit 60 seconds per attempt; stop, then force-kill on timeout.
 - D3: read only the reply channel, in memory, capped at 64 KB; never show,
