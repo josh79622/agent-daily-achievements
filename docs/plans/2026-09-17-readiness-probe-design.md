@@ -1,8 +1,8 @@
 # Readiness probe design
 
 Status: **in progress — decided one item at a time with Josh.** Decision A is
-B, C, D, and E are approved (A amended by D). Test cases below await
-confirmation; no probe code is written and no real probe has run. No probe code is written and no real probe has
+B, C, D, and E are approved (A amended by D). The Task P1/P2 split and test
+cases PR-1 to PR-17 were approved on 2026-09-17. No real probe has run. No probe code is written and no real probe has
 run.
 
 ## Task framing
@@ -188,7 +188,7 @@ Option E1:
   the probe's second attempt and later summary runs use. Where the setting is
   saved is not yet decided and will be proposed before P2.
 
-## Test cases for Task P1 (IDs fixed; awaiting confirmation)
+## Test cases for Task P1 (IDs fixed; confirmed)
 
 Probe runner — `test/summarizer/readiness-probe.test.ts`, fake spawner, fake
 clock, and fake temporary directories only:
