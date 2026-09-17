@@ -357,7 +357,7 @@ No test runs a real CLI.
   because its configuration differs; the settings file moves to version 2 with
   an `efforts` map, and version 1 files remain readable.
 
-## Test cases for Task P3 (IDs fixed; awaiting confirmation)
+## Test cases for Task P3 (IDs fixed; confirmed by Josh with the edge-case defaults, 2026-09-18)
 
 | ID | File | Intended behavior |
 | --- | --- | --- |
