@@ -26,6 +26,7 @@
 ### Phase 4 — Report intelligence
 
 - [ ] Confirm user consent for external summarization separately from local-source consent.
+  - The design has changed to one installation-time maximum-permission grant. Josh confirmed the six product-derived unit-test cases in `PROGRESS.md` on 2026-09-17; the next session starts by showing their one-to-one Vitest code before writing it.
 - [ ] Detect available selected Claude Code/Codex CLI and represent failures without silent fallback.
 - [ ] Define the report contract: at most three achievements, evidence links, incomplete coverage, and achievement-level deduplication.
 - [ ] Expand the pre-labelled evaluation set before prompt iteration.

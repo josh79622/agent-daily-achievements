@@ -54,7 +54,14 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-Define the Phase 4 installation-time external-summarization permission task: the maximum permission shown during installation, Codex as the default CLI, its source scope and automatic Claude Code/Codex fallback, and the later interface controls for changing it. Propose observable unit-test cases for Josh to confirm before writing tests or implementation.
+Implement the Phase 4 installation-time external-summarization permission task. Josh confirmed these product-derived unit-test cases on 2026-09-17; first show the corresponding Vitest test code one-to-one, then run it RED before implementation:
+
+1. No installation-time permission prevents creation or transmission of a summarization request.
+2. Maximum-permission disclosure names the approved source scope, complete report-day conversations, and possible Codex/Claude Code recipients.
+3. Codex is the default when both CLIs are usable; Claude Code is used when it alone is usable.
+4. Saved maximum permission covers scheduled runs and CLI fallback without another consent prompt.
+5. A failed or unavailable Codex automatically tries Claude Code; if both fail, the report is incomplete with the failure reason.
+6. A later interface change to permission or the preferred CLI applies to later requests.
 
 ## Latest verification
 
