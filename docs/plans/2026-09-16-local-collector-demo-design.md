@@ -6,7 +6,7 @@ Make the next local-only slice observable: discover today's Claude Code and Code
 
 ## Boundary
 
-The collector reads only the two local JSONL source directories already surveyed on this Mac. It uses record timestamps in the Australia/Sydney calendar day, not file modification times. It does not call a model, schedule work, notify the user, write conversation text to disk, or commit any collected content.
+The collector reads only the two local JSONL source directories already surveyed on this Mac. It uses record timestamps in the executing computer's local calendar day, not file modification times. It does not call a model, schedule work, notify the user, write conversation text to disk, or commit any collected content.
 
 ## Data model and API
 
@@ -20,4 +20,4 @@ The constellation remains the landing view. A discreet collector panel can be op
 
 ## Verification
 
-Fixture JSONL files will prove both source parsers select a Sydney calendar day, ignore non-conversation records, preserve IDs, and expose malformed input as incomplete coverage. Browser verification will confirm that metadata loads first and a local session preview can be expanded without any outbound request.
+Fixture JSONL files will prove both source parsers select the executing computer's local calendar day, ignore non-conversation records, preserve IDs, and expose malformed input as incomplete coverage. Browser verification will confirm that metadata loads first and a local session preview can be expanded without any outbound request.

@@ -38,7 +38,7 @@ git commit -m "test: define local collector behavior"
 
 **Step 1: Implement minimal parser**
 
-Read configured JSONL files line-by-line, normalize conversation messages, group them by source/session, select the configured Sydney date, and expose parse issues without persisting content.
+Read configured JSONL files line-by-line, normalize conversation messages, group them by source/session, select the executing computer's local date, and expose parse issues without persisting content.
 
 **Step 2: Run focused test**
 

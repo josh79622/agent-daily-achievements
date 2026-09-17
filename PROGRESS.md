@@ -4,7 +4,7 @@
 
 **Phase 3 — Consented local collection**
 
-The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the Australia/Sydney day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. This is not yet a shippable collector because parser-correctness validation on real records and explicit failure handling are unfinished.
+The project has moved past an experience-only prototype. A local collector demo can read Claude Code and Codex JSONL records for the executing computer's local calendar day only after the user saves an explicit source choice. It presents source/session metadata and exposes an on-demand local preview endpoint. This is not yet a shippable collector because parser-correctness validation on real records and explicit failure handling are unfinished.
 
 ## Completed
 
@@ -12,7 +12,7 @@ The project has moved past an experience-only prototype. A local collector demo 
 - Phase 2 experience spike: the three-achievement constellation with expand/related interactions and narrow-screen layout.
 - Phase 3 collector spike:
   - normalized Claude Code and Codex fixture parsing;
-  - Sydney-date filtering, source/session identity, and malformed-line issue reporting;
+  - local-timezone date filtering, source/session identity, and malformed-line issue reporting;
   - metadata-first local API and browser panel;
   - local message preview fetched only after the user selects a session.
 - Phase 3 first-read consent gate:
@@ -20,6 +20,9 @@ The project has moved past an experience-only prototype. A local collector demo 
   - absent, invalid, unreadable, or unsavable settings fail closed;
   - a collection keeps its saved scope until completion, then later choices apply to a later collection;
   - source selection and disclosure in the local page; completed results remain until a later collection succeeds.
+- Phase 3 local timezone:
+  - collection uses the executing computer's system timezone rather than a fixed Sydney timezone;
+  - timezone boundary, non-Sydney, and invalid-timezone behavior are covered by synthetic unit tests.
 
 ## Important boundaries
 
@@ -33,7 +36,7 @@ Verify Claude Code parsing against approved real local sessions: timestamps, rol
 
 ## Latest verification
 
-- First-read consent gate: `npm run check` passed with format, lint, typecheck, 25 tests, and build. The 12 consent-specific tests cover first-read blocking, scoped collection and previews, persisted settings, malformed/unreadable/save-failure states, request validation, and immutable in-flight scope. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
+- Local-timezone collector: `npm run check` passed with format, lint, typecheck, 29 tests, and build. TZ-1 through TZ-4 use synthetic records and cover the system-timezone default, midnight boundary, non-Sydney classification, and invalid configured timezone. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
 - The shell's default Node 25 fails to start because of a missing Homebrew library; use `/opt/homebrew/opt/node@24/bin` on `PATH` for the approved Node 24 runtime (verified v24.20.0).
 
 ## Handoff

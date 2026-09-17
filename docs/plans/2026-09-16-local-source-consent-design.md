@@ -19,7 +19,7 @@ The proposed JSON settings file is for this local skeleton; it does not settle p
 ## User flow and scope
 
 - Show separate, initially unchecked Claude Code and Codex controls before collection. Do not inspect source directories to populate this screen.
-- Explain that selected local histories across projects may be scanned to find activity on the requested Australia/Sydney date. Metadata appears first; message previews appear only on request. Do not imply that identifying a day's activity requires reading only that day's records.
+- Explain that selected local histories across projects may be scanned to find activity on the executing computer's local calendar date. Metadata appears first; message previews appear only on request. Do not imply that identifying a day's activity requires reading only that day's records.
 - Disclose: conversation text stays on this machine, is not saved by this collector, and is not sent to an AI provider. External summarization requires separate consent later.
 - An explicit save action stores the choice; choosing neither leaves collection disabled. Opening the panel or checking a box alone does not grant consent.
 - Keep a source-settings control available before and after a collection. A collection takes an immutable snapshot of the saved source choice when it starts and runs to completion; its choice cannot be changed while it is running. After it completes, the user may choose the scope for the next collection. Choosing neither leaves a future collection disabled. Show an unselected source as not authorized, without claiming it is absent or inactive.
