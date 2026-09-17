@@ -66,14 +66,19 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-Phase 4 report contract, approved on 2026-09-17 in
-[the report contract design](docs/plans/2026-09-17-report-contract-design.md)
-with [synthetic set 02](docs/evals/synthetic-set-02.md). Tasks run in order:
-1 validation (RC), 2 assembly (RA), 3 re-analysis decision (RS), 4 eval scorer
-(EV), 5 status records. No model, CLI, probe, or real data is used.
+- Readiness probe: Josh's first real "Check readiness" click on this Mac, to
+  verify the unconfirmed CLI details (Claude Code reply field, Codex `-o`
+  output, tool-disable effect, exit codes); then Task P2 (per-provider summary
+  model setting; where it is saved is undecided).
+- Report contract Task 5: record verified status for the report contract and
+  eval-set items.
 
 ## Latest verification
 
+- Readiness probe Task P1: `npm run check` passed with format, lint,
+  typecheck, 168 tests, and build. All probe, state, endpoint, and panel tests
+  use fake runners or a fake service; the panel was viewed in the browser pane
+  against a fake service. No real Codex or Claude Code probe has run.
 - UI-first login demo (`docs/plans/2026-09-17-ui-first-cli-login-demo.md`): `npm run check` passed with format, lint, typecheck, 101 tests, and build. Provider CLIs were exercised only through `--help`; no real login, status, or probe command was run. The panel was viewed in the browser pane against a fake provider service. Josh then ran the manual demo for both providers: signed-out and signed-in states and the Terminal-launched browser login passed for Codex and Claude Code.
 - Phase 3 exit review: `npm run check` passed with format, lint, typecheck, 63 tests, and build. DD-1 through DD-6 use only temporary synthetic source files because the current local snapshot has no duplicate session ID. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
 - The shell's default Node 25 fails to start because of a missing Homebrew library; use `/opt/homebrew/opt/node@24/bin` on `PATH` for the approved Node 24 runtime (verified v24.20.0).

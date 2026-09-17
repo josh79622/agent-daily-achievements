@@ -2,7 +2,8 @@
 
 Status: **in progress — decided one item at a time with Josh.** Decision A is
 B, C, D, and E are approved (A amended by D). The Task P1/P2 split and test
-cases PR-1 to PR-17 were approved on 2026-09-17. No real probe has run. No probe code is written and no real probe has
+cases PR-1 to PR-17 were approved on 2026-09-17. Task P1 is implemented and
+passes PR-1 to PR-17 with fakes only. No real probe has run. No probe code is written and no real probe has
 run.
 
 ## Task framing

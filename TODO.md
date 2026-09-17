@@ -41,8 +41,15 @@
     showed `sign-in-required`; each button opened Terminal, which started that
     provider's own browser login; after login, Check again showed signed in and
     never `ready`. The intermediate `login-in-progress` display was not
-    observed manually. Still open: approval of a zero-conversation readiness
-    probe (none is configured, so no provider can reach `ready`).
+    observed manually.
+  - Readiness probe decisions A–E approved in
+    [the probe design](docs/plans/2026-09-17-readiness-probe-design.md).
+    Task P1 (`fa9e628`, `5b9c77a`, `8bd1ef5`, `b134e73`): PR-1 through PR-17
+    pass with fake runners and a fake service; `npm run check` passed (168
+    tests); the panel was checked in the browser against a fake service. No
+    real probe has run, so Ready is unverified with a real CLI. Still open:
+    Josh's first real "Check readiness" click, and Task P2 (UI summary model
+    setting; where it is saved is undecided).
 - [ ] Define the report contract: 0–5 achievements (Josh changed the cap from three on 2026-09-17), evidence links, incomplete coverage, and achievement-level deduplication.
   - Design, decisions D1–D3, and RC/RA/RS/EV cases approved in
     [the report contract design](docs/plans/2026-09-17-report-contract-design.md).
