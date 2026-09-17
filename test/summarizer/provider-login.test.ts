@@ -1,10 +1,12 @@
 import { expect, test } from "vitest";
 
 import {
+  createMacTerminalLauncher,
   createProviderLoginService,
   loginCommand,
   statusCommand,
   type CommandExecutor,
+  type ProcessSpawner,
   type ProviderProbe,
 } from "../../src/summarizer/provider-login.js";
 import type { SummaryProvider } from "../../src/storage/summary-permission.js";
@@ -217,4 +219,100 @@ test("list: returns both providers with only safe fields", async () => {
 
 function fakePath(provider: SummaryProvider): string {
   return provider === "codex" ? "/fake/bin/codex" : "/fake/bin/claude";
+}
+
+function fakeSpawner(exitCode: number | null = 0) {
+  const spawns: Array<{
+    file: string;
+    args: readonly string[];
+    options: Parameters<ProcessSpawner>[2];
+  }> = [];
+  const spawner: ProcessSpawner = async (file, args, options) => {
+    spawns.push({ file, args, options });
+    if (exitCode === null) throw new Error(secret);
+    return { exitCode };
+  };
+  return { spawner, spawns };
+}
+
+for (const provider of providers) {
+  test(`mac launcher: ${provider} opens Terminal via osascript with only its fixed login command`, async () => {
+    const { spawner, spawns } = fakeSpawner();
+    const { executor } = fakeExecutor({ statusExitCode: 1 });
+    const service = createProviderLoginService({
+      executor,
+      launcher: createMacTerminalLauncher({ spawner, platform: "darwin" }),
+    });
+
+    expect((await service.startLogin(provider)).state).toBe(
+      "login-in-progress",
+    );
+
+    expect(spawns).toHaveLength(1);
+    const [spawn] = spawns;
+    expect(spawn?.file).toBe("/usr/bin/osascript");
+    expect(spawn?.options).toEqual({ shell: false, stdio: "ignore" });
+    const scriptEnd = spawn!.args.lastIndexOf("end run");
+    expect(spawn!.args.slice(scriptEnd + 1)).toEqual([
+      fakePath(provider),
+      ...loginCommand(provider),
+    ]);
+    expect(spawn!.args.join("\n")).toMatch(/tell application "Terminal"/);
+    expect(spawn!.args.join("\n")).toMatch(/quoted form of/);
+    expect(spawn!.args.slice(0, scriptEnd + 1).join("\n")).not.toContain(
+      fakePath(provider),
+    );
+  });
+}
+
+test("mac launcher: rejects untrusted executable and argument text without spawning", async () => {
+  const { spawner, spawns } = fakeSpawner();
+  const launcher = createMacTerminalLauncher({ spawner, platform: "darwin" });
+
+  const attempts: Array<[string, readonly string[]]> = [
+    ["/bin/sh", ["login"]],
+    ["codex", ["login"]],
+    ["/fake/bin/codex; id", ["login"]],
+    ["/fake/bin/codex", ["exec", "hello"]],
+    ["/fake/bin/codex", ["login", "--with-api-key"]],
+    ["/fake/bin/claude", ["login"]],
+    ["/fake/bin/codex", ["auth", "login"]],
+    ["/fake/b'in/claude", ["auth", "login"]],
+  ];
+  for (const [file, args] of attempts) {
+    await expect(launcher.launch(file, args)).rejects.toThrow();
+  }
+  expect(spawns).toEqual([]);
+});
+
+test("mac launcher: refuses to run outside macOS", async () => {
+  const { spawner, spawns } = fakeSpawner();
+  const launcher = createMacTerminalLauncher({ spawner, platform: "linux" });
+
+  await expect(launcher.launch("/fake/bin/codex", ["login"])).rejects.toThrow(
+    /macOS/,
+  );
+  expect(spawns).toEqual([]);
+});
+
+for (const exitCode of [1, null]) {
+  test(`mac launcher: ${exitCode === null ? "spawn error" : "non-zero exit"} becomes a sanitized launch failure`, async () => {
+    const { spawner } = fakeSpawner(exitCode);
+    const { executor } = fakeExecutor({ statusExitCode: 1 });
+    const service = createProviderLoginService({
+      executor,
+      launcher: createMacTerminalLauncher({ spawner, platform: "darwin" }),
+    });
+
+    const started = await service.startLogin("codex");
+    expect(started).toMatchObject({
+      state: "probe-failed",
+      reason: "Sign-in could not be started.",
+    });
+    expect(JSON.stringify(started)).not.toContain("SECRET");
+    expect((await service.status("codex")).state).toBe("sign-in-required");
+    expect((await service.status("claude-code")).state).toBe(
+      "sign-in-required",
+    );
+  });
 }

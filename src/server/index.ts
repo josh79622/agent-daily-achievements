@@ -4,6 +4,11 @@ import { join, resolve } from "node:path";
 import { createApp } from "./app.js";
 import { createLocalCollector } from "../collector/local-collector.js";
 import { createReportStore } from "../storage/report-store.js";
+import {
+  createLocalCommandExecutor,
+  createMacTerminalLauncher,
+  createProviderLoginService,
+} from "../summarizer/provider-login.js";
 
 const host = "127.0.0.1";
 const port = Number.parseInt(process.env.PORT ?? "4317", 10);
@@ -15,9 +20,19 @@ const collector = createLocalCollector({
     join(homedir(), ".codex/archived_sessions"),
   ],
 });
+// No readiness probe is configured: a signed-in provider is not reported
+// ready until a zero-conversation probe is approved.
+const providerLoginService =
+  process.platform === "darwin"
+    ? createProviderLoginService({
+        executor: createLocalCommandExecutor(),
+        launcher: createMacTerminalLauncher(),
+      })
+    : undefined;
 const server = createApp({
   collector,
   consentPath: resolve("data/local-sources.json"),
+  providerLoginService,
   reportStore,
   staticDirectory: resolve("dist/web"),
 });
