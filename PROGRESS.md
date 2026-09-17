@@ -84,16 +84,27 @@ that work.
 
 ## Next task
 
-Phase 5, first item: the server-side report-day payload builder (see `TODO.md`).
-Before any code, follow the workflow below: frame the task, bring each open
-decision to Josh one at a time, write the design and test cases, get approval,
-then implement test-first.
+Phase 5. Two tasks are designed and awaiting Josh's approval of their test cases
+in [the payload design](docs/plans/2026-09-18-report-day-payload-design.md):
+Task NT (collector non-text placeholders) first, then Task PB (server-side
+payload builder and evidence manifest). No code has been written.
 
-Open decisions for the report-generation items (none approved yet):
+Decided on 2026-09-18:
 
-- payload format and how record/message IDs map to the evidence manifest
-  (`src/report/contract.ts`);
-- splitting a day that exceeds model input limits without omission;
+- payload format is simplified, minified JSON with structural IDs, and no
+  coverage, timezone or version fields inside the payload;
+- bulk tool output is capped head + tail, content-blind and disclosed
+  ([decision](docs/decisions/2026-09-18-tool-result-truncation.md));
+- non-text blocks become visible placeholders and no message vanishes silently.
+
+Open design questions inside Task NT: whether to exclude `thinking` blocks (D1),
+and whether to extend the contract's coverage-reason union to carry the
+collector's `malformed-record` and duplicate reasons (D2).
+
+Open decisions for the remaining report-generation items (none approved yet):
+
+- splitting a day that exceeds model input limits without omission (deferred to
+  the summary-run task, to be decided on a measured `byteLength`);
 - whether and how secrets inside conversations are masked before sending;
 - the exact non-interactive summary command per CLI (the probe commands in
   `docs/plans/2026-09-17-readiness-probe-design.md` are liveness-only), output

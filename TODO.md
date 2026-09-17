@@ -139,10 +139,27 @@ Phase 4 was closed as scoped on 2026-09-18 (Josh, option B in the
 [Phase 4 exit review](docs/reviews/2026-09-18-phase-4-exit-review.md)); report
 generation moved here and comes first.
 
-- [ ] Build the server-side report-day payload from collected sessions for the
-      summarizer. Undecided: payload format and its link to the evidence
-      manifest, splitting days that exceed model input limits without omission,
-      and whether secrets inside conversations are masked before sending.
+- [ ] Represent non-text conversation content in the collector instead of
+      dropping it: `image`, `tool_use`, `tool_result` and unrecognized blocks
+      become visible placeholder parts, and a message left with no representable
+      content counts as an issue rather than vanishing. Verified defect: of four
+      synthetic messages, an image-only message and a `tool_use` message were
+      dropped with `issues: 0` and `state: "available"`, so a day was reported
+      complete while content was missing. Losing `tool_use` / `tool_result` also
+      removes the execution evidence that separates a stated intention from a
+      completed task. Test cases NT-1 to NT-8 in
+      [the payload design](docs/plans/2026-09-18-report-day-payload-design.md).
+- [ ] Build the server-side report-day payload and evidence manifest from
+      collected sessions. Format approved on 2026-09-18: simplified, minified
+      JSON with structural IDs, no coverage or version fields inside the
+      payload. Bulk tool output is capped head + tail, content-blind and
+      disclosed, per
+      [the truncation decision](docs/decisions/2026-09-18-tool-result-truncation.md).
+      Test cases PB-1 to PB-13 in
+      [the payload design](docs/plans/2026-09-18-report-day-payload-design.md).
+      Still undecided: splitting days that exceed model input limits (deferred
+      to the summary-run task, to be decided on a measured `byteLength`), and
+      whether secrets inside conversations are masked before sending.
 - [ ] Run the selected summarizer CLI on that payload under saved permission,
       with the approved model, effort, tool restrictions, re-analysis limit
       (three attempts), and fallback rules, assembling an `AchievementReportV1`.
