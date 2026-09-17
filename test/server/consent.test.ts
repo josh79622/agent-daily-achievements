@@ -1,11 +1,10 @@
-import assert from "node:assert/strict";
 import { request } from "node:http";
 import { once } from "node:events";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { afterEach, expect, test } from "vitest";
 import { createApp } from "../../src/server/app.js";
 import { createReportStore } from "../../src/storage/report-store.js";
 import type {
@@ -13,7 +12,13 @@ import type {
   LocalSource,
 } from "../../src/collector/local-collector.js";
 
-async function setup(t: test.TestContext, collector?: LocalCollector) {
+const cleanups: Array<() => Promise<void>> = [];
+
+afterEach(async () => {
+  await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
+});
+
+async function setup(collector?: LocalCollector) {
   const root = await mkdtemp(join(tmpdir(), "consent-test-"));
   const consentPath = join(root, "settings", "local-sources.json");
   const calls: LocalSource[][] = [];
@@ -30,7 +35,7 @@ async function setup(t: test.TestContext, collector?: LocalCollector) {
     });
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
-    t.after(
+    cleanups.push(
       () => new Promise<void>((resolve) => server.close(() => resolve())),
     );
     const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -46,22 +51,22 @@ async function setup(t: test.TestContext, collector?: LocalCollector) {
         }),
     };
   };
-  t.after(() => rm(root, { recursive: true, force: true }));
+  cleanups.push(() => rm(root, { recursive: true, force: true }));
   return { ...(await start()), root, consentPath, calls, start };
 }
 
-test("consent: direct summary and preview cannot read before explicit choice", async (t) => {
-  const app = await setup(t);
-  assert.equal((await app.get("/api/collector/today")).status, 403);
-  assert.equal((await app.get("/api/collector/sessions/known")).status, 403);
-  assert.deepEqual(await (await app.get("/api/collector/consent")).json(), {
+test("consent: direct summary and preview cannot read before explicit choice", async () => {
+  const app = await setup();
+  expect((await app.get("/api/collector/today")).status).toBe(403);
+  expect((await app.get("/api/collector/sessions/known")).status).toBe(403);
+  expect(await (await app.get("/api/collector/consent")).json()).toEqual({
     sources: [],
   });
-  assert.deepEqual(app.calls, []);
+  expect(app.calls).toEqual([]);
 });
 
-test("consent: known sessions from an unselected source cannot be previewed", async (t) => {
-  const app = await setup(t, {
+test("consent: known sessions from an unselected source cannot be previewed", async () => {
+  const app = await setup({
     async collect(date) {
       return {
         date,
@@ -88,14 +93,14 @@ test("consent: known sessions from an unselected source cannot be previewed", as
       };
     },
   });
-  assert.equal((await app.save(["claude-code"])).status, 200);
+  expect((await app.save(["claude-code"])).status).toBe(200);
 
   const response = await app.get(
     "/api/collector/sessions/known-codex-session?source=codex",
   );
 
-  assert.equal(response.status, 404);
-  assert.doesNotMatch(await response.text(), /Synthetic private content/);
+  expect(response.status).toBe(404);
+  expect(await response.text()).not.toMatch(/Synthetic private content/);
 });
 
 for (const sources of [
@@ -104,59 +109,57 @@ for (const sources of [
   ["codex"],
   ["claude-code", "codex"],
 ]) {
-  test(`consent: persists and enforces ${JSON.stringify(sources)} across restart`, async (t) => {
-    const app = await setup(t);
-    assert.equal((await app.save(sources)).status, 200);
+  test(`consent: persists and enforces ${JSON.stringify(sources)} across restart`, async () => {
+    const app = await setup();
+    expect((await app.save(sources)).status).toBe(200);
     const restarted = await app.start();
-    assert.deepEqual(
+    expect(
       await (await restarted.get("/api/collector/consent")).json(),
-      { sources },
-    );
-    assert.deepEqual(app.calls, []);
-    assert.equal(
-      (await restarted.get("/api/collector/today")).status,
+    ).toEqual({ sources });
+    expect(app.calls).toEqual([]);
+    expect((await restarted.get("/api/collector/today")).status).toBe(
       sources.length ? 200 : 403,
     );
-    assert.deepEqual(app.calls, sources.length ? [sources] : []);
-    assert.deepEqual(JSON.parse(await readFile(app.consentPath, "utf8")), {
+    expect(app.calls).toEqual(sources.length ? [sources] : []);
+    expect(JSON.parse(await readFile(app.consentPath, "utf8"))).toEqual({
       version: 1,
       sources,
     });
   });
 }
 
-test("consent: persisted malformed or unsupported settings block collection", async (t) => {
-  const app = await setup(t);
+test("consent: persisted malformed or unsupported settings block collection", async () => {
+  const app = await setup();
   await mkdir(join(app.consentPath, ".."), { recursive: true });
   await writeFile(app.consentPath, "{bad");
-  assert.equal((await app.get("/api/collector/today")).status, 503);
+  expect((await app.get("/api/collector/today")).status).toBe(503);
   await writeFile(app.consentPath, '{"version":1,"sources":["unknown"]}');
-  assert.equal((await app.get("/api/collector/consent")).status, 503);
-  assert.deepEqual(app.calls, []);
+  expect((await app.get("/api/collector/consent")).status).toBe(503);
+  expect(app.calls).toEqual([]);
 });
 
-test("consent: a save failure blocks collection until a later explicit save succeeds", async (t) => {
-  const app = await setup(t);
+test("consent: a save failure blocks collection until a later explicit save succeeds", async () => {
+  const app = await setup();
   await mkdir(app.consentPath, { recursive: true });
-  assert.equal((await app.get("/api/collector/today")).status, 503);
-  assert.equal((await app.save(["codex"])).status, 503);
-  assert.equal((await app.get("/api/collector/today")).status, 503);
+  expect((await app.get("/api/collector/today")).status).toBe(503);
+  expect((await app.save(["codex"])).status).toBe(503);
+  expect((await app.get("/api/collector/today")).status).toBe(503);
   await rm(app.consentPath, { recursive: true });
-  assert.deepEqual(app.calls, []);
-  assert.equal((await app.save(["codex"])).status, 200);
-  assert.equal((await app.get("/api/collector/today")).status, 200);
+  expect(app.calls).toEqual([]);
+  expect((await app.save(["codex"])).status).toBe(200);
+  expect((await app.get("/api/collector/today")).status).toBe(200);
 });
 
-test("consent: malformed input and foreign origin/host cannot authorize reads", async (t) => {
-  const app = await setup(t);
+test("consent: malformed input and foreign origin/host cannot authorize reads", async () => {
+  const app = await setup();
   for (const sources of [["unknown"], ["codex", "codex"], "codex", null]) {
-    assert.equal((await app.save(sources)).status, 400);
+    expect((await app.save(sources)).status).toBe(400);
   }
   for (const headers of [
     { origin: "https://unrelated.example", "content-type": "application/json" },
     { origin: app.url, "content-type": "text/plain" },
   ]) {
-    assert.equal(
+    expect(
       (
         await fetch(app.url + "/api/collector/consent", {
           method: "PUT",
@@ -164,8 +167,7 @@ test("consent: malformed input and foreign origin/host cannot authorize reads", 
           body: '{"sources":["codex"]}',
         })
       ).status,
-      403,
-    );
+    ).toBe(403);
   }
   const foreignHostStatus = await new Promise<number | undefined>(
     (resolve, reject) => {
@@ -188,8 +190,8 @@ test("consent: malformed input and foreign origin/host cannot authorize reads", 
       req.end('{"sources":["codex"]}');
     },
   );
-  assert.equal(foreignHostStatus, 403);
-  assert.equal(
+  expect(foreignHostStatus).toBe(403);
+  expect(
     (
       await fetch(app.url + "/api/collector/consent", {
         method: "PUT",
@@ -197,13 +199,12 @@ test("consent: malformed input and foreign origin/host cannot authorize reads", 
         body: "{bad",
       })
     ).status,
-    400,
-  );
-  assert.equal((await app.get("/api/collector/today")).status, 403);
-  assert.deepEqual(app.calls, []);
+  ).toBe(400);
+  expect((await app.get("/api/collector/today")).status).toBe(403);
+  expect(app.calls).toEqual([]);
 });
 
-test("consent: source scope stays locked until an in-flight collection finishes", async (t) => {
+test("consent: source scope stays locked until an in-flight collection finishes", async () => {
   let release!: () => void;
   let started!: () => void;
   const calls: LocalSource[][] = [];
@@ -213,7 +214,7 @@ test("consent: source scope stays locked until an in-flight collection finishes"
   const reading = new Promise<void>((resolve) => {
     started = resolve;
   });
-  const app = await setup(t, {
+  const app = await setup({
     async collect(date, sources = []) {
       calls.push([...sources]);
       started();
@@ -221,20 +222,20 @@ test("consent: source scope stays locked until an in-flight collection finishes"
       return { date, sources: [], sessions: [] };
     },
   });
-  assert.equal((await app.save(["codex"])).status, 200);
+  expect((await app.save(["codex"])).status).toBe(200);
   const pending = app.get("/api/collector/today");
   await reading;
   const scopeChange = await app.save(["claude-code"]);
   release();
-  assert.equal(scopeChange.status, 409);
-  assert.equal((await pending).status, 200);
-  assert.deepEqual(calls, [["codex"]]);
-  assert.equal((await app.save(["claude-code"])).status, 200);
-  assert.equal((await app.get("/api/collector/today")).status, 200);
-  assert.deepEqual(calls, [["codex"], ["claude-code"]]);
+  expect(scopeChange.status).toBe(409);
+  expect((await pending).status).toBe(200);
+  expect(calls).toEqual([["codex"]]);
+  expect((await app.save(["claude-code"])).status).toBe(200);
+  expect((await app.get("/api/collector/today")).status).toBe(200);
+  expect(calls).toEqual([["codex"], ["claude-code"]]);
 });
 
-test("consent: a source change begun before collection is rejected if its body finishes during collection", async (t) => {
+test("consent: a source change begun before collection is rejected if its body finishes during collection", async () => {
   let release!: () => void;
   let started!: () => void;
   const waiting = new Promise<void>((resolve) => {
@@ -243,14 +244,14 @@ test("consent: a source change begun before collection is rejected if its body f
   const reading = new Promise<void>((resolve) => {
     started = resolve;
   });
-  const app = await setup(t, {
+  const app = await setup({
     async collect(date) {
       started();
       await waiting;
       return { date, sources: [], sessions: [] };
     },
   });
-  assert.equal((await app.save(["codex"])).status, 200);
+  expect((await app.save(["codex"])).status).toBe(200);
 
   const parsingRequest = once(app.server, "request");
   let finishChange!: () => void;
@@ -291,6 +292,6 @@ test("consent: a source change begun before collection is rejected if its body f
   finishChange();
   const status = await changeStatus;
   release();
-  assert.equal(await pendingStatus, 200);
-  assert.equal(status, 409);
+  expect(await pendingStatus).toBe(200);
+  expect(status).toBe(409);
 });

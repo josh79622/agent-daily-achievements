@@ -9,9 +9,9 @@ const directories: string[] = [];
 
 afterEach(async () => {
   await Promise.all(
-    directories.splice(0).map((directory) =>
-      rm(directory, { force: true, recursive: true }),
-    ),
+    directories
+      .splice(0)
+      .map((directory) => rm(directory, { force: true, recursive: true })),
   );
 });
 

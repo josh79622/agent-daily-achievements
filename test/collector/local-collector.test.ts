@@ -1,13 +1,23 @@
-import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { afterEach, expect, test } from "vitest";
 
 import { createLocalCollector } from "../../src/collector/local-collector.js";
 
-test("local collector returns same-day Claude Code and Codex sessions with issues", async (context) => {
+const directories: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(
+    directories
+      .splice(0)
+      .map((directory) => rm(directory, { force: true, recursive: true })),
+  );
+});
+
+test("local collector returns same-day Claude Code and Codex sessions with issues", async () => {
   const root = await mkdtemp(join(tmpdir(), "daily-proof-collector-"));
+  directories.push(root);
   const claudeDirectory = join(root, "claude");
   const codexDirectory = join(root, "codex");
   await writeFile(join(root, "placeholder"), "");
@@ -60,7 +70,6 @@ test("local collector returns same-day Claude Code and Codex sessions with issue
       }),
     ].join("\n"),
   );
-  context.after(() => rm(root, { force: true, recursive: true }));
 
   const collector = createLocalCollector({
     claudeDirectories: [claudeDirectory, join(root, "claude.jsonl")],
@@ -71,14 +80,14 @@ test("local collector returns same-day Claude Code and Codex sessions with issue
     "codex",
   ]);
 
-  assert.equal(summary.sources[0]?.sessions, 1);
-  assert.equal(summary.sources[1]?.sessions, 1);
-  assert.equal(summary.sources[0]?.issues, 1);
-  assert.equal(summary.sessions[0]?.source, "claude-code");
-  assert.equal(summary.sessions[0]?.messageCount, 2);
-  assert.equal(summary.sessions[1]?.source, "codex");
-  assert.equal(summary.sessions[1]?.messageCount, 1);
-  assert.equal(summary.sessions[1]?.messages[0]?.text, "Build it");
+  expect(summary.sources[0]?.sessions).toBe(1);
+  expect(summary.sources[1]?.sessions).toBe(1);
+  expect(summary.sources[0]?.issues).toBe(1);
+  expect(summary.sessions[0]?.source).toBe("claude-code");
+  expect(summary.sessions[0]?.messageCount).toBe(2);
+  expect(summary.sessions[1]?.source).toBe("codex");
+  expect(summary.sessions[1]?.messageCount).toBe(1);
+  expect(summary.sessions[1]?.messages[0]?.text).toBe("Build it");
 });
 
 for (const selected of ["claude-code", "codex"] as const) {
@@ -100,9 +109,6 @@ for (const selected of ["claude-code", "codex"] as const) {
     const result = await createLocalCollector(options).collect("2026-09-16", [
       selected,
     ]);
-    assert.deepEqual(
-      result.sources.map(({ source }) => source),
-      [selected],
-    );
+    expect(result.sources.map(({ source }) => source)).toEqual([selected]);
   });
 }

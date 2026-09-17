@@ -8,6 +8,8 @@
   - Josh confirmed the scope, tests, and immutable in-flight collection behavior in [the consent design](docs/plans/2026-09-16-local-source-consent-design.md). The task passed its unit tests and `npm run check`; no E2E test was run.
 - [x] Use the executing computer's timezone for local collector date boundaries. (`d4ee881`)
   - TZ-1 through TZ-4 in `test/collector/local-timezone.test.ts` passed with synthetic records; no E2E test was run.
+- [x] Migrate all unit tests to Vitest as the project's single runner. (`62dc887` and follow-up commit)
+  - Existing behavior is preserved in 29 passing Vitest tests; no E2E test was run.
 - [ ] Verify Claude Code parsing against approved real local sessions: timestamps, role/content extraction, session identity, partial/malformed input.
 - [ ] Verify Codex parsing against approved real local sessions: timestamps, role/content extraction, session identity, active/archived overlap, partial/malformed input.
 - [ ] Surface absent source, unreadable source, unsupported shape, and partial-write state as distinct incomplete coverage.

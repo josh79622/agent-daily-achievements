@@ -1,33 +1,32 @@
-import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
-import test from "node:test";
+import { expect, test } from "vitest";
 
 test("builds the achievement constellation", async () => {
   const build = spawnSync(process.execPath, ["scripts/build.mjs"], {
     encoding: "utf8",
   });
 
-  assert.equal(build.status, 0, build.stderr);
+  expect(build.status, build.stderr).toBe(0);
   const html = await readFile("dist/web/index.html", "utf8");
   const app = await readFile("dist/web/app.js", "utf8");
   const css = await readFile("dist/web/styles.css", "utf8");
-  assert.match(html, /id="constellation"/);
-  assert.match(html, /<time/);
-  assert.match(html, /id="collector-toggle"/);
-  assert.match(html, /id="collector-panel"/);
-  assert.match(html, /id="source-consent-form"/);
-  assert.match(html, /id="source-claude-code"/);
-  assert.match(html, /id="source-codex"/);
-  assert.doesNotMatch(html, /checked/);
-  assert.match(html, /No conversation text leaves this machine/);
-  assert.match(html, /separate consent/);
-  assert.match(app, /api\/collector\/consent/);
-  assert.match(app, /function replaceCollection/);
-  assert.equal((app.match(/kind: "achievement"/g) ?? []).length, 3);
-  assert.match(app, /Expand/);
-  assert.match(app, /Related/);
-  assert.match(app, /Preview locally/);
-  assert.doesNotMatch(html, /Generate sample report/);
-  assert.match(css, /\.constellation-node/);
+  expect(html).toMatch(/id="constellation"/);
+  expect(html).toMatch(/<time/);
+  expect(html).toMatch(/id="collector-toggle"/);
+  expect(html).toMatch(/id="collector-panel"/);
+  expect(html).toMatch(/id="source-consent-form"/);
+  expect(html).toMatch(/id="source-claude-code"/);
+  expect(html).toMatch(/id="source-codex"/);
+  expect(html).not.toMatch(/checked/);
+  expect(html).toMatch(/No conversation text leaves this machine/);
+  expect(html).toMatch(/separate consent/);
+  expect(app).toMatch(/api\/collector\/consent/);
+  expect(app).toMatch(/function replaceCollection/);
+  expect(app.match(/kind: "achievement"/g) ?? []).toHaveLength(3);
+  expect(app).toMatch(/Expand/);
+  expect(app).toMatch(/Related/);
+  expect(app).toMatch(/Preview locally/);
+  expect(html).not.toMatch(/Generate sample report/);
+  expect(css).toMatch(/\.constellation-node/);
 });

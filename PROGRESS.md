@@ -23,6 +23,8 @@ The project has moved past an experience-only prototype. A local collector demo 
 - Phase 3 local timezone:
   - collection uses the executing computer's system timezone rather than a fixed Sydney timezone;
   - timezone boundary, non-Sydney, and invalid-timezone behavior are covered by synthetic unit tests.
+- Unit-test framework:
+  - all existing unit tests use Vitest, with one `npm test` command and no `node:test` or `node:assert` imports in the test suite.
 
 ## Important boundaries
 
@@ -36,7 +38,7 @@ Verify Claude Code parsing against approved real local sessions: timestamps, rol
 
 ## Latest verification
 
-- Local-timezone collector: `npm run check` passed with format, lint, typecheck, 29 tests, and build. TZ-1 through TZ-4 use synthetic records and cover the system-timezone default, midnight boundary, non-Sydney classification, and invalid configured timezone. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
+- Vitest migration: `npm run check` passed with format, lint, typecheck, 29 tests, and build. TZ-1 through TZ-4 retain their synthetic system-timezone default, midnight-boundary, non-Sydney, and invalid-timezone coverage. No E2E test was run; product-wide E2E testing is deferred until all planned functionality is complete.
 - The shell's default Node 25 fails to start because of a missing Homebrew library; use `/opt/homebrew/opt/node@24/bin` on `PATH` for the approved Node 24 runtime (verified v24.20.0).
 
 ## Handoff
