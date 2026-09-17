@@ -10,8 +10,8 @@
   - TZ-1 through TZ-4 in `test/collector/local-timezone.test.ts` passed with synthetic records; no E2E test was run.
 - [x] Migrate all unit tests to Vitest as the project's single runner. (`62dc887` and follow-up commit)
   - Existing behavior is preserved in 29 passing Vitest tests; no E2E test was run.
-- [ ] Verify Claude Code parsing against approved real local sessions: timestamps, role/content extraction, session identity, partial/malformed input.
-  - Common primary-session structure passed read-only verification and CC-1 through CC-10 synthetic unit tests. Agent/sidechain files using `parentSessionId` remain pending a product decision; see [the verification record](docs/research/2026-09-17-claude-code-parser-verification.md).
+- [x] Verify Claude Code parsing against approved real local sessions: timestamps, role/content extraction, session identity, partial/malformed input. (`58035cc` and follow-up commits)
+  - Common primary-session and fork-context structure passed read-only verification and CC-1 through CC-12 synthetic unit tests; see [the verification record](docs/research/2026-09-17-claude-code-parser-verification.md). No E2E test was run.
 - [ ] Verify Codex parsing against approved real local sessions: timestamps, role/content extraction, session identity, active/archived overlap, partial/malformed input.
 - [ ] Surface absent source, unreadable source, unsupported shape, and partial-write state as distinct incomplete coverage.
 - [ ] Add session-file deduplication so one resumed or repeated stream is not counted twice.

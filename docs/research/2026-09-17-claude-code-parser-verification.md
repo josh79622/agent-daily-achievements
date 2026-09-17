@@ -31,11 +31,13 @@ files and returned at least one session with zero reported parse issues.
 | CC-9 | `CC-9: aggregates multiple malformed records without mistaking them for no activity` |
 | CC-10 | `CC-10: reads a source without changing it or exposing malformed source text` |
 
-## Open decision
+## Fork-context verification
 
-An earlier metadata-only inventory found an agent-related Claude file that uses
-`parentSessionId` rather than `sessionId`. The source has not been declared
-supported until the product decides whether agent and sidechain records belong
-in a daily report. That decision must define whether to exclude them, include
-them as separate sessions, or merge them with a parent session. It will then
-receive a dedicated synthetic test and read-only structural verification.
+The one file previously observed with `parentSessionId` contains a non-message
+`fork-context-ref` record and also contains direct `sessionId` conversation
+records. A second read-only check verified that the collector ignores the fork
+reference and preserves the direct session with zero reported parse issues.
+
+Future parent-only conversation records are excluded as separate sidechain
+sessions to avoid duplicate counting. CC-12 tests that safety behavior with a
+synthetic record; it was not claimed to have occurred in the inspected sample.

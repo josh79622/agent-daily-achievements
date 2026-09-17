@@ -126,6 +126,7 @@ async function parseFile(
       issues += 1;
       continue;
     }
+    if (isExcludedClaudeSidechain(source, record)) continue;
     sessionId = sessionIdFrom(source, record) ?? sessionId;
     if (
       hasConversationRole(source, record) &&
@@ -173,6 +174,17 @@ function sessionIdFrom(
   if (source === "claude-code") return stringAt(record.sessionId);
   const payload = objectAt(record.payload);
   return stringAt(payload?.id);
+}
+
+function isExcludedClaudeSidechain(
+  source: LocalSource,
+  record: Record<string, unknown>,
+): boolean {
+  return (
+    source === "claude-code" &&
+    !stringAt(record.sessionId) &&
+    Boolean(stringAt(record.parentSessionId))
+  );
 }
 
 function messageFrom(

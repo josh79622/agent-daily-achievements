@@ -322,7 +322,25 @@ test("CC-10: reads a source without changing it or exposing malformed source tex
   expect(result.sources[0]?.issues).toBe(1);
 });
 
-test("CC-11: excludes agent and sidechain records that only have a parent session ID", async () => {
+test("CC-11: ignores a fork context reference and retains the direct session", async () => {
+  const { collector } = await claudeCollector([
+    JSON.stringify({
+      type: "fork-context-ref",
+      parentSessionId: "synthetic-parent-session",
+    }),
+    claudeRecord("2026-09-16T09:00:00Z", "user", "Direct session work"),
+  ]);
+
+  const result = await collector.collect("2026-09-16", ["claude-code"]);
+
+  expect(result.sessions).toHaveLength(1);
+  expect(result.sessions[0]?.id).toBe("synthetic-claude-session");
+  expect(result.sessions[0]?.messages.map(({ text }) => text)).toEqual([
+    "Direct session work",
+  ]);
+});
+
+test("CC-12: excludes agent and sidechain records that only have a parent session ID", async () => {
   const { collector } = await claudeCollector([
     JSON.stringify({
       type: "assistant",
