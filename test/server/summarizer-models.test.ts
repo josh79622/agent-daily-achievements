@@ -237,3 +237,53 @@ test("SE-2: invalid, cross-provider, malformed, non-local, or unknown requests a
     unreadable: false,
   });
 });
+
+test("EE-2: GET includes effort options, selected effort, and effective effort", async () => {
+  const app = await setup();
+  expect((await app.put("codex", { model: "gpt-fiction-terra" })).status).toBe(
+    200,
+  );
+  expect((await app.put("codex", { effort: "low" })).status).toBe(200);
+
+  const views = JSON.parse(
+    (await app.send("GET", "/api/summarizer/models")).body,
+  ).providers as Array<Record<string, unknown>>;
+  expect(views[0]).toMatchObject({
+    provider: "codex",
+    selected: "gpt-fiction-terra",
+    effortOptions: ["low"],
+    selectedEffort: "low",
+    effectiveEffort: "low",
+  });
+});
+
+test("EE-1: PUT accepts exactly one of model or effort, and only a current effort option", async () => {
+  const app = await setup();
+  await app.put("codex", { model: "gpt-fiction-terra" });
+
+  const statuses = (
+    await Promise.all([
+      app.put("codex", { effort: "ultra" }),
+      app.put("codex", {
+        effort: "--dangerously-bypass-approvals-and-sandbox",
+      }),
+      app.put("codex", { effort: 3 }),
+      app.put("codex", { model: "gpt-fiction-terra", effort: "low" }),
+      app.put("claude-code", { effort: "max" }),
+    ])
+  ).map((response) => response.status);
+  expect(statuses).toEqual([400, 400, 400, 400, 400]);
+  expect(await readSummarizerModels(app.settingsPath)).toEqual({
+    models: { codex: "gpt-fiction-terra" },
+    efforts: {},
+    unreadable: false,
+  });
+
+  expect((await app.put("codex", { effort: "low" })).status).toBe(200);
+  expect((await app.put("codex", { effort: "default" })).status).toBe(200);
+  expect(await readSummarizerModels(app.settingsPath)).toEqual({
+    models: { codex: "gpt-fiction-terra" },
+    efforts: {},
+    unreadable: false,
+  });
+});

@@ -223,6 +223,7 @@ describe("SR effective model", () => {
       settingsPath: path,
     });
     const received: Array<string | undefined> = [];
+    const efforts: Array<string | undefined> = [];
     const service = createProviderLoginService({
       executor: {
         async locate(name) {
@@ -233,12 +234,12 @@ describe("SR effective model", () => {
         },
       },
       launcher: { async launch() {} },
-      probe: async ({ summaryModel }) => {
+      probe: async ({ summaryModel, summaryEffort }) => {
         received.push(summaryModel);
+        efforts.push(summaryEffort);
         return { ok: true };
       },
-      summaryModel: async (provider) =>
-        (await models.effectiveSettings(provider)).model,
+      summarySettings: (provider) => models.effectiveSettings(provider),
     });
 
     await service.checkReadiness("codex");
@@ -251,6 +252,7 @@ describe("SR effective model", () => {
     await service.checkReadiness("codex");
 
     expect(received).toEqual([undefined, "gpt-fiction-terra", undefined]);
+    expect(efforts).toEqual([undefined, undefined, undefined]);
   });
 });
 

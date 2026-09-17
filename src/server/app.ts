@@ -320,28 +320,34 @@ export function createApp({
           summaryModelsUnavailable(response);
           return;
         }
-        let model: string | undefined;
+        let change: { model: string } | { effort: string } | undefined;
         try {
           const body = await parseJsonBody(request);
           if (
             body &&
             typeof body === "object" &&
             !Array.isArray(body) &&
-            Object.keys(body).length === 1 &&
-            typeof (body as { model?: unknown }).model === "string"
-          )
-            model = (body as { model: string }).model;
+            Object.keys(body).length === 1
+          ) {
+            const { model, effort } = body as {
+              model?: unknown;
+              effort?: unknown;
+            };
+            if (typeof model === "string") change = { model };
+            else if (typeof effort === "string") change = { effort };
+          }
         } catch {
-          model = undefined;
+          change = undefined;
         }
-        // Only `default` or a model in this provider's current list is saved.
-        const view =
-          model === undefined
-            ? undefined
-            : await summarizerModels.save(provider, model);
+        // Only `default` or a value in this provider's current list is saved.
+        const view = !change
+          ? undefined
+          : "model" in change
+            ? await summarizerModels.save(provider, change.model)
+            : await summarizerModels.saveEffort(provider, change.effort);
         if (!view) {
           sendJson(response, 400, {
-            error: { message: "Choose a model from the list." },
+            error: { message: "Choose a model or effort from the list." },
           });
           return;
         }

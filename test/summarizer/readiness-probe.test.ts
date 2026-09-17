@@ -754,3 +754,72 @@ test("PR-17 support: only signed-in statuses carry signedIn, so the page can ena
     else expect(status).not.toHaveProperty("signedIn");
   }
 });
+
+describe("EP probe effort", () => {
+  test("EP-1: the first attempt never passes an effort; the second passes the summary effort", async () => {
+    const claude = harness([{ run: exited(1) }, { run: claudeOk }]);
+    await claude.probe({
+      provider: "claude-code",
+      executablePath: "/fake/bin/claude",
+      summaryModel: "opus",
+      summaryEffort: "max",
+    });
+    expect(claude.runs[0]?.args).not.toContain("--effort");
+    expect(claude.runs[1]?.args).toEqual([
+      "-p",
+      "--tools",
+      "",
+      "--no-session-persistence",
+      "--strict-mcp-config",
+      "--output-format",
+      "json",
+      "--model",
+      "opus",
+      "--effort",
+      "max",
+      probePrompt,
+    ]);
+
+    const codex = harness([{ run: exited(1) }, {}]);
+    await codex.probe({
+      provider: "codex",
+      executablePath: "/fake/bin/codex",
+      summaryModel: "gpt-5.6-terra",
+      summaryEffort: "ultra",
+    });
+    expect(codex.runs[0]?.args.join(" ")).not.toContain(
+      "model_reasoning_effort",
+    );
+    const second = codex.runs[1]?.args ?? [];
+    const index = second.indexOf("-m");
+    expect(second.slice(index, index + 4)).toEqual([
+      "-m",
+      "gpt-5.6-terra",
+      "-c",
+      'model_reasoning_effort="ultra"',
+    ]);
+
+    const noEffort = harness([{ run: exited(1) }, { run: exited(1) }]);
+    await noEffort.probe({
+      provider: "codex",
+      executablePath: "/fake/bin/codex",
+    });
+    expect(noEffort.runs.flatMap((run) => run.args).join(" ")).not.toMatch(
+      /effort/,
+    );
+  });
+
+  test("EP-2: the same model with an effort still runs a second attempt", async () => {
+    const { probe, runs } = harness([{ run: exited(1) }, { run: claudeOk }]);
+    expect(
+      await probe({
+        provider: "claude-code",
+        executablePath: "/fake/bin/claude",
+        summaryModel: "haiku",
+        summaryEffort: "low",
+      }),
+    ).toEqual({ ok: true });
+    expect(runs).toHaveLength(2);
+    expect(runs[1]?.args).toContain("--effort");
+  });
+});

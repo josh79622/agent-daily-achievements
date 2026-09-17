@@ -134,14 +134,16 @@ export function createProviderLoginService({
   launcher,
   probe,
   now = () => new Date(),
-  summaryModel,
+  summarySettings,
 }: {
   executor: CommandExecutor;
   launcher: LoginLauncher;
   probe?: ReadinessProbe;
   now?: () => Date;
-  /** The effective summary model; undefined means the CLI default. */
-  summaryModel?: (provider: SummaryProvider) => Promise<string | undefined>;
+  /** Effective summary model and effort; undefined values mean CLI defaults. */
+  summarySettings?: (
+    provider: SummaryProvider,
+  ) => Promise<{ model?: string; effort?: string }>;
 }): ProviderLoginService {
   const launched = new Set<SummaryProvider>();
   // Decision E1: readiness is held in memory only.
@@ -247,11 +249,14 @@ export function createProviderLoginService({
         }
         let outcome: Awaited<ReturnType<ReadinessProbe>>;
         try {
-          const model = await summaryModel?.(provider).catch(() => undefined);
+          const settings = await summarySettings?.(provider).catch(
+            () => undefined,
+          );
           outcome = await probe({
             provider,
             executablePath: signIn.path,
-            summaryModel: model,
+            summaryModel: settings?.model,
+            summaryEffort: settings?.effort,
           });
         } catch {
           outcome = {

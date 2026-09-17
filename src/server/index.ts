@@ -55,8 +55,8 @@ const providerLoginService = macOS
         tempDirs: osProbeTempDirs,
         readReplyFile: readReplyFileFromDisk,
       }),
-      summaryModel: async (provider) =>
-        (await summarizerModels?.effectiveSettings(provider))?.model,
+      summarySettings: async (provider) =>
+        (await summarizerModels?.effectiveSettings(provider)) ?? {},
     })
   : undefined;
 const server = createApp({

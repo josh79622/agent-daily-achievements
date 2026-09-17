@@ -56,6 +56,8 @@ export type ReadinessProbe = (input: {
   executablePath: string;
   /** Undefined means the CLI's default model. */
   summaryModel?: string;
+  /** Undefined means the CLI's default effort (decision E1). */
+  summaryEffort?: string;
 }) => Promise<ProbeOutcome>;
 
 export interface ProbeRunRequest {
@@ -110,6 +112,7 @@ export function createReadinessProbe({
     provider: SummaryProvider,
     executablePath: string,
     model: string | undefined,
+    effort: string | undefined,
   ): Promise<ProbeFailureReason | undefined> {
     let directory: string;
     try {
@@ -121,8 +124,8 @@ export function createReadinessProbe({
       const replyFile = join(directory, "reply.txt");
       const args =
         provider === "claude-code"
-          ? claudeArgs(model)
-          : codexArgs(model, directory, replyFile);
+          ? claudeArgs(model, effort)
+          : codexArgs(model, effort, directory, replyFile);
       let result: ProbeRunResult;
       try {
         result = await runner({
@@ -161,16 +164,18 @@ export function createReadinessProbe({
     return reply.text.trim() ? undefined : "empty-reply";
   }
 
-  return async ({ provider, executablePath, summaryModel }) => {
+  return async ({ provider, executablePath, summaryModel, summaryEffort }) => {
     const lowest = lowestCostModels[provider];
-    const attempts: Array<[ProbeAttempt, string | undefined]> = [
-      ["lowest-cost-model", lowest],
-    ];
-    if (summaryModel !== lowest) attempts.push(["summary-model", summaryModel]);
+    // E1: the first attempt keeps the verified command and passes no effort.
+    const attempts: Array<
+      [ProbeAttempt, string | undefined, string | undefined]
+    > = [["lowest-cost-model", lowest, undefined]];
+    if (summaryModel !== lowest || summaryEffort !== undefined)
+      attempts.push(["summary-model", summaryModel, summaryEffort]);
 
     const failures: ProbeAttemptFailure[] = [];
-    for (const [name, model] of attempts) {
-      const reason = await attempt(provider, executablePath, model);
+    for (const [name, model, effort] of attempts) {
+      const reason = await attempt(provider, executablePath, model, effort);
       if (!reason) return { ok: true };
       failures.push({ attempt: name, reason });
     }
@@ -178,7 +183,10 @@ export function createReadinessProbe({
   };
 }
 
-function claudeArgs(model: string | undefined): string[] {
+function claudeArgs(
+  model: string | undefined,
+  effort: string | undefined,
+): string[] {
   return [
     "-p",
     "--tools",
@@ -188,12 +196,14 @@ function claudeArgs(model: string | undefined): string[] {
     "--output-format",
     "json",
     ...(model === undefined ? [] : ["--model", model]),
+    ...(effort === undefined ? [] : ["--effort", effort]),
     probePrompt,
   ];
 }
 
 function codexArgs(
   model: string | undefined,
+  effort: string | undefined,
   directory: string,
   replyFile: string,
 ): string[] {
@@ -209,6 +219,9 @@ function codexArgs(
     "-o",
     replyFile,
     ...(model === undefined ? [] : ["-m", model]),
+    ...(effort === undefined
+      ? []
+      : ["-c", `model_reasoning_effort=${JSON.stringify(effort)}`]),
     "-C",
     directory,
     ...disabledCodexFeatures.flatMap((feature) => ["--disable", feature]),
