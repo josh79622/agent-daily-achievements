@@ -32,7 +32,13 @@
     selection, scheduled fallback, both-runner failure, later
     permission/preference changes, server-built payloads, and recipient
     persistence. It does not detect or invoke a real provider yet.
-- [ ] Detect available selected Claude Code/Codex CLI and represent failures without silent fallback.
+- [x] Detect available selected Claude Code/Codex CLI and represent failures without silent fallback.
+  - Marked complete by Josh's decision on 2026-09-18 with known limitations:
+    Codex tool removal has canary evidence (no file read outside the working
+    directory) but no proof that every tool is disabled; Codex `max`/`ultra`
+    effort acceptance is unverified by choice (no model-call check); real
+    quota-exhaustion exit codes cannot be triggered safely; the real "Ready
+    via …" panel text has not been observed.
   - UI-first login demo (`22a043c`, `3e2d7e3`, `c861af4`, `9237703`): a
     "Report sign-in" panel shows both providers, launches only the fixed
     `codex login` / `claude auth login` command in Terminal on macOS, and
