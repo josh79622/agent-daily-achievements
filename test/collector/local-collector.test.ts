@@ -321,3 +321,20 @@ test("CC-10: reads a source without changing it or exposing malformed source tex
   expect(JSON.stringify(result)).not.toContain(secret);
   expect(result.sources[0]?.issues).toBe(1);
 });
+
+test("CC-11: excludes agent and sidechain records that only have a parent session ID", async () => {
+  const { collector } = await claudeCollector([
+    JSON.stringify({
+      type: "assistant",
+      parentSessionId: "synthetic-parent-session",
+      timestamp: "2026-09-16T09:00:00Z",
+      uuid: "synthetic-sidechain-message",
+      message: { role: "assistant", content: "Synthetic sidechain work" },
+    }),
+  ]);
+
+  const result = await collector.collect("2026-09-16", ["claude-code"]);
+
+  expect(result.sessions).toEqual([]);
+  expect(result.sources[0]?.issues).toBe(0);
+});
