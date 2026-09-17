@@ -64,8 +64,14 @@
     runners; `npm run check` passed (189 tests); the dropdown was checked in
     the browser against fake lists. Model lists load at server startup
     (Codex `codex debug models`, Claude Code initialize-only request) with a
-    built-in fallback; the real startup fetch through the server has not been
-    observed yet. Still open: Task P3 (per-provider effort setting).
+    built-in fallback.
+  - Real check on 2026-09-17 (dev server restarted 23:41): both dropdowns
+    showed fetched lists with no fallback note — Codex GPT-5.6-Sol,
+    GPT-6-Astra, GPT-5.6-Terra, GPT-5.6-Luna, GPT-5.5; Claude Code Sonnet,
+    Fable, Opus, Haiku. Josh's selections (Codex `gpt-5.6-terra`, Claude Code
+    `opus`) were saved to the owner-only settings file. Not yet verified with a
+    real CLI: that the probe's second attempt passes the selected model. Still
+    open: Task P3 (per-provider effort setting).
 - [ ] Define the report contract: 0–5 achievements (Josh changed the cap from three on 2026-09-17), evidence links, incomplete coverage, and achievement-level deduplication.
   - Design, decisions D1–D3, and RC/RA/RS/EV cases approved in
     [the report contract design](docs/plans/2026-09-17-report-contract-design.md).

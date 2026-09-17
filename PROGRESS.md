@@ -66,14 +66,16 @@ The project has moved past an experience-only prototype. A local collector demo 
 
 ## Next task
 
-- Summary model setting: restart the dev server and confirm the real startup
-  model-list fetch and dropdown (Task P2); then Task P3 (per-provider effort
-  setting, starting with verifying Codex effort values).
+- Task P3: per-provider effort setting, starting with confirming Codex effort
+  values.
 - Report contract Task 5: record verified status for the report contract and
   eval-set items.
 
 ## Latest verification
 
+- Summary model setting real check (2026-09-17): after restarting the dev
+  server, both providers showed fetched model lists without a fallback note,
+  and a selection was saved through the dropdown.
 - Summary model setting Task P2: `npm run check` passed with 189 tests; all
   catalog, settings, endpoint, and panel tests use fake lists or runners; the
   dropdown was viewed in the browser pane against fake lists.

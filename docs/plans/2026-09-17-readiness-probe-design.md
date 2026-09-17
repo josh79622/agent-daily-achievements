@@ -246,8 +246,9 @@ Option E1:
 
 ## Test cases for Task P2 (IDs fixed; confirmed by Josh with the edge-case defaults, 2026-09-17)
 
-Status: Task P2 is implemented and passes MC-1 to SP-1 with fakes only; the real
-startup model-list fetch through the server has not been observed yet.
+Status: Task P2 is implemented and passes MC-1 to SP-1 with fakes. On
+2026-09-17 the real startup fetch returned both lists without a fallback note,
+matching the research observations, and a dropdown selection was saved.
 
 Model catalog — `test/summarizer/model-catalog.test.ts`, fake spawner only:
 
