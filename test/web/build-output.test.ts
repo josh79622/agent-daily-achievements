@@ -135,3 +135,32 @@ test("SP-1: each provider has a summary model dropdown with no free-text entry, 
   expect(app).toContain("Model list unavailable; using the built-in list.");
   expect(app).toContain("Model settings could not be read; using Default.");
 });
+
+test("EU-1: each provider has an effort dropdown saved only through the model endpoint", async () => {
+  const build = spawnSync(process.execPath, ["scripts/build.mjs"], {
+    encoding: "utf8",
+  });
+
+  expect(build.status, build.stderr).toBe(0);
+  const html = await readFile("dist/web/index.html", "utf8");
+  const app = await readFile("dist/web/app.js", "utf8");
+  const panel =
+    html.match(/<aside[^>]*id="signin-panel"[\s\S]*?<\/aside>/)?.[0] ?? "";
+
+  for (const provider of ["codex", "claude-code"]) {
+    expect(panel).toMatch(
+      new RegExp(
+        `<label[^>]*for="signin-effort-${provider}"[^>]*>\\s*Summary effort`,
+      ),
+    );
+    expect(panel).toMatch(
+      new RegExp(
+        `<select[^>]*id="signin-effort-${provider}"[^>]*disabled[^>]*>\\s*<option value="default">Default</option>`,
+      ),
+    );
+  }
+  expect(panel).not.toMatch(/<input|<textarea|contenteditable/i);
+  expect(app).toMatch(/\{ effort: change\.effort \}/);
+  expect(app).toContain("effortOptions");
+  expect(app).toContain("Saved effort is no longer supported; using Default.");
+});

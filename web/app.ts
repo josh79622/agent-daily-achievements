@@ -494,6 +494,9 @@ interface ModelView {
   options: Array<{ value: string; label: string }>;
   selected: string;
   effective: string | null;
+  effortOptions: string[];
+  selectedEffort: string;
+  effectiveEffort: string | null;
   warnings: string[];
 }
 
@@ -503,10 +506,16 @@ const modelWarningLabels: Record<string, string> = {
     "Saved model is no longer available; using Default.",
   "model-list-unavailable": "Model list unavailable; using the built-in list.",
   "settings-unreadable": "Model settings could not be read; using Default.",
+  "saved-effort-unavailable":
+    "Saved effort is no longer supported; using Default.",
 };
 
 function modelSelect(provider: SigninProvider): HTMLSelectElement {
   return requiredElement<HTMLSelectElement>(`signin-model-${provider}`);
+}
+
+function effortSelect(provider: SigninProvider): HTMLSelectElement {
+  return requiredElement<HTMLSelectElement>(`signin-effort-${provider}`);
 }
 
 function modelNote(provider: SigninProvider): HTMLElement {
@@ -516,7 +525,11 @@ function modelNote(provider: SigninProvider): HTMLElement {
 for (const provider of signinProviders) {
   modelSelect(provider).addEventListener(
     "change",
-    () => void saveModel(provider),
+    () => void saveModel(provider, { model: modelSelect(provider).value }),
+  );
+  effortSelect(provider).addEventListener(
+    "change",
+    () => void saveModel(provider, { effort: effortSelect(provider).value }),
   );
 }
 
@@ -529,21 +542,29 @@ async function loadModels(): Promise<void> {
   } catch {
     for (const provider of signinProviders) {
       modelSelect(provider).disabled = true;
+      effortSelect(provider).disabled = true;
       modelNote(provider).textContent = "Model settings are unavailable.";
     }
   }
 }
 
-async function saveModel(provider: SigninProvider): Promise<void> {
-  const select = modelSelect(provider);
-  select.disabled = true;
+async function saveModel(
+  provider: SigninProvider,
+  change: { model: string } | { effort: string },
+): Promise<void> {
+  modelSelect(provider).disabled = true;
+  effortSelect(provider).disabled = true;
   try {
     const { provider: view } = await api<{ provider: ModelView }>(
       `/api/summarizer/models/${provider}`,
       {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ model: select.value }),
+        body: JSON.stringify(
+          "effort" in change
+            ? { effort: change.effort }
+            : { model: change.model },
+        ),
       },
     );
     renderModel(view);
@@ -572,6 +593,20 @@ function renderModel(view: ModelView): void {
     ? view.selected
     : "default";
   select.disabled = false;
+  const effort = effortSelect(view.provider);
+  const efforts = ["default", ...view.effortOptions];
+  effort.replaceChildren(
+    ...efforts.map((value) => {
+      const element = document.createElement("option");
+      element.value = value;
+      element.textContent = value === "default" ? "Default" : value;
+      return element;
+    }),
+  );
+  effort.value = efforts.includes(view.selectedEffort)
+    ? view.selectedEffort
+    : "default";
+  effort.disabled = view.effortOptions.length === 0;
   modelNote(view.provider).textContent = view.warnings
     .map((warning) => modelWarningLabels[warning])
     .filter(Boolean)
