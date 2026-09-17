@@ -166,6 +166,7 @@ test("serves collector metadata before a selected local preview", async () => {
                 role: "user",
                 text: "Private preview",
                 timestamp: "2026-09-16T01:00:00Z",
+                parts: [{ kind: "text", text: "Private preview" }],
               },
             ],
           },

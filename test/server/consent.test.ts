@@ -88,6 +88,7 @@ test("consent: known sessions from an unselected source cannot be previewed", as
                 role: "user",
                 text: "Synthetic private content",
                 timestamp: "2026-09-16T00:00:00Z",
+                parts: [{ kind: "text", text: "Synthetic private content" }],
               },
             ],
           },

@@ -12,7 +12,10 @@ records only.
 Two recent active and two recent archived files were inspected for structure.
 Each had one `session_meta` record with an ID. Conversation-bearing records used
 `response_item` payloads of type `message`; observed text blocks were
-`input_text` and `output_text`. Other observed record types included
+`input_text` and `output_text`. A `reasoning` payload was also observed, and is
+excluded as deliberation by Task NT on 2026-09-18; a record holding only
+deliberation is dropped without reporting an issue, so a normal Codex day is not
+marked incomplete. Other observed record types included
 `event_msg`, `turn_context`, `world_state`, `token_usage_record`, `compacted`,
 and inter-agent metadata. All sampled timestamps were parseable.
 

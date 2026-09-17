@@ -13,7 +13,15 @@ Three recent files were inspected for structure only. Their user and assistant
 records used a top-level `sessionId` and UTC `Z` timestamps. Conversation
 content occurred both as strings and as block arrays. Observed block kinds
 included `thinking`, `tool_use`, `tool_result`, `text`, and `image`; only text
-blocks are normalized as message text. The built collector read the same three
+blocks were normalized as message text.
+
+**Superseded on 2026-09-18 by Task NT** in
+[the payload design](../plans/2026-09-18-report-day-payload-design.md): every
+block kind except deliberation now keeps a visible placeholder, because dropping
+`tool_use` and `tool_result` removed the execution evidence that separates a
+stated intention from a completed task, and an image-only message vanished while
+the day still reported `state: "available"`. CC-7 was updated to the new
+behavior. The built collector read the same three
 files and returned at least one session with zero reported parse issues.
 
 ## Unit-test mapping

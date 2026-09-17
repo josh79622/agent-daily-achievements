@@ -261,7 +261,7 @@ test("CC-6: includes prior context only for a session active on the report day",
   expect(result.sessions[0]?.endedAt).toBe("2026-09-02T09:00:00Z");
 });
 
-test("CC-7: extracts text blocks while ignoring non-text real-shape content blocks", async () => {
+test("CC-7: keeps placeholders for non-text real-shape content blocks", async () => {
   const { collector } = await claudeCollector([
     claudeRecord("2026-09-16T09:00:00Z", "assistant", [
       { type: "thinking", thinking: "Synthetic reasoning", signature: "x" },
@@ -274,7 +274,7 @@ test("CC-7: extracts text blocks while ignoring non-text real-shape content bloc
   const result = await collector.collect("2026-09-16", ["claude-code"]);
 
   expect(result.sessions[0]?.messages.map(({ text }) => text)).toEqual([
-    "Visible synthetic reply",
+    "[tool_use Read {}]\nVisible synthetic reply\n[image]",
   ]);
 });
 

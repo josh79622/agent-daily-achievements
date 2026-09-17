@@ -3,11 +3,25 @@ import { basename, join } from "node:path";
 
 export type LocalSource = "claude-code" | "codex";
 
+/**
+ * Non-text conversation content becomes a visible placeholder part rather than
+ * being dropped. Design: docs/plans/2026-09-18-report-day-payload-design.md.
+ */
+export type MessagePartKind =
+  "text" | "image" | "tool_use" | "tool_result" | "other";
+
+export interface MessagePart {
+  kind: MessagePartKind;
+  text: string;
+}
+
 export interface CollectedMessage {
   id: string;
   role: "user" | "assistant";
+  /** The joined parts, kept so existing readers need no change. */
   text: string;
   timestamp: string;
+  parts: MessagePart[];
 }
 
 export interface CollectedSession {
@@ -255,6 +269,7 @@ async function parseFile(
       `${basename(file)}:${index + 1}`,
     );
     if (message) messages.push(message);
+    else if (unexplainedEmptyMessage(source, record)) issues += 1;
   }
   const partialWrite = !validJson(lastNonBlankLine(lines));
   return {
@@ -392,18 +407,34 @@ function messageFrom(
 ): CollectedMessage | undefined {
   const timestamp = stringAt(record.timestamp);
   if (!timestamp) return undefined;
-  if (source === "claude-code") {
-    const message = objectAt(record.message);
-    const role = message && roleAt(message.role);
-    const text = message && textFrom(message.content);
-    if (!role || !text) return undefined;
-    return { id: stringAt(record.uuid) ?? fallbackId, role, text, timestamp };
-  }
-  const payload = objectAt(record.payload);
-  const role = payload && roleAt(payload.role);
-  const text = payload && textFrom(payload.content);
-  if (!role || !text) return undefined;
-  return { id: fallbackId, role, text, timestamp };
+  const holder = objectAt(
+    source === "claude-code" ? record.message : record.payload,
+  );
+  const role = holder && roleAt(holder.role);
+  if (!role) return undefined;
+  const { parts } = extractParts(holder.content);
+  if (parts.length === 0) return undefined;
+  const id =
+    source === "claude-code"
+      ? (stringAt(record.uuid) ?? fallbackId)
+      : fallbackId;
+  return { id, role, text: joinParts(parts), timestamp, parts };
+}
+
+/**
+ * True when a conversation record yielded no message for a reason we cannot
+ * explain, so the source must be reported incomplete rather than losing content
+ * silently. Content that is only excluded deliberation is explained, not lost.
+ */
+function unexplainedEmptyMessage(
+  source: LocalSource,
+  record: Record<string, unknown>,
+): boolean {
+  if (!hasConversationRole(source, record)) return false;
+  const holder = objectAt(
+    source === "claude-code" ? record.message : record.payload,
+  );
+  return !extractParts(holder?.content).excludedOnly;
 }
 
 function hasConversationRole(
@@ -433,14 +464,100 @@ function roleAt(value: unknown): "user" | "assistant" | undefined {
   return value === "user" || value === "assistant" ? value : undefined;
 }
 
-function textFrom(content: unknown): string | undefined {
+function joinParts(parts: readonly MessagePart[]): string {
+  return parts.map((part) => part.text).join("\n");
+}
+
+/** Claude Code writes `text`; Codex writes `input_text` and `output_text`. */
+const textKinds = ["text", "input_text", "output_text"];
+
+/**
+ * Internal deliberation, excluded by decision D1: it is not observable
+ * progress. A message holding nothing else is dropped without counting as an
+ * issue, because the exclusion explains where it went.
+ */
+const deliberationKinds = ["thinking", "reasoning"];
+
+/**
+ * Normalizes conversation content into parts. Every kind that is not excluded
+ * deliberation keeps a placeholder, so nothing disappears without a trace.
+ * Image bytes are never retained. `excludedOnly` reports that the content held
+ * blocks and all of them were excluded deliberation.
+ */
+function extractParts(content: unknown): {
+  parts: MessagePart[];
+  excludedOnly: boolean;
+} {
+  if (typeof content === "string")
+    return {
+      parts: content.trim() ? [{ kind: "text", text: content }] : [],
+      excludedOnly: false,
+    };
+  if (!Array.isArray(content)) return { parts: [], excludedOnly: false };
+  const parts: MessagePart[] = [];
+  let excluded = 0;
+  for (const entry of content) {
+    const block = objectAt(entry);
+    if (!block) continue;
+    const kind = stringAt(block.type);
+    if (kind !== undefined && deliberationKinds.includes(kind)) {
+      excluded += 1;
+      continue;
+    }
+    if (kind === undefined || textKinds.includes(kind)) {
+      const text = stringAt(block.text);
+      if (text?.trim()) parts.push({ kind: "text", text });
+      continue;
+    }
+    if (kind === "image") {
+      parts.push({ kind: "image", text: imagePlaceholder(block) });
+      continue;
+    }
+    if (kind === "tool_use") {
+      parts.push({ kind: "tool_use", text: toolUsePlaceholder(block) });
+      continue;
+    }
+    if (kind === "tool_result") {
+      parts.push({ kind: "tool_result", text: toolResultPlaceholder(block) });
+      continue;
+    }
+    parts.push({ kind: "other", text: `[${kind}]` });
+  }
+  return {
+    parts,
+    excludedOnly: parts.length === 0 && excluded > 0,
+  };
+}
+
+function imagePlaceholder(block: Record<string, unknown>): string {
+  const mediaType =
+    stringAt(objectAt(block.source)?.media_type) ?? stringAt(block.media_type);
+  return mediaType ? `[image ${mediaType}]` : "[image]";
+}
+
+function toolUsePlaceholder(block: Record<string, unknown>): string {
+  const name = stringAt(block.name) ?? "tool";
+  const input = objectAt(block.input);
+  return input
+    ? `[tool_use ${name} ${JSON.stringify(input)}]`
+    : `[tool_use ${name}]`;
+}
+
+function toolResultPlaceholder(block: Record<string, unknown>): string {
+  const outcome = block.is_error === true ? "error" : "ok";
+  const content = resultText(block.content);
+  return content
+    ? `[tool_result ${outcome}]\n${content}`
+    : `[tool_result ${outcome}]`;
+}
+
+function resultText(content: unknown): string {
   if (typeof content === "string") return content;
-  if (!Array.isArray(content)) return undefined;
-  const texts = content
-    .map(objectAt)
-    .map((part) => stringAt(part?.text))
-    .filter((text): text is string => Boolean(text));
-  return texts.length > 0 ? texts.join("\n") : undefined;
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((entry) => stringAt(objectAt(entry)?.text))
+    .filter((text): text is string => Boolean(text))
+    .join("\n");
 }
 
 function localTimeZone(configuredTimeZone: string | undefined): string {
