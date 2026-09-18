@@ -117,12 +117,13 @@ context. The ratio improves for heavier users. Prompt caching is not modelled an
 would raise that share, perhaps toward 10%; one measured run against the usage
 card is still needed to replace the estimate.
 
-Capping `tool_use` and then tightening the cap from 500 to 250 took the heaviest
-day from 610k to 443k estimated tokens (-27%) and the median day from 164k to
-142k. Remaining untaken levers: a cap of 100 (measured as available), defaulting
-to a cheaper summary model, and per-conversation incremental summarization, which
-would also stop a session that spans midnight being re-read on every day it is
-active.
+Capping `tool_use`, tightening the cap to 250, and then keeping the marker plus
+one per-kind window instead of head and tail took the heaviest day from 610k to
+406k estimated tokens (-33%) and the median day from 164k to 135k. The heaviest
+day still exceeds a realistic per-request budget, so splitting remains required.
+Remaining untaken levers: a cap of 100, defaulting to a cheaper summary model,
+and per-conversation incremental summarization, which would also stop a session
+that spans midnight being re-read on every day it is active.
 
 Josh confirmed the changed NT-5 rule on 2026-09-18: `thinking` and `reasoning`
 are excluded entirely, are never sent to the summarizer, and a message holding

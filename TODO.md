@@ -194,8 +194,12 @@ generation moved here and comes first.
   - Measured on real records: `tool_use` was 24.6% of a day's content at 1,134
     bytes per part, because `Edit`/`Write` carry whole file contents. The
     heaviest day fell from 610k to 510k estimated tokens, and to 443k after
-    Josh tightened the cap from 500 to 250 head and tail. Tests are written
-    against the constant, so the change needed no test edits.
+    Josh tightened the cap from 500 to 250 head and tail, and to 406k after he
+    chose marker + one per-kind window over head and tail. Tests are written
+    against the constant, so the cap change itself needed no test edits.
+  - PB-17 was added for the point of the asymmetry: a truncated part never loses
+    the tool name or the ok/error outcome. Eight mutations were each caught,
+    including both window sides and the marker.
 - [ ] Run the selected summarizer CLI on that payload under saved permission,
       with the approved model, effort, tool restrictions, re-analysis limit
       (three attempts), and fallback rules, assembling an `AchievementReportV1`.

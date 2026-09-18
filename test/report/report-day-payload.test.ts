@@ -290,7 +290,7 @@ function toolMessage(id: string, body: string): CollectedMessage {
 }
 
 function toolUseMessage(id: string, body: string): CollectedMessage {
-  const text = `[tool_use Write {"content":"${body}"}]`;
+  const text = `[tool_use Write ${body}`;
   return {
     id,
     role: "assistant",
@@ -300,13 +300,22 @@ function toolUseMessage(id: string, body: string): CollectedMessage {
   };
 }
 
-/** The exact head + disclosure + tail a capped part must produce. */
-function truncatedTo(full: string): string {
-  return [
-    full.slice(0, toolPartCap),
-    `[\u2026 ${full.length - toolPartCap * 2} characters omitted]`,
-    full.slice(full.length - toolPartCap),
-  ].join("\n");
+/**
+ * The exact output a capped part must produce. The marker is always kept; one
+ * window of `toolPartCap` body characters follows it for a tool_use (the head,
+ * where the tool name and path are) or precedes it for a tool_result (the tail,
+ * where a run's verdict is). Markers are written out literally here so a bug in
+ * the implementation's marker matching cannot hide.
+ */
+function truncatedTo(
+  marker: string,
+  body: string,
+  side: "head" | "tail",
+): string {
+  const omitted = `[\u2026 ${body.length - toolPartCap} characters omitted]`;
+  return side === "head"
+    ? `${marker}${body.slice(0, toolPartCap)}\n${omitted}`
+    : `${marker}${omitted}\n${body.slice(body.length - toolPartCap)}`;
 }
 
 function sentText(payloadJson: string, index = 0): string {
@@ -326,20 +335,19 @@ async function buildWith(messages: CollectedMessage[]) {
   });
 }
 
-test("PB-7: a tool_result over the cap is truncated head and tail with the omission disclosed", async () => {
+test("PB-7: a tool_result over the cap keeps its outcome marker and its tail", async () => {
   const body = "A".repeat(4000) + "VERDICT: 2 tests failed";
   const result = await buildWith([toolMessage("m-big", body)]);
 
   const text = sentText(result.payloadJson);
-  const full = `[tool_result ok]\n${body}`;
-  // Pinned exactly: a slicing error would make the disclosed count wrong.
-  expect(text).toBe(truncatedTo(full));
-  expect(text.startsWith("[tool_result ok]\nAAAA")).toBe(true);
+  expect(text).toBe(truncatedTo("[tool_result ok]\n", body, "tail"));
+  // A run's verdict is at the end, so the tail is the window that matters.
   expect(text.endsWith("VERDICT: 2 tests failed")).toBe(true);
-  expect(text.length).toBeLessThan(full.length);
+  expect(text.startsWith("[tool_result ok]")).toBe(true);
+  expect(text.length).toBeLessThan(body.length);
 });
 
-test("PB-8: a tool_result at or below the cap passes through unchanged", async () => {
+test("PB-8: a tool part at or below twice the cap passes through unchanged", async () => {
   const body = "B".repeat(toolPartCap);
   const result = await buildWith([toolMessage("m-small", body)]);
   expect(sentText(result.payloadJson)).toBe(`[tool_result ok]\n${body}`);
@@ -355,7 +363,9 @@ test("PB-8: a tool_result at or below the cap passes through unchanged", async (
   const over = await buildWith([
     toolMessage("m-over", "B".repeat(toolPartCap * 2 - prefix + 1)),
   ]);
-  expect(sentText(over.payloadJson)).toContain("1 characters omitted");
+  const text = sentText(over.payloadJson);
+  expect(text).toContain("characters omitted");
+  expect(text.length).toBeLessThan(toolPartCap * 2);
 });
 
 test("PB-9: a long conversation text part is not capped", async () => {
@@ -457,26 +467,23 @@ test("PB-13: building transmits nothing and does not modify the source", async (
   expect(await readFile(file, "utf8")).toBe(line);
 });
 
-test("PB-14: a tool_use part over the cap is truncated head and tail with the omission disclosed", async () => {
+test("PB-14: a tool_use over the cap keeps its name, target and head", async () => {
   // Measured on real records: tool_use is 24.6% of a day's content, averaging
   // 1,134 bytes, because an Edit or Write carries whole file contents.
-  const body = "A".repeat(4000);
+  const body = `{"file_path":"/x/y.ts","content":"${"A".repeat(4000)}"}]`;
   const result = await buildWith([toolUseMessage("m-big", body)]);
 
   const text = sentText(result.payloadJson);
-  const full = `[tool_use Write {"content":"${body}"}]`;
-  expect(text).toBe(truncatedTo(full));
-  expect(text.startsWith('[tool_use Write {"content":"AAAA')).toBe(true);
-  expect(text.endsWith('"}]')).toBe(true);
+  expect(text).toBe(truncatedTo("[tool_use Write ", body, "head"));
+  // Which tool ran, and on what, is the highest-value part and must survive.
+  expect(text.startsWith('[tool_use Write {"file_path":"/x/y.ts"')).toBe(true);
 });
 
 test("PB-15: a tool_use part at or below the cap passes through unchanged", async () => {
-  const body = "B".repeat(100);
+  const body = `{"file_path":"/x","content":"${"B".repeat(100)}"}]`;
   const result = await buildWith([toolUseMessage("m-small", body)]);
 
-  expect(sentText(result.payloadJson)).toBe(
-    `[tool_use Write {"content":"${body}"}]`,
-  );
+  expect(sentText(result.payloadJson)).toBe(`[tool_use Write ${body}`);
 });
 
 test("PB-16: only tool parts are capped; other kinds pass through at any length", async () => {
@@ -504,4 +511,35 @@ test("PB-16: only tool parts are capped; other kinds pass through at any length"
   });
 
   expect(sentText(result.payloadJson)).toBe([long, long, long].join("\n"));
+});
+
+test("PB-17: identity survives truncation for both tool kinds", async () => {
+  // The point of the asymmetry: dropping the head would lose the tool name, and
+  // dropping a tool_result head would lose whether the run succeeded.
+  const failing = `[tool_result error]\n${"E".repeat(4000)}`;
+  const result = await buildReportDayPayload({
+    collector: fakeCollector({
+      sessions: [
+        session("session-i", "codex", [
+          {
+            id: "m-1",
+            role: "assistant",
+            text: failing,
+            timestamp: "2026-09-18T09:12:00Z",
+            parts: [{ kind: "tool_result", text: failing }],
+          },
+          toolUseMessage(
+            "m-2",
+            `{"file_path":"/deep/path.ts","x":"${"D".repeat(4000)}"}]`,
+          ),
+        ]),
+      ],
+    }),
+    date: "2026-09-18",
+    sourceScope: ["codex"],
+  });
+
+  expect(sentText(result.payloadJson, 0)).toContain("[tool_result error]");
+  expect(sentText(result.payloadJson, 1)).toContain("[tool_use Write");
+  expect(sentText(result.payloadJson, 1)).toContain("/deep/path.ts");
 });

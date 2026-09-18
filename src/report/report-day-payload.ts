@@ -27,11 +27,22 @@ import type {
 export const toolPartCap = 250;
 
 /**
- * Both tool kinds are capped. `tool_use` was measured at 24.6% of a real day's
+ * Both tool kinds are capped; `tool_use` was measured at 24.6% of a real day's
  * content, averaging 1,134 bytes, because an `Edit` or `Write` carries whole
  * file contents rather than just a path.
+ *
+ * The marker is always kept, then one window of body text: the head for a
+ * `tool_use`, where the tool name and the file or command it acted on sit, and
+ * the tail for a `tool_result`, where a run's verdict sits. Keeping one window
+ * instead of two sends a third less; keeping the marker means a truncated part
+ * never loses which tool ran or whether it succeeded.
  */
-const cappedKinds: readonly MessagePart["kind"][] = ["tool_result", "tool_use"];
+const capped: Partial<
+  Record<MessagePart["kind"], { marker: RegExp; side: "head" | "tail" }>
+> = {
+  tool_use: { marker: /^\[tool_use \S+ ?/, side: "head" },
+  tool_result: { marker: /^\[tool_result (?:ok|error)\]\n?/, side: "tail" },
+};
 
 export interface ReportDayPayload {
   date: string;
@@ -101,14 +112,15 @@ function sentText(message: CollectedMessage): string {
 }
 
 function partText(part: MessagePart): string {
-  if (!cappedKinds.includes(part.kind) || part.text.length <= toolPartCap * 2)
-    return part.text;
-  const omitted = part.text.length - toolPartCap * 2;
-  return [
-    part.text.slice(0, toolPartCap),
-    `[… ${omitted} characters omitted]`,
-    part.text.slice(part.text.length - toolPartCap),
-  ].join("\n");
+  const rule = capped[part.kind];
+  if (!rule || part.text.length <= toolPartCap * 2) return part.text;
+  const marker = rule.marker.exec(part.text)?.[0] ?? "";
+  const body = part.text.slice(marker.length);
+  if (body.length <= toolPartCap) return part.text;
+  const omitted = `[… ${body.length - toolPartCap} characters omitted]`;
+  return rule.side === "head"
+    ? `${marker}${body.slice(0, toolPartCap)}\n${omitted}`
+    : `${marker}${omitted}\n${body.slice(body.length - toolPartCap)}`;
 }
 
 function messageTime(timeZone: string): (timestamp: string) => string {

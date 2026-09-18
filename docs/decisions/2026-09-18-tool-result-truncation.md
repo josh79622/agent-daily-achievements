@@ -28,10 +28,24 @@ conditions that keep this distinct from relevance-based preselection:
    the summarizer knows it is reading a truncated result and cannot treat a cut
    file as a whole file.
 
-The shape is **head + tail**: the first and last N characters of the result,
-with the omitted character count between them. Head-only was rejected because a
-test or build run puts its verdict at the end, so failures would be cut. `N` is
-a named constant so it can be tuned.
+The shape is **marker + one window**, chosen per kind (amended 2026-09-18, see
+below). The marker is always kept, then `N` characters of body: the **head** for
+a `tool_use`, where the tool name and the file or command it acted on sit, and
+the **tail** for a `tool_result`, where a run's verdict sits. `N` is a named
+constant so it can be tuned.
+
+Symmetric head + tail was the first shape and sent a third more for no gain.
+Tail-only everywhere was considered and rejected: dropping the head would lose
+the tool name on a `tool_use`, so a node could no longer distinguish a `Read`
+from a `Write` from a `Bash`, and would lose the `ok`/`error` outcome on a
+`tool_result`, which is precisely the difference between evidence of completion
+and evidence of an attempt.
+
+One assumption was measured and found false along the way: `tool_use` tails are
+not closing JSON punctuation. Of 213 capped `tool_use` parts on a real day, 0 had
+a tail that was mostly punctuation, because a `Write` ends with the end of real
+file content. The tail is dropped because the head is worth more, not because the
+tail is empty.
 
 ### Amended 2026-09-18: `tool_use` is capped too
 
@@ -58,14 +72,15 @@ where the evidence value is; 100 was measured as available if more is needed. A 
 brackets; that is acceptable, because it is a text placeholder and the omission
 is disclosed. Measured effect on that day, cumulative:
 
-| Cap | Payload | Est. tokens |
+| Shape | Payload | Est. tokens |
 | --- | --- | --- |
-| `tool_result` only, 500 | 2.15 MB | 610k |
-| both kinds, 500 | 1.79 MB | 510k |
-| both kinds, 250 | **1.55 MB** | **443k** |
+| `tool_result` only, head + tail 500 | 2.15 MB | 610k |
+| both kinds, head + tail 500 | 1.79 MB | 510k |
+| both kinds, head + tail 250 | 1.55 MB | 443k |
+| both kinds, marker + one window 250 | **1.42 MB** | **406k** |
 
-Overall the two changes took the heaviest of 15 days down 27%, and the median day
-from 164k to 142k estimated tokens.
+Overall these changes took the heaviest of 15 days down 33%, from 610k to 406k
+estimated tokens, and the median day from 164k to 135k.
 
 ## What this does not change
 
