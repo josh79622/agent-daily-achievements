@@ -84,8 +84,8 @@ that work.
 
 ## Next task
 
-**Eval and prompt work closed out on 2026-09-18. Starting the real summarizer
-run task next (first item below "Phase 5 remaining").**
+**The real summarizer runner is implemented and unit-tested (`71f3987`); wiring
+it into `src/server/index.ts` is next (first item below "Phase 5 remaining").**
 
 ### Phase 5 progress
 
@@ -122,15 +122,39 @@ stated:
   case except 05 has been observed at most twice, so their stability under
   repetition is unknown. The eval harness does not repeat cases automatically;
   each repetition above was driven by hand.
+- **Real summarizer runner (`71f3987`)**: `createSummaryRunner`
+  (`src/summarizer/summary-run.ts`) implements `SummaryRunner`: resolves the
+  executable and the saved model/effort, runs up to three attempts with a
+  fresh temp directory each, parses a Markdown-fenced or bare JSON reply,
+  validates it, and re-analyses only on `too-many-achievements` (the
+  retry/fallback rules were already decided by D1 in the
+  [report contract design](docs/plans/2026-09-17-report-contract-design.md);
+  this task only added the command shape and orchestration — see
+  [the summary-run design](docs/plans/2026-09-18-summary-run-design.md)).
+  It saves an `AchievementReportV1` on every attempt that gets a reply and
+  throws, to trigger the existing per-provider fallback, only when no
+  attempt ever replies or every attempt exceeds the achievement limit.
+  Reuses the readiness probe's approved command flags (`claudeArgs`/
+  `codexArgs` in `readiness-probe.ts`, now parametrized by prompt text
+  instead of the fixed probe text; no behavior change to the probe).
+  Also added `ReportDayPayload.timeZone`, so a saved report is never
+  labelled in a different zone than it was collected in, and
+  `AchievementReportStore` (`contract.ts`), a minimal save-only interface
+  distinct from the existing `DailyReport`-typed `ReportStore` (decision 1
+  below). SR-1 to SR-11 pass against fake processes/temp-dirs/store; four
+  deliberate mutations were each caught. No real CLI is invoked by any test,
+  and this is not wired into `src/server/index.ts` yet.
 
 ### Phase 5 remaining
 
-1. **Run the selected summarizer CLI on a real payload** (next task, starting
-   now): the non-interactive command per CLI, output handling, the saved
-   permission and model/effort/tool-restriction settings, the three-attempt
-   re-analysis limit, and fallback rules, assembling an `AchievementReportV1`.
-   This is the first task that would touch a real day; no real day has been
-   summarized and Josh has not yet approved that step.
+1. **Wire the real summarizer runner into `src/server/index.ts`** (next
+   task): a real `SummaryLocator` (over `provider-login.ts`'s executor
+   rather than a fake), and a decision on how the runner's
+   `AchievementReportStore` relates to the existing `ReportStore` so
+   `/api/reports/latest` can actually serve what it saves — this is where
+   decision 1 below has to be resolved, not deferred further. This is the
+   first task that would touch a real day; no real day has been summarized
+   and Josh has not yet approved that step.
 2. Source trace-back in the report UI.
 3. Edit and remove incorrect achievements.
 4. Define and enforce local retention.
@@ -155,7 +179,9 @@ stated:
 ### Still not true
 
 No CLI has run against a real day, no report has ever been generated from real
-records, and `AchievementReportV1` is not used anywhere in the running app.
+records, and `AchievementReportV1` is not saved or served by the running app
+(the summary runner that would produce one is implemented and unit-tested but
+not wired into `src/server/index.ts`).
 
 ## Measured payload cost (2026-09-18, local sizes only, nothing transmitted)
 
@@ -196,20 +222,23 @@ Open design questions inside Task NT: whether to exclude `thinking` blocks (D1),
 and whether to extend the contract's coverage-reason union to carry the
 collector's `malformed-record` and duplicate reasons (D2).
 
-Open decisions for the remaining report-generation items (none approved yet):
+Open decisions for the remaining report-generation items:
 
 - splitting a day that exceeds model input limits without omission (deferred to
-  the summary-run task, to be decided on a measured `byteLength`);
+  a later task, to be decided on a measured `byteLength`);
 - whether and how secrets inside conversations are masked before sending;
-- the exact non-interactive summary command per CLI (the probe commands in
-  `docs/plans/2026-09-17-readiness-probe-design.md` are liveness-only), output
-  handling, and how the re-analysis decision and fallback are wired;
 - where generated reports are stored and how the existing sample report UI is
-  replaced;
-- the prompt, its synthetic-set evaluation, and which real day Josh approves.
+  replaced (decision 1 under "Phase 5 remaining" above — the summary-run
+  command, output handling, and retry/fallback wiring are now implemented);
+- which real day Josh approves for the first real run, once index.ts wiring
+  lands.
 
 ## Latest verification
 
+- Real summarizer runner (2026-09-18, `71f3987`): `npm run check` passed with
+  249 tests (SR-1 to SR-11 new); four deliberate mutations on the
+  retry/fallback logic were each caught. All against fake processes,
+  temp-dirs, and store; no real CLI invoked, not wired into `index.ts`.
 - Report contract Task 5 (2026-09-18): 41 report tests and `npm run check`
   with 200 tests passed on Node v24.20.0 before the report contract and
   evaluation-set items were marked complete. Josh confirmed the real effort
@@ -242,7 +271,7 @@ Open decisions for the remaining report-generation items (none approved yet):
   `.worktrees/ui-skeleton` worktree was removed, so a new session opens on the
   current work instead of the stale project-setup state. No remote and no PR.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
-  shell's default Node 25 is broken. Gate: `npm run check` (237 tests at
+  shell's default Node 25 is broken. Gate: `npm run check` (249 tests at
   handoff).
 - Dev server: Josh starts it with `npm run dev` from the checkout
   (`http://127.0.0.1:4317/`). On startup it sweeps stale probe temp
