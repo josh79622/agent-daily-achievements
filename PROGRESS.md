@@ -54,7 +54,22 @@ regression to fix mid-task.
   percent-encoded `../` traversal attempt. `npm run check` passed with 268
   tests; the six old bundle-string assertions in `build-output.test.ts` were
   retired (not left failing) and replaced with one shell smoke test.
-- **Not started**: Tasks 2–5.
+- **Task 2 done (`a7f7144`)**: `web/Constellation.tsx` fetches
+  `/api/reports/latest` and renders each achievement as a React Flow
+  (`@xyflow/react`) node, reusing `report-view.ts`'s
+  `mapAchievementsToNodes`/`layoutPosition`/`describeIncomplete` unchanged;
+  handles the same no-report/zero-achievements/incomplete states as before.
+  Two real layout bugs found only by checking the browser, not from reading
+  the code: reusing `.constellation-node`'s absolute-positioning CSS
+  collapsed the node to zero measured size, leaving React Flow's own
+  `visibility: hidden` permanent (fixed with a dedicated
+  `.achievement-card` class); and `.constellation`'s `min-height: 100vh`
+  doesn't give React Flow's `height: 100%` container anything to resolve
+  against (changed to `height: 100vh`). Manually verified against the real
+  2026-09-09 report (three achievements, scroll-to-zoom, no console errors)
+  and against a temporarily removed report (same empty state as before,
+  restored afterward). `npm run check` passed with 268 tests.
+- **Not started**: Tasks 3–5.
 
 ## Completed
 
@@ -130,9 +145,10 @@ regression to fix mid-task.
 
 **Phase 5 as scoped is done** (`71f3987`, `ddc8c70`, `4c7922f`, the real run,
 `45b606a`, `a80e313`, `e46f0c6`, `8d40af6`). The React + Vite migration is
-now the active work: **Task 1 (scaffold) is done (`f1b5718`); Task 2
-(constellation on React Flow, real report) is next.** See "Current phase"
-above for the full 5-task order and why React was chosen over Next.js.
+now the active work: **Tasks 1–2 are done (`f1b5718`, `a7f7144`); Task 3
+(port Expand/Show source/Edit/Remove into node components) is next.** See
+"Current phase" above for the full 5-task order and why React was chosen
+over Next.js.
 Phase 6 (daily automation) and the cross-day "knowledge map" both wait
 behind this migration.
 
@@ -372,6 +388,13 @@ Open decisions for the remaining report-generation items:
 
 ## Latest verification
 
+- React Flow constellation (2026-09-18, `a7f7144`): browser-pane check
+  against the real 2026-09-09 report — three achievement cards render with
+  correct text, scroll-to-zoom works, no console errors — and against a
+  temporarily removed report, the same empty state as the vanilla version
+  (restored afterward). Two layout bugs (zero-size node, unresolvable
+  container height) were only visible in the browser, not from the code.
+  `npm run check` passed with 268 tests.
 - React/Vite scaffold (2026-09-18, `f1b5718`): booted the real server on the
   new build; `GET /` served the built shell, both hashed asset requests
   (`/assets/*.js`, `/assets/*.css`) returned 200, no console errors. A
