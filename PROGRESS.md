@@ -97,6 +97,9 @@ regression to fix mid-task.
     choice in `localStorage`.
   - Added a global `✦ 全部展開` / `⬡ 全部收合` toggle in the header.
   - Preserved inline editing (`PATCH`) and removal (`DELETE`) with safety confirmation.
+  - Replaced the default React Flow dot grid with a full-screen animated `<StarfieldBackground />`
+    canvas featuring 140 twinkling celestial stars, dynamic theme-color-synced nebula dust clouds,
+    and occasional shooting stars (meteors).
   - Verification: Prettier code style check, ESLint (`npm run lint` with 0 errors/warnings),
     dual TypeScript compilation (`tsc` and `tsc -p tsconfig.web.json`), Vitest
     suites (web, report, collector, storage, summarizer), and Vite production build all passed.
