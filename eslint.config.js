@@ -3,7 +3,13 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: [".worktrees/", "data/", "dist/", "node_modules/"],
+    ignores: [
+      ".worktrees/",
+      "data/",
+      "dist/",
+      "node_modules/",
+      "web/public/vendor/",
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
