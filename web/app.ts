@@ -1,8 +1,15 @@
-import type { AchievementReportV1 } from "../src/report/contract.js";
+import type {
+  AchievementReportV1,
+  EvidenceRef,
+} from "../src/report/contract.js";
 import {
   describeIncomplete,
+  isLocallyTraceable,
   mapAchievementsToNodes,
+  pickEvidenceMessages,
+  sourceLabel,
   type ConstellationNode,
+  type EvidenceMessage,
 } from "./report-view.js";
 
 const constellation = requiredElement<HTMLElement>("constellation");
@@ -17,8 +24,13 @@ const collectorStatus = requiredElement<HTMLElement>("collector-status");
 const collectorSources = requiredElement<HTMLElement>("collector-sources");
 const collectorSessions = requiredElement<HTMLElement>("collector-sessions");
 let nodes: ConstellationNode[] = [];
+let currentReportDate: string | undefined;
 let expandedNodeId: string | undefined;
 let relatedNodeId: string | undefined;
+let sourceOpenId: string | undefined;
+let reportRevision = 0;
+const sourceResults = new Map<string, HTMLElement>();
+const sourceLoading = new Set<string>();
 
 void loadReport();
 collectorToggle.addEventListener("click", () => {
@@ -237,9 +249,15 @@ function createSession(
 }
 
 async function loadReport(): Promise<void> {
+  reportRevision += 1;
+  sourceOpenId = undefined;
+  sourceResults.clear();
+  sourceLoading.clear();
+
   const response = await fetch("/api/reports/latest");
   if (response.status === 404) {
     nodes = [];
+    currentReportDate = undefined;
     reportDate.textContent = "";
     reportDate.removeAttribute("datetime");
     setConstellationStatus("No report has been generated yet.");
@@ -248,6 +266,7 @@ async function loadReport(): Promise<void> {
   }
   if (!response.ok) {
     nodes = [];
+    currentReportDate = undefined;
     setConstellationStatus("The report could not be loaded.");
     renderConstellation();
     return;
@@ -255,6 +274,7 @@ async function loadReport(): Promise<void> {
   const body = (await response.json()) as { report: AchievementReportV1 };
   const report = body.report;
   nodes = mapAchievementsToNodes(report.achievements);
+  currentReportDate = report.date;
   reportDate.textContent = report.date;
   reportDate.dateTime = report.date;
   const incomplete = describeIncomplete(report.incomplete);
@@ -263,6 +283,76 @@ async function loadReport(): Promise<void> {
     setConstellationStatus("No achievements were found for this day.");
   else setConstellationStatus(undefined);
   renderConstellation();
+}
+
+/** Loads and renders one node's evidence, from the local collector only. */
+async function loadSource(
+  node: ConstellationNode,
+  revision: number,
+): Promise<void> {
+  sourceLoading.add(node.id);
+  try {
+    const container = document.createElement("div");
+    container.className = "evidence";
+    for (const ref of node.evidence)
+      container.append(await loadEvidenceRef(ref));
+    if (revision !== reportRevision) return;
+    sourceResults.set(node.id, container);
+  } finally {
+    sourceLoading.delete(node.id);
+    if (revision === reportRevision) renderConstellation();
+  }
+}
+
+async function loadEvidenceRef(ref: EvidenceRef): Promise<HTMLElement> {
+  const block = document.createElement("div");
+  block.className = "evidence-record";
+  const byline = document.createElement("p");
+  byline.className = "evidence-byline";
+  byline.textContent = `${sourceLabel(ref.source)} · ${ref.recordId}`;
+  block.append(byline);
+
+  if (!isLocallyTraceable(ref.source)) {
+    block.append(
+      textParagraph("Source preview isn't available for this source yet."),
+    );
+    return block;
+  }
+  try {
+    const dateQuery = currentReportDate
+      ? `&date=${encodeURIComponent(currentReportDate)}`
+      : "";
+    const body = await api<{ session: { messages: EvidenceMessage[] } }>(
+      `/api/collector/sessions/${encodeURIComponent(ref.recordId)}?source=${encodeURIComponent(
+        ref.source,
+      )}${dateQuery}`,
+    );
+    const { found, missingIds } = pickEvidenceMessages(
+      body.session.messages,
+      ref.messageIds,
+    );
+    found.forEach((message) => {
+      block.append(
+        textParagraph(`${message.role}: ${message.text}`, "evidence-message"),
+      );
+    });
+    if (missingIds.length)
+      block.append(
+        textParagraph(
+          `${missingIds.length} cited message(s) are no longer available locally.`,
+        ),
+      );
+  } catch {
+    block.append(textParagraph("Source no longer available locally."));
+  }
+  return block;
+}
+
+function textParagraph(text: string, className?: string): HTMLParagraphElement {
+  const paragraph = document.createElement("p");
+  if (className) paragraph.className = className;
+  paragraph.textContent = text;
+  return paragraph;
 }
 
 function setConstellationStatus(message: string | undefined): void {
@@ -315,6 +405,7 @@ function createNode(node: ConstellationNode): HTMLElement {
 
   if (expandedNodeId === node.id) article.classList.add("is-expanded");
   if (relatedNodeId === node.id) article.classList.add("has-related");
+  if (sourceOpenId === node.id) article.classList.add("has-source");
 
   const title = document.createElement("h2");
   title.textContent = node.title;
@@ -333,9 +424,8 @@ function createNode(node: ConstellationNode): HTMLElement {
       renderConstellation();
     }),
   );
-  // Evidence is not yet turned into child nodes (a separate task), so a real
-  // achievement currently has none; only show Related where there is
-  // something for it to reveal.
+  // Evidence is not turned into its own child nodes; only show Related
+  // where something else actually points at this node.
   if (nodes.some((other) => other.parentId === node.id))
     controls.append(
       createControl("Related", relatedNodeId === node.id, () => {
@@ -343,7 +433,25 @@ function createNode(node: ConstellationNode): HTMLElement {
         renderConstellation();
       }),
     );
+  if (node.evidence.length)
+    controls.append(
+      createControl("Show source", sourceOpenId === node.id, () => {
+        if (sourceOpenId === node.id) {
+          sourceOpenId = undefined;
+        } else {
+          sourceOpenId = node.id;
+          if (!sourceResults.has(node.id) && !sourceLoading.has(node.id))
+            void loadSource(node, reportRevision);
+        }
+        renderConstellation();
+      }),
+    );
   article.append(controls);
+
+  if (sourceOpenId === node.id)
+    article.append(
+      sourceResults.get(node.id) ?? textParagraph("Loading source…"),
+    );
 
   article.addEventListener("pointermove", (event) => {
     const bounds = article.getBoundingClientRect();

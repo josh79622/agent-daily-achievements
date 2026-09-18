@@ -206,3 +206,76 @@ test("serves collector metadata before a selected local preview", async () => {
   expect(preview.status).toBe(200);
   expect(await preview.text()).toMatch(/Private preview/);
 });
+
+test("a trace-back preview collects the report's own date, not today's", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "daily-proof-traceback-api-"));
+  const collectedDates: string[] = [];
+  const collector: LocalCollector = {
+    async collect(date) {
+      collectedDates.push(date);
+      return {
+        date,
+        timeZone: "UTC",
+        sources: [],
+        sessions: [
+          {
+            id: "session-1",
+            source: "claude-code",
+            file: "/local/session.jsonl",
+            startedAt: `${date}T01:00:00Z`,
+            endedAt: `${date}T01:01:00Z`,
+            messageCount: 1,
+            issueCount: 0,
+            messages: [
+              {
+                id: "record-1",
+                role: "user",
+                text: `Content for ${date}`,
+                timestamp: `${date}T01:00:00Z`,
+                parts: [{ kind: "text", text: `Content for ${date}` }],
+              },
+            ],
+          },
+        ],
+      };
+    },
+  };
+  const server = createApp({
+    reportStore: createReportStore(directory),
+    collector,
+    consentPath: join(directory, "consent.json"),
+    collectorDate: () => "2026-09-18",
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  cleanups.push(async () => {
+    server.close();
+    await once(server, "close");
+    await rm(directory, { force: true, recursive: true });
+  });
+  const address = server.address() as AddressInfo;
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  await fetch(`${baseUrl}/api/collector/consent`, {
+    method: "PUT",
+    headers: { origin: baseUrl, "content-type": "application/json" },
+    body: JSON.stringify({ sources: ["claude-code"] }),
+  });
+
+  const traced = await fetch(
+    `${baseUrl}/api/collector/sessions/session-1?date=2026-09-09`,
+  );
+  expect(traced.status).toBe(200);
+  expect(await traced.text()).toMatch(/Content for 2026-09-09/);
+
+  const live = await fetch(`${baseUrl}/api/collector/sessions/session-1`);
+  expect(live.status).toBe(200);
+  expect(await live.text()).toMatch(/Content for 2026-09-18/);
+
+  expect(collectedDates).toEqual(["2026-09-09", "2026-09-18"]);
+
+  const invalid = await fetch(
+    `${baseUrl}/api/collector/sessions/session-1?date=09-2026-18`,
+  );
+  expect(invalid.status).toBe(400);
+});

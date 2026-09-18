@@ -6,11 +6,13 @@ import type {
 } from "../../src/report/contract.js";
 import {
   describeIncomplete,
+  isLocallyTraceable,
   layoutPosition,
   mapAchievementsToNodes,
+  pickEvidenceMessages,
 } from "../../web/report-view.js";
 
-// Test cases RV-1 to RV-3. Pure logic only — no DOM. The rendering these
+// Test cases RV-1 to RV-5. Pure logic only — no DOM. The rendering these
 // feed (createNode/renderConstellation in web/app.ts) is verified manually
 // in the browser pane, matching this project's existing convention for the
 // non-testable DOM layer.
@@ -69,6 +71,7 @@ test("RV-2: mapAchievementsToNodes preserves id/title/detail with no parent", ()
     expect(node.detail).toBe(achievements[index]!.detail);
     expect(node.kind).toBe("achievement");
     expect(node.parentId).toBeUndefined();
+    expect(node.evidence).toEqual(achievements[index]!.evidence);
   }
   // Positions match layoutPosition for the same index/count.
   expect(nodes[1]).toMatchObject(layoutPosition(1, 3));
@@ -90,4 +93,43 @@ test("RV-3: describeIncomplete produces one friendly line per reason", () => {
     "The summarizer did not produce a report.",
     "The summarizer's output could not be used.",
   ]);
+});
+
+test("RV-4: isLocallyTraceable is true only for the two local collector sources", () => {
+  expect(isLocallyTraceable("claude-code")).toBe(true);
+  expect(isLocallyTraceable("codex")).toBe(true);
+  expect(isLocallyTraceable("claude-web")).toBe(false);
+  expect(isLocallyTraceable("chatgpt-web")).toBe(false);
+  expect(isLocallyTraceable("gemini-web")).toBe(false);
+});
+
+test("RV-5: pickEvidenceMessages keeps evidence order and reports what is missing", () => {
+  const messages = [
+    { id: "m1", role: "user", text: "one" },
+    { id: "m2", role: "assistant", text: "two" },
+    { id: "m3", role: "user", text: "three" },
+  ];
+
+  // No messageIds: the whole record, in its own order.
+  expect(pickEvidenceMessages(messages, undefined)).toEqual({
+    found: messages,
+    missingIds: [],
+  });
+
+  // Evidence order wins, even when it differs from the session's order.
+  expect(pickEvidenceMessages(messages, ["m3", "m1"])).toEqual({
+    found: [messages[2], messages[0]],
+    missingIds: [],
+  });
+
+  // A cited id the session no longer has is reported, not dropped silently.
+  expect(pickEvidenceMessages(messages, ["m1", "gone", "m3"])).toEqual({
+    found: [messages[0], messages[2]],
+    missingIds: ["gone"],
+  });
+
+  expect(pickEvidenceMessages([], ["m1"])).toEqual({
+    found: [],
+    missingIds: ["m1"],
+  });
 });

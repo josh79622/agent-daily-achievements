@@ -4,11 +4,12 @@
 // logic — `app.ts` imports it as an ordinary module (served as
 // `/report-view.js`, see `staticAssetFor` in `src/server/app.ts`).
 //
-// Evidence is not yet turned into its own nodes; that is the separate
-// "source trace-back" task. For now one achievement is one node, with no
-// children, and the layout only has to place the achievement tier.
+// Evidence is not turned into separate constellation nodes (still one
+// achievement, one node), but each node now carries its evidence so
+// app.ts can trace it back to the local record it came from.
 import type {
   Achievement,
+  EvidenceRef,
   IncompleteEntry,
   ReportSource,
 } from "../src/report/contract.js";
@@ -21,6 +22,7 @@ export interface ConstellationNode {
   title: string;
   detail: string;
   kind: NodeKind;
+  evidence: EvidenceRef[];
   x: number;
   y: number;
 }
@@ -61,6 +63,7 @@ export function mapAchievementsToNodes(
     title: achievement.title,
     detail: achievement.detail,
     kind: "achievement",
+    evidence: achievement.evidence,
     ...layoutPosition(index, achievements.length),
   }));
 }
@@ -91,4 +94,47 @@ export function describeIncomplete(
         return "The summarizer's output could not be used.";
     }
   });
+}
+
+export { sourceLabel };
+
+/**
+ * Only these sources have a local collector to trace back to; the optional
+ * Chrome add-on (claude-web/chatgpt-web/gemini-web) does not exist yet, so
+ * an evidence reference to one of those cannot be shown, only named.
+ */
+export function isLocallyTraceable(
+  source: ReportSource,
+): source is "claude-code" | "codex" {
+  return source === "claude-code" || source === "codex";
+}
+
+export interface EvidenceMessage {
+  id: string;
+  role: string;
+  text: string;
+}
+
+/**
+ * Which of a fetched session's messages an evidence reference actually
+ * points to, in the order the evidence listed them. Absent `messageIds`
+ * means the reference is to the whole record. A listed id the session no
+ * longer has (local history rotated or changed since the report was made)
+ * is reported rather than silently dropped, so a stale citation is visible
+ * instead of quietly looking like a clean match.
+ */
+export function pickEvidenceMessages(
+  messages: readonly EvidenceMessage[],
+  messageIds: readonly string[] | undefined,
+): { found: EvidenceMessage[]; missingIds: string[] } {
+  if (!messageIds) return { found: [...messages], missingIds: [] };
+  const byId = new Map(messages.map((message) => [message.id, message]));
+  const found: EvidenceMessage[] = [];
+  const missingIds: string[] = [];
+  for (const id of messageIds) {
+    const message = byId.get(id);
+    if (message) found.push(message);
+    else missingIds.push(id);
+  }
+  return { found, missingIds };
 }

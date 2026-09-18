@@ -37,6 +37,14 @@ test("builds the achievement constellation", async () => {
   expect(app).toMatch(/Preview locally/);
   expect(html).not.toMatch(/Generate sample report/);
   expect(css).toMatch(/\.constellation-node/);
+  // Source trace-back: reuses the same local, consent-gated collector route
+  // as the "Local activity" panel's own preview, with an explicit date so a
+  // past day is traced back as it was that day, not as of today.
+  expect(app).toMatch(/Show source/);
+  expect(app).toMatch(/api\/collector\/sessions\//);
+  expect(app).toMatch(/&date=/);
+  expect(app).toMatch(/isLocallyTraceable/);
+  expect(css).toMatch(/\.evidence/);
 });
 
 test("builds the report sign-in panel without credential or command surfaces", async () => {

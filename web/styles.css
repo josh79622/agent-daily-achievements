@@ -302,6 +302,37 @@ main,
   opacity: 1;
 }
 
+.constellation-node.has-source {
+  z-index: 3;
+  width: min(360px, 40vw);
+}
+
+.evidence {
+  max-height: 12rem;
+  margin-top: 0.85rem;
+  overflow-y: auto;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.evidence-record + .evidence-record {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line);
+}
+
+.evidence-byline {
+  margin: 0 0 0.3rem;
+  color: var(--accent);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.62rem;
+}
+
+.evidence-message {
+  margin: 0 0 0.4rem;
+}
+
 .event-node,
 .detail-node {
   width: min(190px, 20vw);

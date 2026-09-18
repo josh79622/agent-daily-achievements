@@ -226,10 +226,30 @@ export function createApp({
             });
             return;
           }
+          // A trace-back request names the saved report's own date, so a
+          // past day's session is collected as it was that day rather than
+          // as of today; the live "Local activity" panel omits it and gets
+          // today, unchanged.
+          const requestedDate = new URL(
+            request.url ?? "/",
+            origin,
+          ).searchParams.get("date");
+          if (
+            requestedDate !== null &&
+            !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
+          ) {
+            sendJson(response, 400, {
+              error: { message: "Provide date as YYYY-MM-DD." },
+            });
+            return;
+          }
           activeCollections += 1;
           let result;
           try {
-            result = await collector.collect(collectorDate(), sources);
+            result = await collector.collect(
+              requestedDate ?? collectorDate(),
+              sources,
+            );
           } finally {
             activeCollections -= 1;
           }
