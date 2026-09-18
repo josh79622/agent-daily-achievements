@@ -68,8 +68,14 @@ test("serves whatever the store holds, unchanged", async () => {
     async save() {
       throw new Error("Nothing in this test saves a report.");
     },
+    async read() {
+      return { found: true, report };
+    },
     async readLatest() {
       return { found: true, report };
+    },
+    async listDates() {
+      return [report.date];
     },
   };
   const baseUrl = await startTestApp(reportStore);
