@@ -255,10 +255,20 @@ generation moved here and comes first.
         has children.
 - [ ] Source trace-back in the report UI.
 - [ ] Edit and remove incorrect achievements.
-- [ ] Define and enforce local retention. **Now a blocker for the cross-day
-      "knowledge map" idea Josh raised (see decision 1 in `PROGRESS.md`):**
-      `ReportStore` only keeps the single latest report today, so there is
-      no history to map yet.
+- [x] Define and enforce local retention. (`a80e313`)
+  - Josh decided 2026-09-18: reports are kept indefinitely by default, one
+    file per date, no automatic deletion — a report holds a derived summary
+    and evidence pointers, never raw conversation text, so the privacy risk
+    of keeping it is much lower than keeping the underlying sessions.
+  - `ReportStore` now writes `<date>.json` instead of overwriting a single
+    `latest.json`, adds `read(date)` and `listDates()`, and `readLatest()` is
+    now "the most recent date with a saved report" rather than "the most
+    recently saved" (they can differ if a past day is regenerated later).
+    Six cases pass; three deliberate mutations were each caught.
+  - Migrated the one real report on disk to the new per-date filename; this
+    unblocks the cross-day "knowledge map" idea (decision 1 in
+    `PROGRESS.md`) — there is now a place for history to accumulate, though
+    nothing reads more than one date yet.
 
 ### Phase 6 — Daily automation
 

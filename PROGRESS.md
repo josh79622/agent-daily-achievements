@@ -11,8 +11,9 @@ summarization behind a separate permission, validate and score model-shaped
 reports, and manage provider sign-in, readiness, model, and effort settings.
 As of later that day, it can also run the real summarizer end to end and show
 the result: one real day (2026-09-09) has been summarized by Claude Code
-`haiku` and rendered in the browser. Remaining Phase 5 work — source
-trace-back, editing achievements, and retention — is listed under "Phase 5
+`haiku` and rendered in the browser, and reports are now kept with history
+rather than overwritten. Remaining Phase 5 work — source trace-back, editing
+achievements, and designing the cross-day view — is listed under "Phase 5
 remaining" below.
 
 ## Completed
@@ -87,11 +88,13 @@ remaining" below.
 
 ## Next task
 
-**The first real day (2026-09-09) has been summarized end to end and shown in
-the browser** (`71f3987`, `ddc8c70`, `4c7922f`, then the real run and
-`45b606a`). **Next up is source trace-back in the report UI** (first item
-below "Phase 5 remaining"); Josh also raised a cross-day "knowledge map" idea
-that is deliberately sequenced after retention is decided (decision 1 below).
+**The first real day (2026-09-09) has been summarized end to end, shown in
+the browser, and retention is decided** (`71f3987`, `ddc8c70`, `4c7922f`, the
+real run, `45b606a`, `a80e313`). **Next up is source trace-back in the
+report UI** (first item below "Phase 5 remaining"). Retention being resolved
+also unblocks the cross-day "knowledge map" idea Josh raised (decision 1
+below), but that is still undesigned — resolving retention only removed the
+storage blocker, not the design work.
 
 ### Phase 5 progress
 
@@ -193,30 +196,40 @@ stated:
   three deliberate mutations each caught. Evidence is still not turned into
   child nodes — that stays the separate "source trace-back" task, so the
   "Related" control is now only shown on a node that actually has children.
+- **Retention decided and implemented (`a80e313`)**: reports are kept
+  indefinitely by default, one file per report date, no automatic deletion —
+  a report holds a derived summary and evidence pointers, never raw
+  conversation text, so this is a much lower privacy risk than keeping the
+  underlying sessions would be. `ReportStore` now writes `<date>.json`
+  instead of overwriting a single `latest.json`, and adds `read(date)` and
+  `listDates()`; `readLatest()` is now "most recent date with a saved
+  report" rather than "most recently saved" (they can differ if a past day
+  is regenerated later — covered by its own test). Six cases pass; three
+  deliberate mutations each caught. The one real report on disk was migrated
+  to the new filename and reverified served correctly by the real server.
 
 ### Phase 5 remaining
 
 1. Source trace-back in the report UI.
 2. Edit and remove incorrect achievements.
-3. Define and enforce local retention — now the practical blocker for
-   anything cross-day (see decision 1 below): `ReportStore` still keeps only
-   the single latest report, no history.
+3. **Design the cross-day "knowledge map"** (decision 1 below), now that
+   retention has removed the storage blocker. Still needed: a way to decide
+   which achievements count as the same recurring theme across days, and
+   what the UI does with more than one day's history — neither is designed
+   yet, and neither is in `BRIEF.md`'s first-version scope, so treat this as
+   its own scoped feature, not an extension of today's single-day view.
 
 ### Decisions parked, waiting on Josh
 
 1. **What the UI shows.** Resolved: the constellation now fetches and
    renders the real `/api/reports/latest` (`45b606a`), with empty/no-report
-   states. **New, from this session**: Josh asked about a cross-day
-   "knowledge star map" style — nodes as recurring themes/projects rather
-   than one day's achievements, connected across days as they recur. Judged
-   a good fit for the actual problem (accumulated progress, not a daily
-   snapshot) and a better direction than the current single-day view, but
-   explicitly sequenced *after*, not instead of, today's single-day wiring,
-   because it needs two things that do not exist yet: (a) retention/history
-   storage (item 3 above — today's `ReportStore` only keeps "latest"), and
-   (b) a way to decide which achievements count as the same theme across
-   days, which is undesigned and outside `BRIEF.md`'s first-version scope.
-   Not started; raise retention as its own decision before designing this.
+   states. **Cross-day "knowledge star map" idea (raised this session,
+   still open)**: nodes as recurring themes/projects rather than one day's
+   achievements, connected across days as they recur. Judged a good fit for
+   the actual problem (accumulated progress, not a daily snapshot). Its
+   storage blocker is now removed (retention, `a80e313`), but the design
+   itself has not started — see item 3 under "Phase 5 remaining" for what
+   is still undecided.
 2. **Conversation order in the payload** follows the approved source scope rather
    than the clock, so a later Codex session can precede an earlier Claude Code
    one. Chronological order would read as one day.
@@ -227,12 +240,14 @@ stated:
 
 ### Still not true
 
-Cross-day history: only the single latest report is kept, so nothing
-persists once the next report is generated. The report contract, real
-summarizer run, and constellation UI have now all been exercised against one
-real day (2026-09-09) end to end, including the browser render — this is no
-longer only tested against fakes, but it is still exactly one day, one
-provider (Claude Code haiku), and one machine.
+No UI reads more than one date: `ReportStore` now keeps history
+(`a80e313`), but `/api/reports/latest` and the constellation still only ever
+show the single most recent one — nothing yet lists or displays multiple
+days. The report contract, real summarizer run, and constellation UI have
+now all been exercised against one real day (2026-09-09) end to end,
+including the browser render — this is no longer only tested against fakes,
+but it is still exactly one day, one provider (Claude Code haiku), and one
+machine.
 
 ## Measured payload cost (2026-09-18, local sizes only, nothing transmitted)
 
@@ -286,6 +301,11 @@ Open decisions for the remaining report-generation items:
 
 ## Latest verification
 
+- Retention (2026-09-18, `a80e313`): `npm run check` passed with 255 tests
+  (6 report-store cases new/extended); three deliberate mutations each
+  caught. Migrated the one real report on disk to `2026-09-09.json` and
+  reverified with the real server that `/api/reports/latest` still serves it
+  (`status: complete`, 3 achievements) after the storage change.
 - Constellation UI on the real report (2026-09-18, `45b606a`): browser-pane
   check against the real 2026-09-09 report — three achievements render with
   their real text, Expand works, date shows `2026-09-09`, no `Related`
@@ -341,7 +361,7 @@ Open decisions for the remaining report-generation items:
   `.worktrees/ui-skeleton` worktree was removed, so a new session opens on the
   current work instead of the stale project-setup state. No remote and no PR.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
-  shell's default Node 25 is broken. Gate: `npm run check` (251 tests at
+  shell's default Node 25 is broken. Gate: `npm run check` (255 tests at
   handoff).
 - Dev server: Josh starts it with `npm run dev` from the checkout
   (`http://127.0.0.1:4317/`). On startup it sweeps stale probe temp
