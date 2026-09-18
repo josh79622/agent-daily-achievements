@@ -84,24 +84,64 @@ that work.
 
 ## Next task
 
-Phase 5. Task NT (collector non-text placeholders, `2a652d5`) and Task PB
-(server-side payload builder and evidence manifest) are both complete and
-verified against
-[the payload design](docs/plans/2026-09-18-report-day-payload-design.md).
-`npm run check` passes with 228 tests.
+**One action is waiting on Josh: say go, and run the Codex eval.**
 
-`buildReportDayPayload` is now wired into `/api/reports/generate` as the default
-`SummaryRequestFactory` (RG-1 to RG-5), so the route no longer needs an injected
-test factory. `SummaryRequest` carries `{ payload, scheduled }`.
+```bash
+npx tsx scripts/experiments/eval-summary.mts codex gpt-5.6-luna
+```
 
-Next: the real summarizer run — the non-interactive command per CLI, output
-handling, and assembling an `AchievementReportV1`. Nothing has been exercised
-against a real day, no CLI has been invoked, and no day's size has been measured,
-so the input-limit question is still open.
+Josh approved real model runs against the fictional set only, then asked to
+change sessions before the first run. Nothing has been run. The harness sends the
+draft prompt plus the eight fictional payloads and nothing else; tools are
+disabled, the sandbox is read-only, no session is persisted, and the temporary
+directory is removed. Codex spends ChatGPT Plus quota, leaving the Claude quota
+this project's sessions consume untouched.
 
-Open observation for Josh: conversation order in the payload follows the approved
-source scope rather than the clock, so a later Codex session can precede an
-earlier Claude Code one.
+Planned order:
+
+1. Codex `gpt-5.6-luna` (cheapest), 8 cases.
+2. Claude Code `haiku`, 8 cases, reading the usage card before and after, which
+   converts the estimated 1-15% cost share into a measured number.
+3. Only if the cheap models fail: Josh's selected `opus` and `gpt-5.6-terra`.
+
+What this settles at once: whether a cheap model can do this job (Josh's
+proposal), whether it cites evidence IDs accurately (inaccurate IDs fail closed
+and burn re-analysis attempts, so a cheap model can end up costing more), and
+the first real usage figure.
+
+### Phase 5 progress
+
+Complete and verified, all with synthetic records and no CLI invoked:
+
+- Task NT, collector non-text placeholders (`2a652d5`).
+- Task PB, server-side payload builder and evidence manifest (`3eda570`).
+- Route wiring: `/api/reports/generate` defaults to `buildReportDayPayload`
+  (`e237413`).
+- Tool capping: `tool_use` capped (`bb20a83`), cap tightened to 250 (`77c4168`),
+  then marker plus one per-kind window (`0915242`).
+- Draft prompt and fictional eval payloads (`954b827`).
+
+### Decisions parked, waiting on Josh
+
+1. **What the UI shows.** Josh asked to connect the UI to a real report before
+   the summarizer, then the cost discussion took over. With no summarizer, a real
+   report has `achievements: []`. Options: assemble from the approved fictional
+   set so the node shape is visible, or from real collection and show the empty
+   and incomplete states. Note the constellation in `web/app.ts` is currently a
+   hardcoded `const nodes` array and the page fetches no report at all; the older
+   `DailyReport` type is served at `/api/reports/sample` but never rendered.
+2. **Conversation order in the payload** follows the approved source scope rather
+   than the clock, so a later Codex session can precede an earlier Claude Code
+   one. Chronological order would read as one day.
+3. **Eval cases 04 and 06** cannot show a two-sided exchange, because each
+   approved manifest allows one message per record. Case 04's model confirmation
+   is absent and case 06's CI output is pasted inside Josh's own message. Adding
+   message IDs to the approved fixture is Josh's decision. Left as-is for now.
+
+### Still not true
+
+No CLI has been invoked, nothing has run against a real day, no report has ever
+been generated, and `AchievementReportV1` is not used anywhere in the running app.
 
 ## Measured payload cost (2026-09-18, local sizes only, nothing transmitted)
 
@@ -186,14 +226,19 @@ Open decisions for the remaining report-generation items (none approved yet):
   on branch `codex/ui-skeleton` (no PR opened; do not merge to master unless
   Josh asks). The working tree was clean at handoff.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
-  shell's default Node 25 is broken. Gate: `npm run check` (207 tests at
+  shell's default Node 25 is broken. Gate: `npm run check` (237 tests at
   handoff).
 - Dev server: Josh starts it with `npm run dev` from the worktree
   (`http://127.0.0.1:4317/`). On startup it sweeps stale probe temp
   directories and fetches model lists (Codex `codex debug models`, Claude Code
   initialize-only request; no prompt). Local settings live in ignored `data/`
   files, including `data/summarizer-models.json`.
-- Key documents: [report contract design](docs/plans/2026-09-17-report-contract-design.md),
+- Key documents for Phase 5: [payload and manifest design](docs/plans/2026-09-18-report-day-payload-design.md),
+  [tool truncation decision](docs/decisions/2026-09-18-tool-result-truncation.md),
+  [fictional eval payloads](docs/evals/synthetic-set-02-payloads.md),
+  prompt draft in `src/report/summary-prompt.ts`, eval harness in
+  `scripts/experiments/eval-summary.mts`.
+- Earlier key documents: [report contract design](docs/plans/2026-09-17-report-contract-design.md),
   [synthetic set 02](docs/evals/synthetic-set-02.md),
   [readiness probe, model, effort, and leak-fix design](docs/plans/2026-09-17-readiness-probe-design.md),
   [Phase 4 exit review](docs/reviews/2026-09-18-phase-4-exit-review.md),
