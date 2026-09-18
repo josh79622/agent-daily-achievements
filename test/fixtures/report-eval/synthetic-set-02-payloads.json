@@ -1,0 +1,262 @@
+{
+  "version": 1,
+  "note": "Fictional payloads for synthetic set 02. Draft, awaiting Josh's approval.",
+  "cases": {
+    "case-01": {
+      "date": "2026-09-18",
+      "conversations": [
+        {
+          "source": "codex",
+          "recordId": "codex-201",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "assistant",
+              "time": "09:10",
+              "text": "[tool_use Bash {\"command\":\"npm test -- harbor/cache\"}]\n[tool_result error]\nTests: 4 passed, 1 failed\n  x cache key is stable across restarts\nThe key fields are hashed in map order, so I will sort them before hashing.\n[tool_use Edit {\"file_path\":\"src/harbor/cache.ts\"}]\n[tool_result ok]\nApplied 1 edit.\n[tool_use Bash {\"command\":\"npm test -- harbor/cache\"}]\n[tool_result ok]\nTests: 5 passed, 0 failed\n[tool_use Bash {\"command\":\"git commit -m 'fix: stable Harbor cache keys'\"}]\n[tool_result ok]\n[main a91c2f4] fix: stable Harbor cache keys\n 1 file changed, 12 insertions(+), 4 deletions(-)"
+            }
+          ]
+        }
+      ]
+    },
+    "case-02": {
+      "date": "2026-09-18",
+      "conversations": [
+        {
+          "source": "claude-web",
+          "recordId": "claude-web-201",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "user",
+              "time": "10:15",
+              "text": "Tomorrow I'll refactor the billing module and send the design to Mira."
+            }
+          ]
+        },
+        {
+          "source": "codex",
+          "recordId": "codex-202",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "assistant",
+              "time": "11:00",
+              "text": "[tool_use Bash {\"command\":\"npm run lint\"}]\n[tool_result ok]\nAll matched files pass. No problems found.\nNothing needed changing."
+            }
+          ]
+        }
+      ]
+    },
+    "case-03": {
+      "date": "2026-09-18",
+      "conversations": [
+        {
+          "source": "claude-code",
+          "recordId": "claude-code-201",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "user",
+              "time": "13:05",
+              "text": "I compared keeping the local cache in JSON files against SQLite. Concurrent writes corrupted the JSON cache twice this week, so we'll use SQLite. I'm not touching the code today, just settling the direction."
+            }
+          ]
+        }
+      ]
+    },
+    "case-04": {
+      "date": "2026-09-18",
+      "conversations": [
+        {
+          "source": "chatgpt-web",
+          "recordId": "chatgpt-web-201",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "user",
+              "time": "15:30",
+              "text": "Let me say it back to check I have it: an idempotency key lets the server recognise a retried request and return the first result instead of charging twice. So the retry is safe because the second call never creates a second charge."
+            }
+          ]
+        },
+        {
+          "source": "chatgpt-web",
+          "recordId": "chatgpt-web-202",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "user",
+              "time": "15:45",
+              "text": "Here is an article about vector clocks. Can you summarise it for me?\n<pasted article text about vector clocks and causality tracking>"
+            }
+          ]
+        }
+      ]
+    },
+    "case-05": {
+      "date": "2026-09-18",
+      "conversations": [
+        {
+          "source": "codex",
+          "recordId": "codex-203",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "assistant",
+              "time": "10:00",
+              "text": "[tool_use Bash {\"command\":\"npm test -- harbor/retry\"}]\n[tool_result error]\nTests: 2 passed, 1 failed\n  x retry gives up after the timeout\n[tool_use Edit {\"file_path\":\"src/harbor/retry.ts\"}]\n[tool_result ok]\nApplied 1 edit.\n[tool_use Bash {\"command\":\"npm test -- harbor/retry\"}]\n[tool_result ok]\nTests: 3 passed, 0 failed\n[tool_use Bash {\"command\":\"git commit -m 'fix: honour Harbor retry timeout'\"}]\n[tool_result ok]\n[main 4d17ba9] fix: honour Harbor retry timeout"
+            }
+          ]
+        },
+        {
+          "source": "claude-code",
+          "recordId": "claude-code-202",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "user",
+              "time": "14:00",
+              "text": "The retry-timeout fix Codex made this morning passed its test. While we're here, explain why exponential backoff with jitter beats a fixed delay - I want to understand the theory, not change anything now."
+            }
+          ]
+        }
+      ]
+    },
+    "case-06": {
+      "date": "2026-09-18",
+      "conversations": [
+        {
+          "source": "codex",
+          "recordId": "codex-204",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "assistant",
+              "time": "09:30",
+              "text": "[tool_use Edit {\"file_path\":\"scripts/deploy.sh\"}]\n[tool_result ok]\nApplied 1 edit.\n[tool_use Bash {\"command\":\"npm test -- deploy-script\"}]\n[tool_result ok]\nTests: 6 passed, 0 failed\n[tool_use Bash {\"command\":\"git commit -m 'fix: deploy script env handling'\"}]\n[tool_result ok]\n[main 77e0c31] fix: deploy script env handling"
+            }
+          ]
+        },
+        {
+          "source": "claude-code",
+          "recordId": "claude-code-203",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "user",
+              "time": "17:20",
+              "text": "CI shows the deploy-script test failing again after merge; not fixed yet. Here is the CI output:\n  FAIL test/deploy-script.test.ts\n  x deploy script exports the staging env\n  Tests: 5 passed, 1 failed\nI haven't had time to look at it."
+            }
+          ]
+        }
+      ]
+    },
+    "case-07": {
+      "date": "2026-09-18",
+      "conversations": [
+        {
+          "source": "codex",
+          "recordId": "codex-205",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "assistant",
+              "time": "11:10",
+              "text": "[tool_use Edit {\"file_path\":\"README.md\"}]\n[tool_result ok]\nApplied 2 edits.\nNow running the documented steps exactly as written to check they work.\n[tool_use Bash {\"command\":\"npm ci && npm run setup && npm start\"}]\n[tool_result ok]\nSetup complete. Server listening on http://127.0.0.1:4317/\n[tool_use Bash {\"command\":\"git commit -m 'docs: correct README install steps'\"}]\n[tool_result ok]\n[main b2f9ee5] docs: correct README install steps"
+            }
+          ]
+        }
+      ]
+    },
+    "case-08": {
+      "date": "2026-09-18",
+      "conversations": [
+        {
+          "source": "codex",
+          "recordId": "codex-206",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "assistant",
+              "time": "09:00",
+              "text": "[tool_use Bash {\"command\":\"npm test -- pagination\"}]\n[tool_result error]\nTests: 3 passed, 1 failed\n  x page 2 does not repeat the last row of page 1\n[tool_use Edit {\"file_path\":\"src/harbor/page.ts\"}]\n[tool_result ok]\nApplied 1 edit.\n[tool_use Bash {\"command\":\"npm test -- pagination\"}]\n[tool_result ok]\nTests: 4 passed, 0 failed\n[tool_use Bash {\"command\":\"git commit -m 'fix: off-by-one in Harbor pagination'\"}]\n[tool_result ok]\n[main 1aa03de] fix: off-by-one in Harbor pagination"
+            }
+          ]
+        },
+        {
+          "source": "claude-code",
+          "recordId": "claude-code-204",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "user",
+              "time": "11:00",
+              "text": "The new dependency requires Node 22 or later, and keeping a shim for Node 20 would mean maintaining two code paths. We're dropping Node 20 support."
+            }
+          ]
+        },
+        {
+          "source": "codex",
+          "recordId": "codex-207",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "assistant",
+              "time": "13:00",
+              "text": "You asked why that test is flaky. Both test files write to the same temporary directory, so whichever finishes second reads the other's file.\n[tool_use Bash {\"command\":\"npm test -- --repeat 20 flaky-case\"}]\n[tool_result error]\nFailed 3 of 20 runs, always when both suites overlapped.\nThat confirms the shared temporary directory is the cause. No fix made yet."
+            }
+          ]
+        },
+        {
+          "source": "chatgpt-web",
+          "recordId": "chatgpt-web-203",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "user",
+              "time": "16:00",
+              "text": "So an index speeds reads because the database can look up the sorted structure instead of scanning every row, and it slows writes because every insert has to update the index as well as the table. That's the trade-off."
+            }
+          ]
+        },
+        {
+          "source": "codex",
+          "recordId": "codex-208",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "assistant",
+              "time": "14:30",
+              "text": "[tool_use Write {\"file_path\":\"test/export-csv.test.ts\"}]\n[tool_result ok]\nCreated file.\n[tool_use Bash {\"command\":\"npm test -- export-csv\"}]\n[tool_result error]\nTests: 0 passed, 3 failed\n  x exports a header row\n[tool_use Write {\"file_path\":\"src/harbor/export-csv.ts\"}]\n[tool_result ok]\nCreated file.\n[tool_use Bash {\"command\":\"npm test -- export-csv\"}]\n[tool_result ok]\nTests: 3 passed, 0 failed\n[tool_use Bash {\"command\":\"git commit -m 'feat: CSV export'\"}]\n[tool_result ok]\n[main 9c4e1b0] feat: CSV export"
+            }
+          ]
+        },
+        {
+          "source": "claude-code",
+          "recordId": "claude-code-205",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "user",
+              "time": "15:10",
+              "text": "Every current user reads English, and translations would need a reviewer we don't have. We're postponing translations."
+            }
+          ]
+        },
+        {
+          "source": "claude-web",
+          "recordId": "claude-web-202",
+          "messages": [
+            {
+              "id": "m1",
+              "role": "user",
+              "time": "18:00",
+              "text": "I'll fix the flaky test tomorrow."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
