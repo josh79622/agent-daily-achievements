@@ -81,6 +81,25 @@ regression to fix mid-task.
   `.achievement-card` for hover/focus controls, expanded width/detail,
   source list, and edit form, excluding `.text-button` from the `+` prefix.
   `format:check`, `lint`, `typecheck` (both configs), and `build` passed.
+- **UI Overhaul to Style A: Cosmic Constellation (`45eb363`)**:
+  Josh reviewed the UI, found the previous plain wireframe unattractive,
+  and asked why the radiating node connection feature was missing. He compared
+  two design prototypes and explicitly selected **Style A: 深空星系 (Cosmic
+  Constellation)** with a corner theme color palette picker.
+  - Restored dynamic React Flow satellite nodes that fan out radially around
+    each achievement node when expanded, connected by animated flowing
+    constellation edges and subtle star-loop spine edges.
+  - Clicking any satellite node opens a focused session inspection modal
+    fetching `/api/collector/sessions/:id` to inspect cited conversation messages.
+  - Integrated a corner `<ColorPalette />` component in the header featuring
+    5 nebula color presets (Emerald, Cyan, Violet, Gold, Rose) plus a custom
+    color input, dynamically updating `--accent*` CSS variables and persisting
+    choice in `localStorage`.
+  - Added a global `✦ 全部展開` / `⬡ 全部收合` toggle in the header.
+  - Preserved inline editing (`PATCH`) and removal (`DELETE`) with safety confirmation.
+  - Verification: Prettier code style check, ESLint (`npm run lint` with 0 errors/warnings),
+    dual TypeScript compilation (`tsc` and `tsc -p tsconfig.web.json`), Vitest
+    suites (web, report, collector, storage, summarizer), and Vite production build all passed.
 - **Not started**: Tasks 4–5.
 
 ## Completed

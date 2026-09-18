@@ -325,6 +325,8 @@ regression to fix mid-task.
 - [x] Task 3: port Expand/Show source/Edit/Remove into the React Flow node
       component (`web/Constellation.tsx`). `web/styles.css` rules adapted to
       `.achievement-card`. (`e342648`)
+- [x] UI Overhaul: Cosmic Constellation (Style A) with radiating satellite nodes,
+      flowing edges, session inspection modal, and corner theme color palette (`45eb363`).
 - [ ] Task 4: port the Local activity and Report sign-in panels.
 - [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
       component-level tests (e.g. `@testing-library/react`); nothing chosen
