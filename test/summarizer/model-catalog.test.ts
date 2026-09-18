@@ -12,6 +12,7 @@ import type {
   ProbeRunRequest,
   ProbeRunResult,
 } from "../../src/summarizer/readiness-probe.js";
+import type { SummaryProvider } from "../../src/storage/summary-permission.js";
 
 const secret = "FICTIONAL-ACCOUNT jane@example.com";
 
@@ -64,6 +65,7 @@ class FakeChild extends EventEmitter implements CatalogChild {
 
 interface Setup {
   codex?: ProbeRunResult | "throw";
+  agy?: ProbeRunResult | "throw";
   claude?: (child: FakeChild) => void;
   claudeSpawnThrows?: boolean;
   installed?: boolean;
@@ -85,6 +87,17 @@ function loader(setup: Setup) {
       setup.installed === false ? undefined : `/fake/bin/${name}`,
     runner: async (request) => {
       runs.push(request);
+      if (request.file.endsWith("agy")) {
+        if (setup.agy === "throw") throw new Error(secret);
+        return (
+          setup.agy ?? {
+            kind: "exited",
+            exitCode: 0,
+            stdout: "gemini-fiction-flash\tGemini Fiction Flash\n",
+            stdoutTooLarge: false,
+          }
+        );
+      }
       if (setup.codex === "throw") throw new Error(secret);
       return (
         setup.codex ?? {
@@ -153,6 +166,14 @@ test("MC-1: the Codex list comes from `codex debug models` and keeps only listed
       timeoutMs: 15_000,
       maxStdoutBytes: 4 * 1024 * 1024,
     },
+    {
+      file: "/fake/bin/agy",
+      args: ["models"],
+      cwd: "/fake/tmp/catalog-3",
+      captureStdout: true,
+      timeoutMs: 15_000,
+      maxStdoutBytes: 4 * 1024 * 1024,
+    },
   ]);
   expect(catalog.codex).toEqual({
     source: "fetched",
@@ -217,7 +238,7 @@ test("MC-2: the Claude Code list uses one initialize request, never a prompt, an
 });
 
 describe("MC-3 fallback", () => {
-  const builtIn = (provider: "codex" | "claude-code") => ({
+  const builtIn = (provider: SummaryProvider) => ({
     source: "built-in",
     options: builtInModels[provider],
     defaultEffortLevels: builtInDefaultEffortLevels[provider],
@@ -302,6 +323,7 @@ describe("MC-3 fallback", () => {
     expect(await load()).toEqual({
       codex: builtIn("codex"),
       "claude-code": builtIn("claude-code"),
+      agy: builtIn("agy"),
     });
     expect(runs).toEqual([]);
     expect(claudeSpawns).toEqual([]);
@@ -383,6 +405,7 @@ test("EC-1: Claude Code keeps the default entry's effort levels without offering
   expect(builtInDefaultEffortLevels).toEqual({
     "claude-code": ["low", "medium", "high", "xhigh", "max"],
     codex: [],
+    agy: ["low", "medium", "high"],
   });
 
   const unsafe = await loader({

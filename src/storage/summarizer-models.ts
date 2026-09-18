@@ -21,7 +21,7 @@ export interface SavedModelsRead extends SavedSettings {
   unreadable: boolean;
 }
 
-const providers: readonly string[] = ["codex", "claude-code"];
+const providers: readonly string[] = ["codex", "claude-code", "agy"];
 const empty = (unreadable: boolean): SavedModelsRead => ({
   models: {},
   efforts: {},

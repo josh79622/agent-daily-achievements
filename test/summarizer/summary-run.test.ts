@@ -26,6 +26,15 @@ function claudeExit(reply: string): ProbeRunResult {
   };
 }
 
+function agyExit(reply: string): ProbeRunResult {
+  return {
+    kind: "exited",
+    exitCode: 0,
+    stdout: JSON.stringify({ status: "SUCCESS", response: reply }),
+    stdoutTooLarge: false,
+  };
+}
+
 function candidate(count: number): string {
   return JSON.stringify({
     achievements: Array.from({ length: count }, (_, index) => ({
@@ -57,7 +66,7 @@ function harness({
   runnerScript,
   effectiveSettings = {},
 }: {
-  provider?: "claude-code" | "codex";
+  provider?: "claude-code" | "codex" | "agy";
   hasExecutable?: boolean;
   runnerScript: Array<ProbeRunResult | "throw">;
   effectiveSettings?: { model?: string; effort?: string };
@@ -308,4 +317,19 @@ test("SR-11: pre-existing coverage incompleteness is preserved alongside a summa
 // this only checks the exported constant is what SR-8's expectations rely on.
 test("summaryMaxReplyBytes is exported for the process runner's stdout cap", () => {
   expect(summaryMaxReplyBytes).toBeGreaterThan(0);
+});
+
+test("SR: agy invokes agy CLI with -p and saves the candidate report", async () => {
+  const { runner, state } = harness({
+    provider: "agy",
+    runnerScript: [agyExit(candidate(3))],
+  });
+  await runner.run("agy", request());
+  expect(state.runs).toHaveLength(1);
+  expect(state.runs[0]?.captureStdout).toBe(true);
+  expect(state.runs[0]?.args).toContain("-p");
+  expect(state.runs[0]?.args).toContain("--output-format");
+  expect(state.saved).toHaveLength(1);
+  expect(state.saved[0]?.status).toBe("complete");
+  expect(state.saved[0]?.achievements).toHaveLength(3);
 });

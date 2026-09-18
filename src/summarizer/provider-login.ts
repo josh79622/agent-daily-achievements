@@ -88,15 +88,24 @@ const definitions: Record<SummaryProvider, ProviderDefinition> = {
     // CLI reference: "Exits with code 0 if logged in, 1 if not".
     unauthenticatedExitCode: 1,
   },
+  agy: {
+    label: "Gemini (agy)",
+    executable: "agy",
+    installUrl: "https://github.com/google-gemini/antigravity",
+    login: [],
+    status: ["models"],
+    unauthenticatedExitCode: 1,
+  },
 };
 
 export const summaryProviders: readonly SummaryProvider[] = [
   "codex",
   "claude-code",
+  "agy",
 ];
 
 export function isSummaryProvider(value: unknown): value is SummaryProvider {
-  return value === "codex" || value === "claude-code";
+  return value === "codex" || value === "claude-code" || value === "agy";
 }
 
 function definitionFor(provider: SummaryProvider): ProviderDefinition {

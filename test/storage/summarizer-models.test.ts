@@ -48,10 +48,18 @@ const fetched: ModelCatalog = {
     defaultEffortLevels: [],
     options: [{ value: "fiction-opus", label: "Opus", effortLevels: [] }],
   },
+  agy: {
+    source: "fetched",
+    defaultEffortLevels: [],
+    options: [
+      { value: "gemini-fiction-flash", label: "Flash", effortLevels: [] },
+    ],
+  },
 };
 const builtIn: ModelCatalog = {
   codex: { ...fetched.codex, source: "built-in" },
   "claude-code": { ...fetched["claude-code"], source: "built-in" },
+  agy: { ...fetched.agy, source: "built-in" },
 };
 
 describe("SM settings file", () => {
@@ -277,6 +285,17 @@ describe("P3 effort settings", () => {
       options: [
         { value: "fiction-opus", label: "Opus", effortLevels: ["low", "max"] },
         { value: "fiction-haiku", label: "Haiku", effortLevels: [] },
+      ],
+    },
+    agy: {
+      source: "fetched",
+      defaultEffortLevels: ["low", "high"],
+      options: [
+        {
+          value: "gemini-fiction-flash",
+          label: "Flash",
+          effortLevels: ["low", "high"],
+        },
       ],
     },
   };

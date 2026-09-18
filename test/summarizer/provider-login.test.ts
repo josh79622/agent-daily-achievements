@@ -10,7 +10,7 @@ import {
 } from "../../src/summarizer/provider-login.js";
 import type { SummaryProvider } from "../../src/storage/summary-permission.js";
 
-const providers: SummaryProvider[] = ["codex", "claude-code"];
+const providers: SummaryProvider[] = ["codex", "claude-code", "agy"];
 const secret = "sk-SECRET-token user@example.com /Users/someone/.codex";
 
 interface FakeOptions {
@@ -186,6 +186,8 @@ test("fixed commands: each provider maps to its own login and status arguments",
   expect(statusCommand("codex")).toEqual(["login", "status"]);
   expect(loginCommand("claude-code")).toEqual(["auth", "login"]);
   expect(statusCommand("claude-code")).toEqual(["auth", "status"]);
+  expect(loginCommand("agy")).toEqual([]);
+  expect(statusCommand("agy")).toEqual(["models"]);
 });
 
 test("fixed commands: arbitrary provider strings are rejected", async () => {
@@ -203,7 +205,7 @@ test("fixed commands: arbitrary provider strings are rejected", async () => {
   expect(launches).toEqual([]);
 });
 
-test("list: returns both providers with only safe fields", async () => {
+test("list: returns all providers with only safe fields", async () => {
   const { executor } = fakeExecutor({ statusExitCode: 1 });
   const service = createProviderLoginService({
     executor,
@@ -214,6 +216,7 @@ test("list: returns both providers with only safe fields", async () => {
   expect(statuses.map((status) => status.provider)).toEqual([
     "codex",
     "claude-code",
+    "agy",
   ]);
   for (const status of statuses) {
     expect(Object.keys(status).sort()).toEqual(
@@ -223,7 +226,9 @@ test("list: returns both providers with only safe fields", async () => {
 });
 
 function fakePath(provider: SummaryProvider): string {
-  return provider === "codex" ? "/fake/bin/codex" : "/fake/bin/claude";
+  if (provider === "codex") return "/fake/bin/codex";
+  if (provider === "claude-code") return "/fake/bin/claude";
+  return "/fake/bin/agy";
 }
 
 function fakeSpawner(exitCode: number | null = 0) {

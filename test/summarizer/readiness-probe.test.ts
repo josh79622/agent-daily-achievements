@@ -80,6 +80,10 @@ const claudeOk = exited(
   0,
   JSON.stringify({ is_error: false, result: "ready" }),
 );
+const agyOk = exited(
+  0,
+  JSON.stringify({ status: "SUCCESS", response: "ready\n" }),
+);
 
 describe("PR-1 / PR-2 commands", () => {
   test("PR-1: Claude Code attempt uses the approved tool-free print command in a new temporary directory", async () => {
@@ -148,8 +152,35 @@ describe("PR-1 / PR-2 commands", () => {
     expect(readPaths).toEqual(["/fake/tmp/probe-1/reply.txt"]);
   });
 
-  test("PR-1/PR-2: no bare, schema, or permission-bypass option is ever passed", async () => {
-    for (const provider of ["claude-code", "codex"] as const) {
+  test("PR-3: agy attempt uses print mode with json output format and lowest-cost model", async () => {
+    const { probe, runs } = harness([{ run: agyOk }]);
+
+    await probe({
+      provider: "agy",
+      executablePath: "/fake/bin/agy",
+    });
+
+    expect(runs).toEqual([
+      {
+        file: "/fake/bin/agy",
+        args: [
+          "--output-format",
+          "json",
+          "--model",
+          "gemini-3.8-flash-low",
+          "-p",
+          probePrompt,
+        ],
+        cwd: "/fake/tmp/probe-1",
+        captureStdout: true,
+        timeoutMs: probeTimeoutMs,
+        maxStdoutBytes: maxReplyBytes,
+      },
+    ]);
+  });
+
+  test("PR-1/PR-2/PR-3: no bare, schema, or permission-bypass option is ever passed", async () => {
+    for (const provider of ["claude-code", "codex", "agy"] as const) {
       const { probe, runs } = harness([{ run: exited(1) }, { run: exited(1) }]);
       await probe({
         provider,
@@ -169,6 +200,7 @@ describe("PR-3 to PR-6 attempt order", () => {
     expect(lowestCostModels).toEqual({
       "claude-code": "haiku",
       codex: "gpt-5.6-luna",
+      agy: "gemini-3.8-flash-low",
     });
     const { probe, runs } = harness([{ run: claudeOk }]);
 
@@ -274,6 +306,38 @@ describe("PR-7 pass rule", () => {
         await firstReason("claude-code", { run }),
         JSON.stringify(run),
       ).toBe(expected);
+    }
+  });
+
+  test("PR-7: agy passes only with exit 0, SUCCESS status, and a non-empty response field", async () => {
+    const cases: Array<[ProbeRunResult, string]> = [
+      [agyOk, "pass"],
+      [
+        exited(1, JSON.stringify({ status: "SUCCESS", response: "ready" })),
+        "exited-with-error",
+      ],
+      [exited(null), "exited-with-error"],
+      [
+        exited(0, JSON.stringify({ status: "ERROR", error: "fail" })),
+        "exited-with-error",
+      ],
+      [
+        exited(0, JSON.stringify({ status: "SUCCESS", response: "   " })),
+        "empty-reply",
+      ],
+      [exited(0, JSON.stringify({ other: "ready" })), "exited-with-error"],
+      [exited(0, ""), "unreadable-reply"],
+      [exited(0, "not json"), "unreadable-reply"],
+      [exited(0, "[]"), "unreadable-reply"],
+      [
+        { kind: "exited", exitCode: 0, stdout: "", stdoutTooLarge: true },
+        "reply-too-large",
+      ],
+    ];
+    for (const [run, expected] of cases) {
+      expect(await firstReason("agy", { run }), JSON.stringify(run)).toBe(
+        expected,
+      );
     }
   });
 

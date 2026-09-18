@@ -73,6 +73,43 @@ export const builtInModels: Record<SummaryProvider, ModelOption[]> = {
     },
     { value: "haiku", label: "Haiku", effortLevels: [] },
   ],
+  agy: [
+    {
+      value: "gemini-3.8-flash-high",
+      label: "Gemini 3.8 Flash (High)",
+      effortLevels: [],
+    },
+    {
+      value: "gemini-3.8-flash-low",
+      label: "Gemini 3.8 Flash (Low)",
+      effortLevels: [],
+    },
+    {
+      value: "gemini-3.7-flash-high",
+      label: "Gemini 3.7 Flash (High)",
+      effortLevels: [],
+    },
+    {
+      value: "gemini-3.7-flash-low",
+      label: "Gemini 3.7 Flash (Low)",
+      effortLevels: [],
+    },
+    {
+      value: "gemini-3.6-flash-high",
+      label: "Gemini 3.6 Flash (High)",
+      effortLevels: [],
+    },
+    {
+      value: "gemini-3.6-flash-low",
+      label: "Gemini 3.6 Flash (Low)",
+      effortLevels: [],
+    },
+    {
+      value: "gemini-3.1-pro-high",
+      label: "Gemini 3.1 Pro (High)",
+      effortLevels: [],
+    },
+  ],
 };
 
 // Claude Code's default entry was observed with these levels on 2026-09-17;
@@ -80,6 +117,7 @@ export const builtInModels: Record<SummaryProvider, ModelOption[]> = {
 export const builtInDefaultEffortLevels: Record<SummaryProvider, string[]> = {
   "claude-code": ["low", "medium", "high", "xhigh", "max"],
   codex: [],
+  agy: ["low", "medium", "high"],
 };
 
 /** An effort level: a short lowercase word, never an option. */
@@ -98,6 +136,8 @@ export function isSafeModelValue(value: unknown): value is string {
 const codexTimeoutMs = 15_000;
 const codexMaxBytes = 4 * 1024 * 1024;
 const claudeMaxBytes = 4 * 1024 * 1024;
+const agyTimeoutMs = 15_000;
+const agyMaxBytes = 4 * 1024 * 1024;
 const claudeArgs = [
   "-p",
   "--input-format",
@@ -261,14 +301,44 @@ export function createModelCatalogLoader({
     );
   }
 
+  async function agy(): Promise<ParsedList | undefined> {
+    const path = await locate("agy");
+    if (!path) return undefined;
+    return inTempDir(async (directory) => {
+      const result: ProbeRunResult = await runner({
+        file: path,
+        args: ["models"],
+        cwd: directory,
+        captureStdout: true,
+        timeoutMs: agyTimeoutMs,
+        maxStdoutBytes: agyMaxBytes,
+      });
+      if (
+        result.kind !== "exited" ||
+        result.exitCode !== 0 ||
+        result.stdoutTooLarge
+      )
+        return undefined;
+      const options = parseAgyCatalog(result.stdout);
+      return (
+        options && {
+          options,
+          defaultEffortLevels: builtInDefaultEffortLevels.agy,
+        }
+      );
+    });
+  }
+
   return async () => {
-    const [codexOptions, claudeOptions] = await Promise.all([
+    const [codexOptions, claudeOptions, agyOptions] = await Promise.all([
       codex(),
       claude(),
+      agy(),
     ]);
     return {
       codex: catalogOrBuiltIn("codex", codexOptions),
       "claude-code": catalogOrBuiltIn("claude-code", claudeOptions),
+      agy: catalogOrBuiltIn("agy", agyOptions),
     };
   };
 }
@@ -369,4 +439,19 @@ function parseClaudeModels(models: unknown): ParsedList | undefined {
     defaultEffortLevels:
       effortLevels(defaultEntry?.supportedEffortLevels) ?? [],
   };
+}
+
+export function parseAgyCatalog(stdout: string): ModelOption[] | undefined {
+  const lines = stdout.split("\n");
+  const options: ModelOption[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const match = trimmed.match(/^([A-Za-z0-9._\-[\]]+)\s+(.+)$/);
+    if (!match) continue;
+    const [, value, label] = match;
+    const opt = option(value, label, []);
+    if (opt) options.push(opt);
+  }
+  return options.length ? options : undefined;
 }

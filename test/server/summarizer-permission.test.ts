@@ -130,7 +130,7 @@ test("permission: disclosure identifies scope, complete day conversations, and b
       sourceScope: ["claude-code", "codex"],
       conversationScope:
         "Complete conversations with report-day activity, including context through the end of that day.",
-      possibleRecipients: ["codex", "claude-code"],
+      possibleRecipients: ["codex", "claude-code", "agy"],
     },
   });
 });
@@ -284,7 +284,7 @@ test("permission: a saved maximum grant records both possible recipients", async
       version: 1,
       permission: {
         sourceScope: ["claude-code", "codex"],
-        recipients: ["codex", "claude-code"],
+        recipients: ["codex", "claude-code", "agy"],
       },
     },
   );

@@ -20,6 +20,7 @@ export const maxReplyBytes = 64 * 1024;
 export const lowestCostModels: Record<SummaryProvider, string> = {
   "claude-code": "haiku",
   codex: "gpt-5.6-luna",
+  agy: "gemini-3.8-flash-low",
 };
 
 export const disabledCodexFeatures = [
@@ -126,14 +127,16 @@ export function createReadinessProbe({
       const args =
         provider === "claude-code"
           ? claudeArgs(model, effort, probePrompt)
-          : codexArgs(model, effort, directory, replyFile, probePrompt);
+          : provider === "agy"
+            ? agyArgs(model, effort, probePrompt)
+            : codexArgs(model, effort, directory, replyFile, probePrompt);
       let result: ProbeRunResult;
       try {
         result = await runner({
           file: executablePath,
           args,
           cwd: directory,
-          captureStdout: provider === "claude-code",
+          captureStdout: provider === "claude-code" || provider === "agy",
           timeoutMs: probeTimeoutMs,
           maxStdoutBytes: maxReplyBytes,
         });
@@ -142,9 +145,9 @@ export function createReadinessProbe({
       }
       if (result.kind !== "exited") return result.kind;
       if (result.exitCode !== 0) return "exited-with-error";
-      return provider === "claude-code"
-        ? claudeReply(result)
-        : await codexReply(replyFile);
+      if (provider === "claude-code") return claudeReply(result);
+      if (provider === "agy") return agyReply(result);
+      return await codexReply(replyFile);
     } finally {
       await tempDirs.remove(directory).catch(() => {});
     }
@@ -257,6 +260,44 @@ function claudeReply(
     unknown
   >;
   if (isError === true) return "exited-with-error";
+  return typeof reply === "string" && reply.trim() ? undefined : "empty-reply";
+}
+
+/** Shared with the real summarizer run (`summary-run.ts`); only the prompt text differs. */
+export function agyArgs(
+  model: string | undefined,
+  effort: string | undefined,
+  prompt: string,
+): string[] {
+  return [
+    "--output-format",
+    "json",
+    ...(model === undefined ? [] : ["--model", model]),
+    ...(effort === undefined ? [] : ["--effort", effort]),
+    "-p",
+    prompt,
+  ];
+}
+
+// agy's `--output-format json` envelope.
+function agyReply(
+  result: Extract<ProbeRunResult, { kind: "exited" }>,
+): ProbeFailureReason | undefined {
+  if (result.stdoutTooLarge) return "reply-too-large";
+  let envelope: unknown;
+  try {
+    envelope = JSON.parse(result.stdout);
+  } catch {
+    return "unreadable-reply";
+  }
+  if (
+    typeof envelope !== "object" ||
+    envelope === null ||
+    Array.isArray(envelope)
+  )
+    return "unreadable-reply";
+  const { status, response: reply } = envelope as Record<string, unknown>;
+  if (status !== "SUCCESS") return "exited-with-error";
   return typeof reply === "string" && reply.trim() ? undefined : "empty-reply";
 }
 

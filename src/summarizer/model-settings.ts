@@ -12,6 +12,7 @@ import {
   type ModelCatalog,
   type ProviderCatalog,
 } from "./model-catalog.js";
+import { summaryProviders } from "./provider-login.js";
 
 export type ModelWarning =
   | "settings-unreadable"
@@ -114,7 +115,7 @@ export interface SummarizerModelsService {
   ): Promise<ProviderModelView | undefined>;
 }
 
-const providers: readonly SummaryProvider[] = ["codex", "claude-code"];
+const providers: readonly SummaryProvider[] = summaryProviders;
 
 export function createSummarizerModelsService({
   catalog,

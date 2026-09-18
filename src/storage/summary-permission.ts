@@ -4,12 +4,12 @@ import { dirname } from "node:path";
 
 import type { LocalSource } from "../collector/local-collector.js";
 
-export type SummaryProvider = "claude-code" | "codex";
+export type SummaryProvider = "claude-code" | "codex" | "agy";
 
 export interface SummaryPermission {
   sourceScope: LocalSource[];
   preferredCli?: SummaryProvider;
-  recipients: readonly ["codex", "claude-code"];
+  recipients: readonly SummaryProvider[];
 }
 
 export interface SummaryPermissionInput {
@@ -38,7 +38,8 @@ export function validSummaryPermissionInput(
     ) &&
     (permission.preferredCli === undefined ||
       permission.preferredCli === "claude-code" ||
-      permission.preferredCli === "codex")
+      permission.preferredCli === "codex" ||
+      permission.preferredCli === "agy")
   );
 }
 
@@ -51,9 +52,15 @@ export function validSummaryPermission(
   return (
     validSummaryPermissionInput(input) &&
     Array.isArray(recipients) &&
-    recipients.length === 2 &&
-    recipients[0] === "codex" &&
-    recipients[1] === "claude-code"
+    recipients.length >= 2 &&
+    recipients.length <= 3 &&
+    new Set(recipients).size === recipients.length &&
+    recipients.every(
+      (recipient) =>
+        recipient === "codex" ||
+        recipient === "claude-code" ||
+        recipient === "agy",
+    )
   );
 }
 

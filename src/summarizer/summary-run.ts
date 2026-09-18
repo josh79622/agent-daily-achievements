@@ -18,6 +18,7 @@ import { buildSummaryRequestText } from "../report/summary-prompt.js";
 import type { SummaryProvider } from "../storage/summary-permission.js";
 import type { SummaryRequest, SummaryRunner } from "../server/app.js";
 import {
+  agyArgs,
   claudeArgs,
   codexArgs,
   type ProbeProcessRunner,
@@ -76,14 +77,16 @@ export function createSummaryRunner({
       const args =
         provider === "claude-code"
           ? claudeArgs(model, effort, promptText)
-          : codexArgs(model, effort, directory, replyFile, promptText);
+          : provider === "agy"
+            ? agyArgs(model, effort, promptText)
+            : codexArgs(model, effort, directory, replyFile, promptText);
       let result: ProbeRunResult;
       try {
         result = await runner({
           file: executablePath,
           args,
           cwd: directory,
-          captureStdout: provider === "claude-code",
+          captureStdout: provider === "claude-code" || provider === "agy",
           timeoutMs: summaryAttemptTimeoutMs,
           maxStdoutBytes: summaryMaxReplyBytes,
         });
@@ -95,7 +98,9 @@ export function createSummaryRunner({
       const reply =
         provider === "claude-code"
           ? claudeReplyText(result)
-          : await codexReplyText(readReplyFile, replyFile);
+          : provider === "agy"
+            ? agyReplyText(result)
+            : await codexReplyText(readReplyFile, replyFile);
       if (reply === undefined) return { kind: "no-reply" };
       return { kind: "reply", candidate: parseCandidateJson(reply) };
     } finally {
@@ -189,6 +194,27 @@ function claudeReplyText(
     unknown
   >;
   if (isError === true) return undefined;
+  return typeof reply === "string" && reply.trim() ? reply : undefined;
+}
+
+function agyReplyText(
+  result: Extract<ProbeRunResult, { kind: "exited" }>,
+): string | undefined {
+  if (result.stdoutTooLarge) return undefined;
+  let envelope: unknown;
+  try {
+    envelope = JSON.parse(result.stdout);
+  } catch {
+    return undefined;
+  }
+  if (
+    typeof envelope !== "object" ||
+    envelope === null ||
+    Array.isArray(envelope)
+  )
+    return undefined;
+  const { status, response: reply } = envelope as Record<string, unknown>;
+  if (status !== "SUCCESS") return undefined;
   return typeof reply === "string" && reply.trim() ? reply : undefined;
 }
 

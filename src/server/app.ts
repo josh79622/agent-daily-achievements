@@ -7,7 +7,10 @@ import {
 } from "node:http";
 import { extname, normalize, resolve, sep } from "node:path";
 
-import type { LocalCollector } from "../collector/local-collector.js";
+import type {
+  LocalCollector,
+  LocalSource,
+} from "../collector/local-collector.js";
 import type { ReportStore } from "../storage/report-store.js";
 
 import {
@@ -28,15 +31,14 @@ import {
 import { isValidAchievementEdit } from "../report/contract.js";
 import type { SummarizerModelsService } from "../summarizer/model-settings.js";
 import {
-  isSummaryProvider,
   type ProviderLoginService,
   type ProviderLoginStatus,
+  isSummaryProvider,
 } from "../summarizer/provider-login.js";
 
 export interface SummaryRequest {
-  /** Built server-side; a browser can never supply it. */
-  payload: ReportDayPayload;
   scheduled: boolean;
+  payload: ReportDayPayload;
 }
 
 export interface SummaryRunner {
@@ -46,7 +48,7 @@ export interface SummaryRunner {
 export interface SummaryRequestFactory {
   create(input: {
     scheduled: boolean;
-    sourceScope: SummaryProvider[];
+    sourceScope: LocalSource[];
   }): Promise<SummaryRequest>;
 }
 
@@ -515,7 +517,7 @@ export function createApp({
           }
           const permission = {
             ...permissionInput,
-            recipients: ["codex", "claude-code"] as const,
+            recipients: ["codex", "claude-code", "agy"] as const,
           };
           await writeSummaryPermission(summaryPermissionPath, permission);
           sendJson(response, 200, {
@@ -565,9 +567,7 @@ export function createApp({
         if (
           summaryRequest.payload.manifest.some(
             (record) =>
-              !permission.sourceScope.includes(
-                record.source as SummaryProvider,
-              ),
+              !permission.sourceScope.includes(record.source as LocalSource),
           )
         ) {
           sendJson(response, 403, {
@@ -788,7 +788,7 @@ function summaryDisclosure() {
     sourceScope: ["claude-code", "codex"],
     conversationScope:
       "Complete conversations with report-day activity, including context through the end of that day.",
-    possibleRecipients: ["codex", "claude-code"],
+    possibleRecipients: ["codex", "claude-code", "agy"],
   };
 }
 
@@ -808,7 +808,10 @@ function orderedProviders(
 }
 
 function providerName(provider: SummaryProvider): string {
-  return provider === "codex" ? "Codex" : "Claude Code";
+  if (provider === "codex") return "Codex";
+  if (provider === "claude-code") return "Claude Code";
+  if (provider === "agy") return "Gemini (agy)";
+  return provider;
 }
 
 function errorMessage(error: unknown): string {

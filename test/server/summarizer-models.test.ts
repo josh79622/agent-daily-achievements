@@ -35,6 +35,17 @@ const catalog: ModelCatalog = {
     defaultEffortLevels: [],
     options: [{ value: "fiction-opus", label: "Opus", effortLevels: ["max"] }],
   },
+  agy: {
+    source: "built-in",
+    defaultEffortLevels: ["low", "medium", "high"],
+    options: [
+      {
+        value: "gemini-fiction-flash",
+        label: "Flash",
+        effortLevels: [],
+      },
+    ],
+  },
 };
 
 async function setup(withService = true) {
@@ -124,6 +135,17 @@ test("SE-1: GET returns per-provider options, source, selection, effective model
         selected: "default",
         effective: null,
         effortOptions: [],
+        selectedEffort: "default",
+        effectiveEffort: null,
+        warnings: ["model-list-unavailable"],
+      },
+      {
+        provider: "agy",
+        source: "built-in",
+        options: [{ value: "gemini-fiction-flash", label: "Flash" }],
+        selected: "default",
+        effective: null,
+        effortOptions: ["low", "medium", "high"],
         selectedEffort: "default",
         effectiveEffort: null,
         warnings: ["model-list-unavailable"],
