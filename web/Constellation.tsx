@@ -1,10 +1,13 @@
-// Migration Task 3: port Expand/Show source/Edit/Remove into the React Flow
-// node component. The sign-in/local-activity panels are Task 4.
-import { useCallback, useEffect, useState } from "react";
+// Cosmic Constellation UI (Style A): Star-core nodes, radiating satellite evidence,
+// flowing constellation lines, and interactive corner color palette.
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Background,
   BackgroundVariant,
+  Handle,
+  Position,
   ReactFlow,
+  type Edge,
   type Node,
   type NodeProps,
 } from "@xyflow/react";
@@ -17,40 +20,153 @@ import type {
 import {
   describeIncomplete,
   isLocallyTraceable,
-  mapAchievementsToNodes,
+  layoutPosition,
   pickEvidenceMessages,
   sourceLabel,
   type EvidenceMessage,
 } from "./report-view.js";
 
-/** How far apart layoutPosition's 0-100 grid is spread on the React Flow
- * canvas. An arbitrary pixel scale, not yet the organic scatter noted as a
- * later visual-polish task in report-view.ts. */
-const canvasScale = 6;
+const canvasScale = 11;
+
+if (typeof window !== "undefined") {
+  try {
+    const saved = localStorage.getItem("daily_proof_accent_color");
+    if (saved) applyAccentColor(saved);
+  } catch {
+    // ignore
+  }
+}
+
+const PALETTE_PRESETS = [
+  { name: "翡翠星雲 (Emerald)", color: "#10b981" },
+  { name: "天青幻光 (Cyan)", color: "#06b6d4" },
+  { name: "深空星紫 (Violet)", color: "#8b5cf6" },
+  { name: "超新星金 (Gold)", color: "#f59e0b" },
+  { name: "星雲玫粉 (Rose)", color: "#ec4899" },
+];
+
+function hexToRgb(hex: string) {
+  const clean = hex.replace("#", "");
+  return {
+    r: parseInt(clean.substring(0, 2), 16) || 16,
+    g: parseInt(clean.substring(2, 4), 16) || 185,
+    b: parseInt(clean.substring(4, 6), 16) || 129,
+  };
+}
+
+function applyAccentColor(hex: string) {
+  const { r, g, b } = hexToRgb(hex);
+  document.documentElement.style.setProperty("--accent", hex);
+  document.documentElement.style.setProperty("--accent-text", hex);
+  document.documentElement.style.setProperty(
+    "--accent-glow",
+    `rgba(${r}, ${g}, ${b}, 0.35)`,
+  );
+  document.documentElement.style.setProperty(
+    "--accent-dim",
+    `rgba(${r}, ${g}, ${b}, 0.15)`,
+  );
+  document.documentElement.style.setProperty(
+    "--accent-line",
+    `rgba(${r}, ${g}, ${b}, 0.65)`,
+  );
+  try {
+    localStorage.setItem("daily_proof_accent_color", hex);
+  } catch {
+    // ignore
+  }
+}
+
+function ColorPalette() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentColor, setCurrentColor] = useState("#10b981");
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("daily_proof_accent_color");
+      if (saved) {
+        setCurrentColor(saved);
+        applyAccentColor(saved);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  function handleSelectColor(color: string) {
+    setCurrentColor(color);
+    applyAccentColor(color);
+  }
+
+  return (
+    <div className="palette-container">
+      <button
+        type="button"
+        className="palette-trigger"
+        onClick={() => setIsOpen((prev) => !prev)}
+        title="選擇主題主色調"
+      >
+        <span className="palette-indicator" />
+        <span>星系主色</span>
+      </button>
+
+      {isOpen ? (
+        <div className="palette-menu">
+          <p className="palette-title">星雲主題色調</p>
+          <div className="palette-presets">
+            {PALETTE_PRESETS.map((preset) => (
+              <button
+                key={preset.color}
+                type="button"
+                className={`color-swatch ${currentColor === preset.color ? "active" : ""}`}
+                style={{ backgroundColor: preset.color }}
+                onClick={() => {
+                  handleSelectColor(preset.color);
+                  setIsOpen(false);
+                }}
+                title={preset.name}
+              />
+            ))}
+          </div>
+          <div className="custom-color-row">
+            <span>自訂色碼</span>
+            <input
+              type="color"
+              value={currentColor}
+              onChange={(e) => handleSelectColor(e.target.value)}
+              title="自訂顏色"
+            />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 interface AchievementNodeData {
   id: string;
   title: string;
   detail: string;
+  category?: string;
   evidence: EvidenceRef[];
   reportDate?: string;
+  isExpanded: boolean;
+  onToggleExpand: (id: string) => void;
   onReportUpdated?: (report: AchievementReportV1) => void;
   onError?: (message: string) => void;
   [key: string]: unknown;
 }
 
-interface SourceRecord {
+interface SatelliteNodeData {
+  id: string;
+  parentId: string;
   ref: EvidenceRef;
-  byline: string;
-  notTraceable?: boolean;
-  error?: string;
-  messages?: EvidenceMessage[];
-  missingIds?: string[];
+  reportDate?: string;
+  onViewSource: (ref: EvidenceRef) => void;
+  [key: string]: unknown;
 }
 
 function AchievementNode({ data }: NodeProps & { data: AchievementNodeData }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [showSource, setShowSource] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
 
@@ -59,82 +175,10 @@ function AchievementNode({ data }: NodeProps & { data: AchievementNodeData }) {
   const [editError, setEditError] = useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [sourceLoading, setSourceLoading] = useState(false);
-  const [sourceRecords, setSourceRecords] = useState<SourceRecord[] | null>(
-    null,
-  );
-
   useEffect(() => {
     setEditTitle(data.title);
     setEditDetail(data.detail);
   }, [data.title, data.detail]);
-
-  useEffect(() => {
-    setSourceRecords(null);
-    setShowSource(false);
-  }, [data.reportDate, data.id]);
-
-  async function loadSources() {
-    setSourceLoading(true);
-    try {
-      const records = await Promise.all(
-        data.evidence.map(async (ref): Promise<SourceRecord> => {
-          const byline = `${sourceLabel(ref.source)} · ${ref.recordId}`;
-          if (!isLocallyTraceable(ref.source)) {
-            return { ref, byline, notTraceable: true };
-          }
-          try {
-            const dateQuery = data.reportDate
-              ? `&date=${encodeURIComponent(data.reportDate)}`
-              : "";
-            const response = await fetch(
-              `/api/collector/sessions/${encodeURIComponent(ref.recordId)}?source=${encodeURIComponent(ref.source)}${dateQuery}`,
-            );
-            if (!response.ok) {
-              const body = (await response.json().catch(() => undefined)) as
-                { error?: { message?: string } } | undefined;
-              return {
-                ref,
-                byline,
-                error: body?.error?.message ?? "Source session unavailable.",
-              };
-            }
-            const body = (await response.json()) as {
-              session: { messages: EvidenceMessage[] };
-            };
-            const { found, missingIds } = pickEvidenceMessages(
-              body.session.messages,
-              ref.messageIds,
-            );
-            return { ref, byline, messages: found, missingIds };
-          } catch (err) {
-            return {
-              ref,
-              byline,
-              error:
-                err instanceof Error
-                  ? err.message
-                  : "Source session unavailable.",
-            };
-          }
-        }),
-      );
-      setSourceRecords(records);
-    } finally {
-      setSourceLoading(false);
-    }
-  }
-
-  function handleToggleSource() {
-    if (showSource) {
-      setShowSource(false);
-    } else {
-      setShowSource(true);
-      if (!sourceRecords && !sourceLoading) {
-        void loadSources();
-      }
-    }
-  }
 
   async function handleSaveEdit(e: React.FormEvent) {
     e.preventDefault();
@@ -197,18 +241,26 @@ function AchievementNode({ data }: NodeProps & { data: AchievementNodeData }) {
     }
   }
 
-  const cardClasses = [
-    "achievement-card",
-    isExpanded ? "is-expanded" : "",
-    showSource ? "has-source" : "",
-    isEditing ? "is-editing" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  return (
+    <article
+      className={`achievement-card ${data.isExpanded ? "is-expanded" : ""}`}
+    >
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="target-center"
+        className="react-flow__handle"
+        style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="source-center"
+        className="react-flow__handle"
+        style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+      />
 
-  if (isEditing) {
-    return (
-      <article className={cardClasses}>
+      {isEditing ? (
         <form className="node-edit-form nodrag" onSubmit={handleSaveEdit}>
           <textarea
             aria-label="Title"
@@ -246,174 +298,496 @@ function AchievementNode({ data }: NodeProps & { data: AchievementNodeData }) {
             </button>
           </div>
         </form>
-      </article>
-    );
-  }
-
-  return (
-    <article className={cardClasses}>
-      <h2>{data.title}</h2>
-      <p className="node-detail">{data.detail}</p>
-      <div className="node-controls nodrag">
-        <button
-          type="button"
-          aria-pressed={isExpanded}
-          onClick={() => setIsExpanded((prev) => !prev)}
-        >
-          Expand
-        </button>
-        {data.evidence.length > 0 ? (
-          <button
-            type="button"
-            aria-pressed={showSource}
-            onClick={handleToggleSource}
-          >
-            Show source
-          </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => {
-            setIsEditing(true);
-            setEditError(undefined);
-          }}
-        >
-          Edit
-        </button>
-        {isRemoving ? (
-          <>
-            <button
-              type="button"
-              className="text-button"
-              onClick={handleConfirmRemove}
+      ) : (
+        <>
+          <div className="card-top-row">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
             >
-              Confirm remove
-            </button>
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => setIsRemoving(false)}
-            >
-              Cancel
-            </button>
-          </>
-        ) : (
-          <button type="button" onClick={() => setIsRemoving(true)}>
-            Remove
-          </button>
-        )}
-      </div>
+              <span className="star-core-badge">✦</span>
+              <span className="category-chip">
+                {data.category ?? "ACHIEVEMENT"}
+              </span>
+            </div>
+            {data.reportDate ? (
+              <span className="card-date">{data.reportDate}</span>
+            ) : null}
+          </div>
 
-      {showSource ? (
-        <div className="evidence nodrag">
-          {sourceLoading ? (
-            <p>Loading source…</p>
-          ) : sourceRecords ? (
-            sourceRecords.map((record) => (
-              <div
-                key={`${record.ref.source}-${record.ref.recordId}`}
-                className="evidence-record"
+          <h2>{data.title}</h2>
+          <p className="node-detail">{data.detail}</p>
+
+          <div className="card-controls-row nodrag">
+            {data.evidence.length > 0 ? (
+              <button
+                type="button"
+                className={`btn-constellation-expand ${data.isExpanded ? "is-active" : ""}`}
+                onClick={() => data.onToggleExpand(data.id)}
               >
-                <p className="evidence-byline">{record.byline}</p>
-                {record.notTraceable ? (
-                  <p>Source preview isn't available for this source yet.</p>
-                ) : record.error ? (
-                  <p>{record.error}</p>
-                ) : (
-                  <>
-                    {record.messages?.length === 0 &&
-                    record.missingIds?.length === 0 ? (
-                      <p>No messages in this session.</p>
-                    ) : null}
-                    {record.messages?.map((message) => (
-                      <p key={message.id} className="evidence-message">
-                        {message.role}: {message.text}
-                      </p>
-                    ))}
-                    {record.missingIds?.map((id) => (
-                      <p key={id} className="evidence-message">
-                        Message {id} is no longer in this session.
-                      </p>
-                    ))}
-                  </>
-                )}
-              </div>
-            ))
-          ) : null}
-        </div>
-      ) : null}
+                <span>
+                  {data.isExpanded ? "⬡ 收合星座連線" : "✦ 展開星座連線"}
+                </span>
+                <span className="badge-count">{data.evidence.length}</span>
+              </button>
+            ) : (
+              <div />
+            )}
+
+            <div className="card-sub-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(true);
+                  setEditError(undefined);
+                }}
+              >
+                Edit
+              </button>
+              {isRemoving ? (
+                <>
+                  <button
+                    type="button"
+                    style={{ color: "var(--accent-text)" }}
+                    onClick={handleConfirmRemove}
+                  >
+                    Confirm
+                  </button>
+                  <button type="button" onClick={() => setIsRemoving(false)}>
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button type="button" onClick={() => setIsRemoving(true)}>
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </article>
   );
 }
 
-const nodeTypes = { achievement: AchievementNode };
+function SatelliteNode({ data }: NodeProps & { data: SatelliteNodeData }) {
+  const msgCount = data.ref.messageIds?.length
+    ? `${data.ref.messageIds.length} msgs`
+    : "all";
+
+  return (
+    <div
+      className="satellite-card nodrag"
+      onClick={() => data.onViewSource(data.ref)}
+      title="點擊檢視原始對話紀錄"
+    >
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="target-center"
+        className="react-flow__handle"
+        style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="source-center"
+        className="react-flow__handle"
+        style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+      />
+
+      <div className="satellite-header">
+        <span className="satellite-source-tag">
+          {sourceLabel(data.ref.source)}
+        </span>
+        <span className="satellite-count">{msgCount}</span>
+      </div>
+      <p className="satellite-title">{data.ref.recordId}</p>
+      <div className="satellite-footer">
+        <span>查看原始對話</span>
+        <span>→</span>
+      </div>
+    </div>
+  );
+}
+
+function SessionModal({
+  refData,
+  reportDate,
+  onClose,
+}: {
+  refData: EvidenceRef | null;
+  reportDate?: string;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<EvidenceMessage[]>([]);
+  const [missingIds, setMissingIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!refData) return;
+    let active = true;
+    setLoading(true);
+    setError(null);
+
+    async function load() {
+      if (!refData) return;
+      if (!isLocallyTraceable(refData.source)) {
+        setError("Source preview isn't available for this source yet.");
+        setLoading(false);
+        return;
+      }
+      try {
+        const dateQuery = reportDate
+          ? `&date=${encodeURIComponent(reportDate)}`
+          : "";
+        const response = await fetch(
+          `/api/collector/sessions/${encodeURIComponent(refData.recordId)}?source=${encodeURIComponent(refData.source)}${dateQuery}`,
+        );
+        if (!response.ok) {
+          const body = (await response.json().catch(() => undefined)) as
+            { error?: { message?: string } } | undefined;
+          throw new Error(
+            body?.error?.message ?? "Source session unavailable.",
+          );
+        }
+        const body = (await response.json()) as {
+          session: { messages: EvidenceMessage[] };
+        };
+        if (!active) return;
+        const { found, missingIds: missing } = pickEvidenceMessages(
+          body.session.messages,
+          refData.messageIds,
+        );
+        setMessages(found);
+        setMissingIds(missing);
+      } catch (err) {
+        if (!active) return;
+        setError(
+          err instanceof Error ? err.message : "Source session unavailable.",
+        );
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [refData, reportDate]);
+
+  if (!refData) return null;
+
+  return (
+    <div className="session-modal-backdrop" onClick={onClose}>
+      <div className="session-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="session-modal-header">
+          <div>
+            <h3>{sourceLabel(refData.source)}</h3>
+            <span style={{ fontSize: "0.68rem", color: "var(--muted)" }}>
+              {refData.recordId}
+            </span>
+          </div>
+          <button type="button" className="session-close-btn" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="session-modal-body">
+          {loading ? (
+            <p style={{ color: "var(--muted)" }}>正在載入對話工作階段…</p>
+          ) : error ? (
+            <p style={{ color: "var(--accent-text)" }}>{error}</p>
+          ) : (
+            <div className="evidence">
+              {messages.length === 0 && missingIds.length === 0 ? (
+                <p>此工作階段無訊息。</p>
+              ) : null}
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className="evidence-message"
+                  style={{ marginBottom: "0.8rem" }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "var(--accent-text)",
+                      fontWeight: 600,
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {message.role}:
+                  </div>
+                  <div
+                    style={{
+                      color: "#e2e8f0",
+                      whiteSpace: "pre-wrap",
+                      fontSize: "0.78rem",
+                      marginTop: "0.2rem",
+                    }}
+                  >
+                    {message.text}
+                  </div>
+                </div>
+              ))}
+              {missingIds.map((id) => (
+                <p
+                  key={id}
+                  style={{ color: "var(--muted)", fontStyle: "italic" }}
+                >
+                  Message {id} is no longer in this session.
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const nodeTypes = {
+  achievement: AchievementNode,
+  satellite: SatelliteNode,
+};
 
 export function Constellation() {
+  const [report, setReport] = useState<AchievementReportV1 | null>(null);
   const [status, setStatus] = useState<string | undefined>(undefined);
-  const [reportDate, setReportDate] = useState<string | undefined>(undefined);
-  const [nodes, setNodes] = useState<Node[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [selectedRef, setSelectedRef] = useState<EvidenceRef | null>(null);
 
-  const applyReport = useCallback((report: AchievementReportV1) => {
-    setReportDate(report.date);
-    setNodes(
-      mapAchievementsToNodes(report.achievements).map((node) => ({
-        id: node.id,
-        type: "achievement",
-        position: { x: node.x * canvasScale, y: node.y * canvasScale },
-        data: {
-          id: node.id,
-          title: node.title,
-          detail: node.detail,
-          evidence: node.evidence,
-          reportDate: report.date,
-          onReportUpdated: applyReport,
-          onError: (message: string) => setStatus(message),
-        },
-      })),
-    );
+  const handleReportUpdated = useCallback(
+    (updatedReport: AchievementReportV1) => {
+      setReport(updatedReport);
+      const incomplete = describeIncomplete(updatedReport.incomplete);
+      if (incomplete.length) setStatus(incomplete.join(" "));
+      else if (updatedReport.achievements.length === 0)
+        setStatus("No achievements were found for this day.");
+      else setStatus(undefined);
+    },
+    [],
+  );
 
-    const incomplete = describeIncomplete(report.incomplete);
-    if (incomplete.length) setStatus(incomplete.join(" "));
-    else if (report.achievements.length === 0)
-      setStatus("No achievements were found for this day.");
-    else setStatus(undefined);
+  const handleToggleExpand = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }, []);
 
   useEffect(() => {
     let active = true;
 
+    async function applyLatestReport() {
+      try {
+        const response = await fetch("/api/reports/latest");
+        if (!active) return;
+
+        if (response.status === 404) {
+          setReport(null);
+          setStatus("No report has been generated yet.");
+          return;
+        }
+        if (!response.ok) {
+          setReport(null);
+          setStatus("The report could not be loaded.");
+          return;
+        }
+
+        const body = (await response.json()) as { report: AchievementReportV1 };
+        if (!active) return;
+        handleReportUpdated(body.report);
+        // Expand the first achievement with evidence by default so constellation lines are visible immediately
+        const firstWithEvidence = body.report.achievements.find(
+          (ach) => ach.evidence && ach.evidence.length > 0,
+        );
+        if (firstWithEvidence) {
+          setExpandedIds(new Set([firstWithEvidence.id]));
+        }
+      } catch {
+        if (!active) return;
+        setReport(null);
+        setStatus("The report could not be loaded.");
+      }
+    }
+
     void applyLatestReport();
     return () => {
       active = false;
     };
+  }, [handleReportUpdated]);
 
-    async function applyLatestReport() {
-      const response = await fetch("/api/reports/latest");
-      if (!active) return;
+  const hasExpandable = useMemo(() => {
+    return (
+      report?.achievements.some(
+        (ach) => ach.evidence && ach.evidence.length > 0,
+      ) ?? false
+    );
+  }, [report]);
 
-      if (response.status === 404) {
-        setNodes([]);
-        setReportDate(undefined);
-        setStatus("No report has been generated yet.");
-        return;
-      }
-      if (!response.ok) {
-        setNodes([]);
-        setStatus("The report could not be loaded.");
-        return;
-      }
+  const allExpanded = useMemo(() => {
+    if (!report || report.achievements.length === 0) return false;
+    const withEvidence = report.achievements.filter(
+      (ach) => ach.evidence && ach.evidence.length > 0,
+    );
+    if (withEvidence.length === 0) return false;
+    return withEvidence.every((ach) => expandedIds.has(ach.id));
+  }, [report, expandedIds]);
 
-      const body = (await response.json()) as { report: AchievementReportV1 };
-      if (!active) return;
-      applyReport(body.report);
+  const handleToggleAll = useCallback(() => {
+    if (!report) return;
+    if (allExpanded) {
+      setExpandedIds(new Set());
+    } else {
+      const allIds = report.achievements
+        .filter((ach) => ach.evidence && ach.evidence.length > 0)
+        .map((ach) => ach.id);
+      setExpandedIds(new Set(allIds));
     }
-  }, [applyReport]);
+  }, [report, allExpanded]);
+
+  const { nodes, edges } = useMemo(() => {
+    if (!report || report.achievements.length === 0) {
+      return { nodes: [], edges: [] };
+    }
+
+    const generatedNodes: Node[] = [];
+    const generatedEdges: Edge[] = [];
+    const count = report.achievements.length;
+    const centerX = 50 * canvasScale;
+    const centerY = 52 * canvasScale;
+
+    // 1. Primary achievement nodes
+    report.achievements.forEach((ach, index) => {
+      const basePos = layoutPosition(index, count);
+      const px = basePos.x * canvasScale;
+      const py = basePos.y * canvasScale;
+      const isExpanded = expandedIds.has(ach.id);
+
+      generatedNodes.push({
+        id: ach.id,
+        type: "achievement",
+        position: { x: px, y: py },
+        data: {
+          id: ach.id,
+          title: ach.title,
+          detail: ach.detail,
+          category: ach.category,
+          evidence: ach.evidence,
+          reportDate: report.date,
+          isExpanded,
+          onToggleExpand: handleToggleExpand,
+          onReportUpdated: handleReportUpdated,
+          onError: (msg: string) => setStatus(msg),
+        },
+      });
+
+      // 2. Radiating satellites when expanded
+      if (isExpanded && ach.evidence.length > 0) {
+        const M = ach.evidence.length;
+        const dx = px - centerX;
+        const dy = py - centerY;
+        const dist = Math.hypot(dx, dy);
+        const baseAngle = dist > 0.001 ? Math.atan2(dy, dx) : 0;
+        const angleSpan = Math.min(Math.PI * 0.88, (M - 1) * 0.45);
+
+        ach.evidence.forEach((ref, refIdx) => {
+          const satId = `sat-${ach.id}-${refIdx}`;
+          const angle =
+            count === 1
+              ? (2 * Math.PI * refIdx) / M
+              : baseAngle +
+                (M === 1 ? 0 : (refIdx / (M - 1) - 0.5) * angleSpan);
+          const radiusX = 350;
+          const radiusY = 240;
+          const sx = px + Math.cos(angle) * radiusX;
+          const sy = py + Math.sin(angle) * radiusY;
+
+          generatedNodes.push({
+            id: satId,
+            type: "satellite",
+            position: { x: sx, y: sy },
+            data: {
+              id: satId,
+              parentId: ach.id,
+              ref,
+              reportDate: report.date,
+              onViewSource: (selected: EvidenceRef) => setSelectedRef(selected),
+            },
+          });
+
+          generatedEdges.push({
+            id: `edge-${ach.id}-${satId}`,
+            source: ach.id,
+            target: satId,
+            sourceHandle: "source-center",
+            targetHandle: "target-center",
+            type: "straight",
+            animated: true,
+            style: { stroke: "var(--accent-line)", strokeWidth: 2 },
+          });
+        });
+      }
+    });
+
+    // 3. Constellation spine edges connecting primary stars
+    if (count >= 2) {
+      for (let i = 0; i < count; i++) {
+        const nextIdx = (i + 1) % count;
+        if (count === 2 && i === 1) continue;
+        const currentAch = report.achievements[i];
+        const nextAch = report.achievements[nextIdx];
+        if (!currentAch || !nextAch) continue;
+        generatedEdges.push({
+          id: `spine-${currentAch.id}-${nextAch.id}`,
+          source: currentAch.id,
+          target: nextAch.id,
+          sourceHandle: "source-center",
+          targetHandle: "target-center",
+          type: "straight",
+          className: "spine-edge",
+        });
+      }
+    }
+
+    return { nodes: generatedNodes, edges: generatedEdges };
+  }, [report, expandedIds, handleToggleExpand, handleReportUpdated]);
 
   return (
     <>
       <header className="page-header">
         <span className="brand">Daily Proof</span>
-        {reportDate ? <time dateTime={reportDate}>{reportDate}</time> : null}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.85rem",
+            pointerEvents: "auto",
+          }}
+        >
+          {report?.date ? (
+            <time dateTime={report.date}>{report.date}</time>
+          ) : null}
+          {hasExpandable ? (
+            <button
+              type="button"
+              className="palette-trigger"
+              onClick={handleToggleAll}
+              title={allExpanded ? "收合全部星系連線" : "展開全部星系連線"}
+            >
+              <span>{allExpanded ? "⬡ 全部收合" : "✦ 全部展開"}</span>
+            </button>
+          ) : null}
+          <ColorPalette />
+        </div>
       </header>
       <main>
         {status ? (
@@ -425,10 +799,31 @@ export function Constellation() {
           className="constellation"
           aria-label="Today's achievement constellation"
         >
-          <ReactFlow nodes={nodes} edges={[]} nodeTypes={nodeTypes} fitView>
-            <Background variant={BackgroundVariant.Dots} />
+          <ReactFlow
+            key={report?.date ?? "empty"}
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.25 }}
+            minZoom={0.2}
+            maxZoom={1.8}
+          >
+            <Background
+              variant={BackgroundVariant.Dots}
+              gap={24}
+              size={1.5}
+              color="rgba(255, 255, 255, 0.08)"
+            />
           </ReactFlow>
         </div>
+        {selectedRef ? (
+          <SessionModal
+            refData={selectedRef}
+            reportDate={report?.date}
+            onClose={() => setSelectedRef(null)}
+          />
+        ) : null}
       </main>
     </>
   );
