@@ -106,3 +106,36 @@ Two consequences:
    runs per case, not one.
 
 The other seven cases have not been repeated, so their stability is unknown.
+
+## Prompt iteration on case 05, measured by repetition
+
+Each variant was measured by repeating case 05 on Claude Code `haiku`. The
+variants are cumulative.
+
+| Prompt variant | Case 05 runs | Passed |
+| --- | --- | --- |
+| Original | 6 | 0 |
+| Rule 4 scope + rule 6 "cites every record" (`5236667`) | 7 | 3 |
+| Rule 2 redefines "evidence"; rule 6 becomes group-then-write | 8 | 3 |
+| Schema annotation on the evidence field + a final re-scan step | 8 | 8 |
+
+The first two rewrites argued the rule better and changed nothing measurable
+(3/7 then 3/8). What moved the result was placement rather than argument: an
+annotation on the `evidence` field inside the output schema, and a last line
+after the schema telling the model to re-read every record and add any that
+refers to the same work before emitting JSON. Against 3 of 8 for the previous
+variant, 8 of 8 is a one-sided Fisher probability near 0.004.
+
+The full eight-case set was then run twice on haiku with the final prompt: 8/8
+both times, zero critical failures, and no case regressed. Case 06 returned zero
+achievements in both runs where earlier runs returned one; that case requires
+none and forbids only citing the fix without the contradiction, so both are
+passes.
+
+The re-scan step costs latency: case 08 took 48s and 79s against about 23s
+before, and the whole set runs slower. No token figure is available per run.
+
+Limits of this result: it is haiku only, on one case that was unstable, with the
+other seven cases each observed twice. The three other models have not been run
+against the final prompt, so the earlier four-model table now describes a prompt
+that no longer exists.
