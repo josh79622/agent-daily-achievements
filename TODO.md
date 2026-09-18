@@ -130,8 +130,20 @@
     source-ID, and coverage expectations were approved on 2026-09-17 in
     [synthetic set 02](docs/evals/synthetic-set-02.md) and made
     machine-readable in `test/fixtures/report-eval/synthetic-set-02.json`,
-    scored by `src/report/eval-scorer.ts`. No Codex or Claude Code run has used
-    this set; prompt iteration has not started.
+    scored by `src/report/eval-scorer.ts`.
+  - Real runs on 2026-09-18: Codex `gpt-5.6-luna`/`gpt-5.6-terra` and Claude
+    Code `haiku`/`sonnet` each scored 7/8, all failing only case 05. Case 05
+    was then shown to be unstable under the original prompt (0/6 on repeats),
+    so that 7/8 figure cannot separate model ability from luck. See
+    [the run record](docs/evals/results/synthetic-set-02-run-2026-09-18.md).
+  - Prompt iteration (`5236667`, `96383df`) found that rewording the citation
+    rule in prose did not move the result, but annotating the `evidence` field
+    in the JSON schema plus a final re-scan instruction after the schema did:
+    case 05 went to 8/8 on both haiku and Codex `gpt-5.6-luna`, and the full
+    set passed 8/8 twice on haiku and once on Codex with zero critical
+    failures. Not yet run against this prompt: `gpt-5.6-terra` and `sonnet`.
+    Every other case has been observed at most twice; the harness has no
+    built-in repetition, so each repeat above was driven by hand.
 
 ### Phase 5 — Report control
 
@@ -204,9 +216,7 @@ generation moved here and comes first.
       with the approved model, effort, tool restrictions, re-analysis limit
       (three attempts), and fallback rules, assembling an `AchievementReportV1`.
       Undecided: the exact non-interactive command and output handling for a
-      real summary run.
-- [ ] Write the summarizer prompt; run it on synthetic set 02 and score it with
-      `src/report/eval-scorer.ts` before one Josh-approved real day.
+      real summary run. **In progress as of 2026-09-18** (design next).
 - [ ] Source trace-back in the report UI.
 - [ ] Edit and remove incorrect achievements.
 - [ ] Define and enforce local retention.

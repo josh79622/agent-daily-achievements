@@ -84,34 +84,13 @@ that work.
 
 ## Next task
 
-**One action is waiting on Josh: say go, and run the Codex eval.**
-
-```bash
-npx tsx scripts/experiments/eval-summary.mts codex gpt-5.6-luna
-```
-
-Josh approved real model runs against the fictional set only, then asked to
-change sessions before the first run. Nothing has been run. The harness sends the
-draft prompt plus the eight fictional payloads and nothing else; tools are
-disabled, the sandbox is read-only, no session is persisted, and the temporary
-directory is removed. Codex spends ChatGPT Plus quota, leaving the Claude quota
-this project's sessions consume untouched.
-
-Planned order:
-
-1. Codex `gpt-5.6-luna` (cheapest), 8 cases.
-2. Claude Code `haiku`, 8 cases, reading the usage card before and after, which
-   converts the estimated 1-15% cost share into a measured number.
-3. Only if the cheap models fail: Josh's selected `opus` and `gpt-5.6-terra`.
-
-What this settles at once: whether a cheap model can do this job (Josh's
-proposal), whether it cites evidence IDs accurately (inaccurate IDs fail closed
-and burn re-analysis attempts, so a cheap model can end up costing more), and
-the first real usage figure.
+**Eval and prompt work closed out on 2026-09-18. Starting the real summarizer
+run task next (first item below "Phase 5 remaining").**
 
 ### Phase 5 progress
 
-Complete and verified, all with synthetic records and no CLI invoked:
+Complete and verified, all with synthetic records and no CLI invoked unless
+stated:
 
 - Task NT, collector non-text placeholders (`2a652d5`).
 - Task PB, server-side payload builder and evidence manifest (`3eda570`).
@@ -120,6 +99,41 @@ Complete and verified, all with synthetic records and no CLI invoked:
 - Tool capping: `tool_use` capped (`bb20a83`), cap tightened to 250 (`77c4168`),
   then marker plus one per-kind window (`0915242`).
 - Draft prompt and fictional eval payloads (`954b827`).
+- **Real CLI runs against the fictional set (2026-09-18).** Codex `gpt-5.6-luna`,
+  Claude Code `haiku`, Codex `gpt-5.6-terra`, and Claude Code `sonnet` each
+  scored 7/8 on the first pass, all failing only case 05 (a cross-source
+  activity that omitted one supporting record's ID). Full results, per-model
+  timing, and the measured cost (haiku and sonnet each moved the 5-hour usage
+  window by about 1 percentage point for 8 cases) are in
+  [the run record](docs/evals/results/synthetic-set-02-run-2026-09-18.md).
+- **Case 05 was found to be unstable, not deterministic**: repeating it alone
+  on the unchanged prompt gave 0/6 passes, so the four-model 7/8 table cannot
+  separate model ability from luck on that case (`70466f3`).
+- **Prompt fix for case 05 (`5236667`, `96383df`)**: two rewrites that argued
+  the citation rule more precisely in the "Rules" section made no measurable
+  difference (3/7, then 3/8 on repeated case-05 runs). Annotating the
+  `evidence` field inside the JSON output schema, plus a final line after the
+  schema telling the model to re-scan every record before emitting JSON,
+  moved it to 8/8. The full eight-case set then passed 8/8 twice in a row on
+  haiku with zero critical failures and no regression, and separately 8/8 on
+  Codex `gpt-5.6-luna` (`7873d05`). Cost: the re-scan step adds latency
+  (haiku's slowest case went from ~23s to 48-79s).
+- **Not yet run against the fixed prompt**: `gpt-5.6-terra` and `sonnet`. Every
+  case except 05 has been observed at most twice, so their stability under
+  repetition is unknown. The eval harness does not repeat cases automatically;
+  each repetition above was driven by hand.
+
+### Phase 5 remaining
+
+1. **Run the selected summarizer CLI on a real payload** (next task, starting
+   now): the non-interactive command per CLI, output handling, the saved
+   permission and model/effort/tool-restriction settings, the three-attempt
+   re-analysis limit, and fallback rules, assembling an `AchievementReportV1`.
+   This is the first task that would touch a real day; no real day has been
+   summarized and Josh has not yet approved that step.
+2. Source trace-back in the report UI.
+3. Edit and remove incorrect achievements.
+4. Define and enforce local retention.
 
 ### Decisions parked, waiting on Josh
 
@@ -140,8 +154,8 @@ Complete and verified, all with synthetic records and no CLI invoked:
 
 ### Still not true
 
-No CLI has been invoked, nothing has run against a real day, no report has ever
-been generated, and `AchievementReportV1` is not used anywhere in the running app.
+No CLI has run against a real day, no report has ever been generated from real
+records, and `AchievementReportV1` is not used anywhere in the running app.
 
 ## Measured payload cost (2026-09-18, local sizes only, nothing transmitted)
 
