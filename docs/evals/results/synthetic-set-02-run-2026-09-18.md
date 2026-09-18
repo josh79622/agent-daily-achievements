@@ -139,3 +139,17 @@ Limits of this result: it is haiku only, on one case that was unstable, with the
 other seven cases each observed twice. The three other models have not been run
 against the final prompt, so the earlier four-model table now describes a prompt
 that no longer exists.
+
+## The final prompt on Codex
+
+Codex `gpt-5.6-luna`, the cheapest model tried, ran the full set once on the
+final prompt: 8/8, zero critical failures. Case 05 was then repeated eight times
+on the same model and passed eight times, matching haiku.
+
+The fix is therefore not specific to one provider: the same case went from a
+single-run failure on all four models to 8/8 on both cheap models. Codex did not
+pay haiku's latency cost, running 6–21s per case against haiku's 12–79s, and it
+still reports the optional case 02 lint item where Claude Code omits it.
+
+Still unmeasured on this prompt: `gpt-5.6-terra` and `sonnet`, and every case
+except 05 has been repeated at most twice.
