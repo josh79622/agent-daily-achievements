@@ -84,8 +84,10 @@ that work.
 
 ## Next task
 
-**The real summarizer runner is implemented and unit-tested (`71f3987`); wiring
-it into `src/server/index.ts` is next (first item below "Phase 5 remaining").**
+**The real summarizer runner is implemented, storage is consolidated, and it is
+wired into `src/server/index.ts` (`71f3987`, `ddc8c70`, `4c7922f`). Nothing has
+run against a real day yet — that needs Josh's go-ahead (first item below
+"Phase 5 remaining").**
 
 ### Phase 5 progress
 
@@ -142,32 +144,57 @@ stated:
   `AchievementReportStore` (`contract.ts`), a minimal save-only interface
   distinct from the existing `DailyReport`-typed `ReportStore` (decision 1
   below). SR-1 to SR-11 pass against fake processes/temp-dirs/store; four
-  deliberate mutations were each caught. No real CLI is invoked by any test,
-  and this is not wired into `src/server/index.ts` yet.
+  deliberate mutations were each caught. No real CLI is invoked by any test.
+- **Report storage consolidated on `AchievementReportV1` (`ddc8c70`)**,
+  resolving decision 1 below: `ReportStore` now stores the new shape instead
+  of the old `DailyReport`. Retired the dead `DailyReport`/
+  `generateSampleReport`/`sampleRecords` domain files, their `/api/reports/sample`
+  route, and their tests — nothing in `web/app.ts` ever fetched that route
+  (its constellation is still a hardcoded array), so no visible behavior
+  changed. `/api/reports/latest` is unchanged in shape; it now just serves the
+  new type.
+- **Wired into the server (`4c7922f`)**: `createSummaryRunner` is constructed
+  at startup (macOS only, when the model catalog loaded) and passed to
+  `createApp`, sharing the existing executor/tempDirs/process runner. Fixed
+  two gaps found while wiring, both present in every environment before this:
+  `availableSummaryProviders` was never set (defaults to `[]`, so
+  `/api/reports/generate` always returned 503 regardless of anything else),
+  and `summaryPermissionPath` was never set (so saving external-summarization
+  permission — the gate this whole feature sits behind — always threw
+  outside tests). Both are now resolved once at startup by the same cheap
+  `executor.locate` check, never a readiness check (that spends a real model
+  call and only runs on explicit request, decision C1).
+- Manually booted the real server: `GET /api/reports/latest` and
+  `GET /api/summarizer/permission` both respond 200. `/api/reports/latest`
+  still serves `data/reports/latest.json`'s pre-existing content from before
+  today's report-format change (see the flagged item below) — no real
+  summary has been generated, so nothing new has overwritten it yet.
 
 ### Phase 5 remaining
 
-1. **Wire the real summarizer runner into `src/server/index.ts`** (next
-   task): a real `SummaryLocator` (over `provider-login.ts`'s executor
-   rather than a fake), and a decision on how the runner's
-   `AchievementReportStore` relates to the existing `ReportStore` so
-   `/api/reports/latest` can actually serve what it saves — this is where
-   decision 1 below has to be resolved, not deferred further. This is the
-   first task that would touch a real day; no real day has been summarized
-   and Josh has not yet approved that step.
+1. **Run a real summary.** Everything up to the CLI call is wired and unit
+   tested; nothing has touched a real day. Needs Josh's go-ahead, and a
+   choice of provider/model for the first real attempt.
 2. Source trace-back in the report UI.
 3. Edit and remove incorrect achievements.
 4. Define and enforce local retention.
+5. **Flagged, not yet acted on**: `data/reports/latest.json` (git-ignored
+   local data) holds a stale, old-`DailyReport`-shaped sample report from
+   before today's consolidation (copied in during the worktree-to-checkout
+   move). It is fictional demo content, not real conversation data, but it
+   is the wrong shape for `AchievementReportV1` and will read oddly until a
+   real report overwrites it. Delete it, or leave it until the first real
+   run replaces it — Josh's call.
 
 ### Decisions parked, waiting on Josh
 
-1. **What the UI shows.** Josh asked to connect the UI to a real report before
-   the summarizer, then the cost discussion took over. With no summarizer, a real
-   report has `achievements: []`. Options: assemble from the approved fictional
-   set so the node shape is visible, or from real collection and show the empty
-   and incomplete states. Note the constellation in `web/app.ts` is currently a
-   hardcoded `const nodes` array and the page fetches no report at all; the older
-   `DailyReport` type is served at `/api/reports/sample` but never rendered.
+1. **What the UI shows.** Resolved as far as storage goes (report storage
+   consolidated on `AchievementReportV1`, `ddc8c70`) — still open: whether the
+   web constellation should assemble from the approved fictional set so the
+   node shape is visible before a real day exists, or wait for real
+   collection and show the empty/incomplete states. `web/app.ts`'s
+   constellation is still a hardcoded `const nodes` array; it fetches no
+   report at all yet.
 2. **Conversation order in the payload** follows the approved source scope rather
    than the clock, so a later Codex session can precede an earlier Claude Code
    one. Chronological order would read as one day.
@@ -178,10 +205,11 @@ stated:
 
 ### Still not true
 
-No CLI has run against a real day, no report has ever been generated from real
-records, and `AchievementReportV1` is not saved or served by the running app
-(the summary runner that would produce one is implemented and unit-tested but
-not wired into `src/server/index.ts`).
+No CLI has run against a real day and no report has ever been generated from
+real records. The full path from a saved permission through the real
+summarizer run to a saved `AchievementReportV1` is now implemented and
+unit-tested, and the server boots with it wired in; it has just never been
+exercised against anything but fakes.
 
 ## Measured payload cost (2026-09-18, local sizes only, nothing transmitted)
 
@@ -235,10 +263,18 @@ Open decisions for the remaining report-generation items:
 
 ## Latest verification
 
+- Server wiring (2026-09-18, `4c7922f`): booted the real server with
+  `npx tsx src/server/index.ts`; `GET /` (static page), `GET /api/reports/latest`,
+  and `GET /api/summarizer/permission` all returned 200. `npm run check`
+  passed with 247 tests. No CLI was invoked and no summary was generated.
+- Report storage consolidation (2026-09-18, `ddc8c70`): `npm run check`
+  passed with 247 tests (down from 249: two DailyReport-specific tests
+  replaced by one, one dead test file removed).
 - Real summarizer runner (2026-09-18, `71f3987`): `npm run check` passed with
   249 tests (SR-1 to SR-11 new); four deliberate mutations on the
   retry/fallback logic were each caught. All against fake processes,
-  temp-dirs, and store; no real CLI invoked, not wired into `index.ts`.
+  temp-dirs, and store; no real CLI invoked, not wired into `index.ts` at that
+  point (see the two entries above for what followed).
 - Report contract Task 5 (2026-09-18): 41 report tests and `npm run check`
   with 200 tests passed on Node v24.20.0 before the report contract and
   evaluation-set items were marked complete. Josh confirmed the real effort
@@ -271,13 +307,18 @@ Open decisions for the remaining report-generation items:
   `.worktrees/ui-skeleton` worktree was removed, so a new session opens on the
   current work instead of the stale project-setup state. No remote and no PR.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
-  shell's default Node 25 is broken. Gate: `npm run check` (249 tests at
+  shell's default Node 25 is broken. Gate: `npm run check` (247 tests at
   handoff).
 - Dev server: Josh starts it with `npm run dev` from the checkout
   (`http://127.0.0.1:4317/`). On startup it sweeps stale probe temp
-  directories and fetches model lists (Codex `codex debug models`, Claude Code
-  initialize-only request; no prompt). Local settings live in ignored `data/`
-  files, including `data/summarizer-models.json`.
+  directories, fetches model lists (Codex `codex debug models`, Claude Code
+  initialize-only request; no prompt), and now also checks which summarizer
+  executables are locatable (`availableSummaryProviders`) — a cheap `locate`
+  call, not a readiness check, not a model call. Local settings live in
+  ignored `data/` files, including `data/summarizer-models.json` and, as of
+  today, `data/summary-permission.json`. `data/reports/latest.json` currently
+  holds stale pre-consolidation demo content — see the flagged item under
+  "Phase 5 remaining" above.
 - Key documents for Phase 5: [payload and manifest design](docs/plans/2026-09-18-report-day-payload-design.md),
   [tool truncation decision](docs/decisions/2026-09-18-tool-result-truncation.md),
   [fictional eval payloads](docs/evals/synthetic-set-02-payloads.md),

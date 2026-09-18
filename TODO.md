@@ -215,7 +215,8 @@ generation moved here and comes first.
 - [ ] Run the selected summarizer CLI on that payload under saved permission,
       with the approved model, effort, tool restrictions, re-analysis limit
       (three attempts), and fallback rules, assembling an `AchievementReportV1`.
-      **Runner implemented 2026-09-18** (`71f3987`): `createSummaryRunner`
+      **Implemented, storage consolidated, and wired 2026-09-18**
+      (`71f3987`, `ddc8c70`, `4c7922f`): `createSummaryRunner`
       (`src/summarizer/summary-run.ts`) resolves the executable and saved
       model/effort, runs up to three attempts with a fresh temp directory,
       parses a Markdown-fenced or bare JSON reply, validates it, and
@@ -225,11 +226,17 @@ generation moved here and comes first.
       ever replies or every attempt exceeds the limit. SR-1 to SR-11 pass
       against fake processes/temp-dirs/store; four deliberate mutations were
       caught. Design: [summary-run design](docs/plans/2026-09-18-summary-run-design.md).
-      Still missing: wiring into `src/server/index.ts` (a real executable
-      locator and reconciling the new save-only `AchievementReportStore`
-      with the existing `DailyReport`-typed `ReportStore` used by the
-      sample/latest routes — see decision 1 in `PROGRESS.md`). No real CLI
-      has run through this path and no real day has been summarized.
+      `ReportStore` now stores `AchievementReportV1` directly (the old
+      `DailyReport`/sample route/domain files were retired — nothing in
+      `web/app.ts` ever rendered them), and `src/server/index.ts` constructs
+      the real runner at startup with a real executable locator, also fixing
+      two previously-dead settings (`availableSummaryProviders`,
+      `summaryPermissionPath`) that made this route always fail regardless.
+      Manually verified the real server boots and serves `/api/reports/latest`
+      and `/api/summarizer/permission`. Still missing: **no real CLI has run
+      through this path and no real day has been summarized** — that needs
+      Josh's go-ahead. `data/reports/latest.json` (local, git-ignored) holds
+      stale pre-consolidation demo content until then; see `PROGRESS.md`.
 - [ ] Source trace-back in the report UI.
 - [ ] Edit and remove incorrect achievements.
 - [ ] Define and enforce local retention.
