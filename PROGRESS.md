@@ -103,6 +103,26 @@ Open observation for Josh: conversation order in the payload follows the approve
 source scope rather than the clock, so a later Codex session can precede an
 earlier Claude Code one.
 
+## Measured payload cost (2026-09-18, local sizes only, nothing transmitted)
+
+Across 2026-09-04 to 09-18 the daily payload ranged from 62k to 610k estimated
+tokens, median 164k, mean 256k. Josh's volume is capped by Pro and Plus plan
+limits, so heavier tiers will produce larger days; the design target is millions
+of tokens per day, not 610k. At a realistic 150k per-request budget, 9 of 15 days
+need splitting, so splitting is a core mechanism rather than an edge case.
+
+Reading a day's records costs an estimated 1% (heaviest day) to 4% (median day)
+of what it cost to create them, because each agent turn resends the growing
+context. The ratio improves for heavier users. Prompt caching is not modelled and
+would raise that share, perhaps toward 10%; one measured run against the usage
+card is still needed to replace the estimate.
+
+Capping `tool_use` took the heaviest day from 610k to 510k tokens (-16.4%).
+Remaining untaken levers: tightening the tool cap from 500 to 250 (a further
+124k bytes), defaulting to a cheaper summary model, and per-conversation
+incremental summarization, which would also stop a session that spans midnight
+being re-read on every day it is active.
+
 Josh confirmed the changed NT-5 rule on 2026-09-18: `thinking` and `reasoning`
 are excluded entirely, are never sent to the summarizer, and a message holding
 only deliberation is dropped without counting as an issue. A visible count of

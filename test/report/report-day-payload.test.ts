@@ -15,7 +15,7 @@ import {
 import { validateSummaryCandidate } from "../../src/report/contract.js";
 import {
   buildReportDayPayload,
-  toolResultCap,
+  toolPartCap,
 } from "../../src/report/report-day-payload.js";
 
 // Task PB in docs/plans/2026-09-18-report-day-payload-design.md. All records are
@@ -289,6 +289,26 @@ function toolMessage(id: string, body: string): CollectedMessage {
   };
 }
 
+function toolUseMessage(id: string, body: string): CollectedMessage {
+  const text = `[tool_use Write {"content":"${body}"}]`;
+  return {
+    id,
+    role: "assistant",
+    text,
+    timestamp: "2026-09-18T09:12:00Z",
+    parts: [{ kind: "tool_use", text }],
+  };
+}
+
+/** The exact head + disclosure + tail a capped part must produce. */
+function truncatedTo(full: string): string {
+  return [
+    full.slice(0, toolPartCap),
+    `[\u2026 ${full.length - toolPartCap * 2} characters omitted]`,
+    full.slice(full.length - toolPartCap),
+  ].join("\n");
+}
+
 function sentText(payloadJson: string, index = 0): string {
   const payload = JSON.parse(payloadJson) as {
     conversations: Array<{ messages: Array<{ text: string }> }>;
@@ -311,30 +331,42 @@ test("PB-7: a tool_result over the cap is truncated head and tail with the omiss
   const result = await buildWith([toolMessage("m-big", body)]);
 
   const text = sentText(result.payloadJson);
+  const full = `[tool_result ok]\n${body}`;
+  // Pinned exactly: a slicing error would make the disclosed count wrong.
+  expect(text).toBe(truncatedTo(full));
   expect(text.startsWith("[tool_result ok]\nAAAA")).toBe(true);
   expect(text.endsWith("VERDICT: 2 tests failed")).toBe(true);
-  expect(text).toMatch(/\[… \d+ characters omitted\]/);
-  const omitted = Number(/\[… (\d+) characters omitted\]/.exec(text)?.[1]);
-  expect(omitted).toBe(`[tool_result ok]\n${body}`.length - toolResultCap * 2);
-  expect(text.length).toBeLessThan(`[tool_result ok]\n${body}`.length);
+  expect(text.length).toBeLessThan(full.length);
 });
 
 test("PB-8: a tool_result at or below the cap passes through unchanged", async () => {
-  const body = "B".repeat(toolResultCap);
+  const body = "B".repeat(toolPartCap);
   const result = await buildWith([toolMessage("m-small", body)]);
-
   expect(sentText(result.payloadJson)).toBe(`[tool_result ok]\n${body}`);
+
+  // Exactly at the boundary it is kept whole; one character more is truncated.
+  const prefix = "[tool_result ok]\n".length;
+  const exact = await buildWith([
+    toolMessage("m-exact", "B".repeat(toolPartCap * 2 - prefix)),
+  ]);
+  expect(sentText(exact.payloadJson)).toHaveLength(toolPartCap * 2);
+  expect(sentText(exact.payloadJson)).not.toContain("omitted");
+
+  const over = await buildWith([
+    toolMessage("m-over", "B".repeat(toolPartCap * 2 - prefix + 1)),
+  ]);
+  expect(sentText(over.payloadJson)).toContain("1 characters omitted");
 });
 
 test("PB-9: a long conversation text part is not capped", async () => {
-  const text = "C".repeat(toolResultCap * 4);
+  const text = "C".repeat(toolPartCap * 4);
   const result = await buildWith([message("m-long", text)]);
 
   expect(sentText(result.payloadJson)).toBe(text);
 });
 
 test("PB-10: truncation is content-blind at equal length", async () => {
-  const size = toolResultCap * 4;
+  const size = toolPartCap * 4;
   const first = await buildWith([toolMessage("m-1", "D".repeat(size))]);
   const second = await buildWith([toolMessage("m-1", "E".repeat(size))]);
 
@@ -423,4 +455,53 @@ test("PB-13: building transmits nothing and does not modify the source", async (
   });
 
   expect(await readFile(file, "utf8")).toBe(line);
+});
+
+test("PB-14: a tool_use part over the cap is truncated head and tail with the omission disclosed", async () => {
+  // Measured on real records: tool_use is 24.6% of a day's content, averaging
+  // 1,134 bytes, because an Edit or Write carries whole file contents.
+  const body = "A".repeat(4000);
+  const result = await buildWith([toolUseMessage("m-big", body)]);
+
+  const text = sentText(result.payloadJson);
+  const full = `[tool_use Write {"content":"${body}"}]`;
+  expect(text).toBe(truncatedTo(full));
+  expect(text.startsWith('[tool_use Write {"content":"AAAA')).toBe(true);
+  expect(text.endsWith('"}]')).toBe(true);
+});
+
+test("PB-15: a tool_use part at or below the cap passes through unchanged", async () => {
+  const body = "B".repeat(100);
+  const result = await buildWith([toolUseMessage("m-small", body)]);
+
+  expect(sentText(result.payloadJson)).toBe(
+    `[tool_use Write {"content":"${body}"}]`,
+  );
+});
+
+test("PB-16: only tool parts are capped; other kinds pass through at any length", async () => {
+  const long = "C".repeat(toolPartCap * 4);
+  const result = await buildReportDayPayload({
+    collector: fakeCollector({
+      sessions: [
+        session("session-k", "codex", [
+          {
+            id: "m-kinds",
+            role: "user",
+            text: long,
+            timestamp: "2026-09-18T09:12:00Z",
+            parts: [
+              { kind: "text", text: long },
+              { kind: "image", text: long },
+              { kind: "other", text: long },
+            ],
+          },
+        ]),
+      ],
+    }),
+    date: "2026-09-18",
+    sourceScope: ["codex"],
+  });
+
+  expect(sentText(result.payloadJson)).toBe([long, long, long].join("\n"));
 });

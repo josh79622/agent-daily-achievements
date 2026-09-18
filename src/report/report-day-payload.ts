@@ -20,11 +20,18 @@ import type {
 } from "./contract.js";
 
 /**
- * Head and tail kept from one tool result. Bulk tool output is capped before it
+ * Head and tail kept from one tool part. Bulk tool traffic is capped before it
  * leaves the machine: content-blind, uniform, and disclosed. Decision:
  * docs/decisions/2026-09-18-tool-result-truncation.md.
  */
-export const toolResultCap = 500;
+export const toolPartCap = 500;
+
+/**
+ * Both tool kinds are capped. `tool_use` was measured at 24.6% of a real day's
+ * content, averaging 1,134 bytes, because an `Edit` or `Write` carries whole
+ * file contents rather than just a path.
+ */
+const cappedKinds: readonly MessagePart["kind"][] = ["tool_result", "tool_use"];
 
 export interface ReportDayPayload {
   date: string;
@@ -94,13 +101,13 @@ function sentText(message: CollectedMessage): string {
 }
 
 function partText(part: MessagePart): string {
-  if (part.kind !== "tool_result" || part.text.length <= toolResultCap * 2)
+  if (!cappedKinds.includes(part.kind) || part.text.length <= toolPartCap * 2)
     return part.text;
-  const omitted = part.text.length - toolResultCap * 2;
+  const omitted = part.text.length - toolPartCap * 2;
   return [
-    part.text.slice(0, toolResultCap),
+    part.text.slice(0, toolPartCap),
     `[… ${omitted} characters omitted]`,
-    part.text.slice(part.text.length - toolResultCap),
+    part.text.slice(part.text.length - toolPartCap),
   ].join("\n");
 }
 

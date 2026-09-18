@@ -185,6 +185,15 @@ generation moved here and comes first.
       Still undecided: splitting days that exceed model input limits (deferred
       to the summary-run task, to be decided on a measured `byteLength`), and
       whether secrets inside conversations are masked before sending.
+- [x] Cap `tool_use` text the same way as `tool_result`, content-blind and
+      disclosed. (see the commit for this item)
+  - PB-14 to PB-16 pass, PB-7/PB-8 were tightened to pin the exact truncated
+    output, and `npm run check` passed with 236 tests. Eight deliberate
+    mutations were each caught, including three off-by-one slicing errors that
+    the original looser assertions had missed.
+  - Measured on real records: `tool_use` was 24.6% of a day's content at 1,134
+    bytes per part, because `Edit`/`Write` carry whole file contents. The
+    heaviest day fell from 610k to 510k estimated tokens.
 - [ ] Run the selected summarizer CLI on that payload under saved permission,
       with the approved model, effort, tool restrictions, re-analysis limit
       (three attempts), and fallback rules, assembling an `AchievementReportV1`.

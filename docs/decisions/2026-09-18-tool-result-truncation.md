@@ -33,8 +33,28 @@ with the omitted character count between them. Head-only was rejected because a
 test or build run puts its verdict at the end, so failures would be cut. `N` is
 a named constant so it can be tuned.
 
-`tool_use` inputs — the path, the command — are never truncated. They are small
-and they are the evidence.
+### Amended 2026-09-18: `tool_use` is capped too
+
+This record originally said `tool_use` inputs are never truncated because "they
+are small and they are the evidence". Measurement disproved the premise. On one
+real day, content divided as:
+
+| Kind | Parts | Bytes | Share |
+| --- | --- | --- | --- |
+| `tool_result` | 563 | 1,055,714 | 40.8% |
+| `text` (conversation) | 908 | 895,889 | 34.6% |
+| `tool_use` | 563 | 638,429 | 24.6% |
+| `image` | 15 | 260 | 0.0% |
+
+`tool_use` averages 1,134 bytes per part, because an `Edit` or `Write` carries a
+file's whole new contents rather than just a path. Two-thirds of the payload was
+tool traffic and only a third was conversation.
+
+Both tool kinds are therefore capped by the same constant under the same three
+conditions. A truncated `tool_use` placeholder is no longer valid JSON inside its
+brackets; that is acceptable, because it is a text placeholder and the omission
+is disclosed. Measured effect on that day: 2.15 MB to 1.79 MB, about 610k to
+510k estimated tokens, a 16.4% reduction against a predicted 17%.
 
 ## What this does not change
 
