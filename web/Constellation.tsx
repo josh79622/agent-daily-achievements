@@ -1,9 +1,7 @@
 // Cosmic Constellation UI (Style A): Star-core nodes, radiating satellite evidence,
 // flowing constellation lines, and interactive corner color palette.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Background,
-  BackgroundVariant,
   Handle,
   Position,
   ReactFlow,
@@ -75,6 +73,163 @@ function applyAccentColor(hex: string) {
   } catch {
     // ignore
   }
+}
+
+interface Star {
+  x: number;
+  y: number;
+  radius: number;
+  alpha: number;
+  speed: number;
+}
+
+interface Meteor {
+  x: number;
+  y: number;
+  length: number;
+  speed: number;
+  angle: number;
+  alpha: number;
+}
+
+function StarfieldBackground() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animId: number;
+    let stars: Star[] = [];
+    const meteors: Meteor[] = [];
+
+    function resize() {
+      if (!canvas) return;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      stars = Array.from({ length: 140 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: Math.random() * 1.5 + 0.5,
+        alpha: Math.random() * Math.PI * 2,
+        speed: Math.random() * 0.02 + 0.006,
+      }));
+    }
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    function spawnMeteor() {
+      if (!canvas || meteors.length >= 2 || Math.random() > 0.012) return;
+      meteors.push({
+        x: Math.random() * canvas.width * 0.8 + canvas.width * 0.1,
+        y: Math.random() * canvas.height * 0.4,
+        length: Math.random() * 80 + 60,
+        speed: Math.random() * 5 + 7,
+        angle: Math.PI / 4 + (Math.random() - 0.5) * 0.2,
+        alpha: 1,
+      });
+    }
+
+    function render() {
+      if (!canvas || !ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const accent =
+        getComputedStyle(document.documentElement)
+          .getPropertyValue("--accent")
+          .trim() || "#10b981";
+
+      // 1. Nebula clouds synced with theme accent color
+      const grad1 = ctx.createRadialGradient(
+        canvas.width * 0.28,
+        canvas.height * 0.32,
+        50,
+        canvas.width * 0.28,
+        canvas.height * 0.32,
+        480,
+      );
+      grad1.addColorStop(0, accent + "22");
+      grad1.addColorStop(1, "transparent");
+      ctx.fillStyle = grad1;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const grad2 = ctx.createRadialGradient(
+        canvas.width * 0.78,
+        canvas.height * 0.65,
+        70,
+        canvas.width * 0.78,
+        canvas.height * 0.65,
+        520,
+      );
+      grad2.addColorStop(0, "rgba(56, 189, 248, 0.08)");
+      grad2.addColorStop(1, "transparent");
+      ctx.fillStyle = grad2;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 2. Twinkling celestial stars
+      for (const s of stars) {
+        s.alpha += s.speed;
+        const brightness = ((Math.sin(s.alpha) + 1) / 2) * 0.75 + 0.25;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(230, 244, 255, ${brightness.toFixed(3)})`;
+        if (s.radius > 1.2) {
+          ctx.shadowBlur = 5;
+          ctx.shadowColor = accent;
+        } else {
+          ctx.shadowBlur = 0;
+        }
+        ctx.fill();
+      }
+
+      // 3. Occasional shooting stars (meteors)
+      spawnMeteor();
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i];
+        if (!m) continue;
+        const tailX = m.x - Math.cos(m.angle) * m.length;
+        const tailY = m.y - Math.sin(m.angle) * m.length;
+        const lineGrad = ctx.createLinearGradient(m.x, m.y, tailX, tailY);
+        lineGrad.addColorStop(0, `rgba(255, 255, 255, ${m.alpha})`);
+        lineGrad.addColorStop(0.3, accent);
+        lineGrad.addColorStop(1, "transparent");
+
+        ctx.strokeStyle = lineGrad;
+        ctx.lineWidth = 1.8;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = accent;
+        ctx.beginPath();
+        ctx.moveTo(m.x, m.y);
+        ctx.lineTo(tailX, tailY);
+        ctx.stroke();
+
+        m.x += Math.cos(m.angle) * m.speed;
+        m.y += Math.sin(m.angle) * m.speed;
+        m.alpha -= 0.015;
+        if (
+          m.alpha <= 0 ||
+          m.x > canvas.width + 100 ||
+          m.y > canvas.height + 100
+        ) {
+          meteors.splice(i, 1);
+        }
+      }
+
+      animId = requestAnimationFrame(render);
+    }
+
+    render();
+
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(animId);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="starfield-canvas" />;
 }
 
 function ColorPalette() {
@@ -763,6 +918,7 @@ export function Constellation() {
 
   return (
     <>
+      <StarfieldBackground />
       <header className="page-header">
         <span className="brand">Daily Proof</span>
         <div
@@ -808,14 +964,7 @@ export function Constellation() {
             fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}
             maxZoom={1.8}
-          >
-            <Background
-              variant={BackgroundVariant.Dots}
-              gap={24}
-              size={1.5}
-              color="rgba(255, 255, 255, 0.08)"
-            />
-          </ReactFlow>
+          />
         </div>
         {selectedRef ? (
           <SessionModal

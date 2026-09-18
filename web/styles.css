@@ -37,6 +37,15 @@ body {
   );
 }
 
+.starfield-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+}
+
 button {
   font: inherit;
 }
@@ -323,6 +332,8 @@ main,
      min-height-only ancestor computes to auto/0. */
   height: 100vh;
   overflow: hidden;
+  background: transparent;
+  z-index: 1;
 }
 
 .constellation-status {
