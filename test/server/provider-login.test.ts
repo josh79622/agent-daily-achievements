@@ -92,6 +92,7 @@ async function setup(providerLoginService?: ProviderLoginService) {
           scheduled: false,
           payload: {
             date: "2026-09-18",
+            timeZone: "Australia/Sydney",
             payloadJson: '{"date":"2026-09-18","conversations":[]}',
             manifest: [],
             coverage: [],

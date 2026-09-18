@@ -13,6 +13,7 @@ type Provider = "claude-code" | "codex";
 interface SummaryRequest {
   payload: {
     date: string;
+    timeZone: string;
     payloadJson: string;
     manifest: Array<{
       source: Provider;
@@ -94,6 +95,7 @@ function request(): SummaryRequest {
     scheduled: true,
     payload: {
       date: "2026-09-18",
+      timeZone: "Australia/Sydney",
       payloadJson,
       manifest: [
         { source: "codex", recordId: "synthetic-session", messageIds: ["m-1"] },

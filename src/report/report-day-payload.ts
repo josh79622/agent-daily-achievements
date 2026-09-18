@@ -46,6 +46,9 @@ const capped: Partial<
 
 export interface ReportDayPayload {
   date: string;
+  /** The timezone the collector used for this day's boundaries, so the saved
+   * report is never labelled in a different zone than it was collected in. */
+  timeZone: string;
   /** Exactly what would be sent to the summarizer. */
   payloadJson: string;
   manifest: EvidenceManifest;
@@ -97,6 +100,7 @@ export async function buildReportDayPayload({
   const payloadJson = JSON.stringify({ date, conversations });
   return {
     date,
+    timeZone: collected.timeZone,
     payloadJson,
     manifest,
     coverage: collected.sources

@@ -268,6 +268,7 @@ test("RG-5: a payload whose manifest carries an unpermitted source is refused", 
           scheduled: true,
           payload: {
             date: "2026-09-18",
+            timeZone: "Australia/Sydney",
             payloadJson: '{"date":"2026-09-18","conversations":[]}',
             manifest: [
               {

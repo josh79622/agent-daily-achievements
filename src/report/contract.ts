@@ -256,6 +256,16 @@ export type SummaryOutcome =
  * Builds the stored report. Status and coverage come only from local facts
  * (collector coverage and the summarizer outcome), never from the candidate.
  */
+/**
+ * Minimal storage the real summarizer run needs. Deliberately not the
+ * existing `ReportStore` (`src/storage/report-store.ts`), which still stores
+ * the older `DailyReport` shape for the unrendered sample route — reconciling
+ * the two is parked decision 1 in `PROGRESS.md`, not settled by this type.
+ */
+export interface AchievementReportStore {
+  save(report: AchievementReportV1): Promise<void>;
+}
+
 export function assembleReport({
   date,
   timezone,

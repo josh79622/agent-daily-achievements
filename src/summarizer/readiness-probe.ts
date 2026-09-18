@@ -22,7 +22,7 @@ export const lowestCostModels: Record<SummaryProvider, string> = {
   codex: "gpt-5.6-luna",
 };
 
-const disabledCodexFeatures = [
+export const disabledCodexFeatures = [
   "shell_tool",
   "unified_exec",
   "browser_use",
@@ -125,8 +125,8 @@ export function createReadinessProbe({
       const replyFile = join(directory, "reply.txt");
       const args =
         provider === "claude-code"
-          ? claudeArgs(model, effort)
-          : codexArgs(model, effort, directory, replyFile);
+          ? claudeArgs(model, effort, probePrompt)
+          : codexArgs(model, effort, directory, replyFile, probePrompt);
       let result: ProbeRunResult;
       try {
         result = await runner({
@@ -184,9 +184,11 @@ export function createReadinessProbe({
   };
 }
 
-function claudeArgs(
+/** Shared with the real summarizer run (`summary-run.ts`); only the prompt text differs. */
+export function claudeArgs(
   model: string | undefined,
   effort: string | undefined,
+  prompt: string,
 ): string[] {
   return [
     "-p",
@@ -198,15 +200,17 @@ function claudeArgs(
     "json",
     ...(model === undefined ? [] : ["--model", model]),
     ...(effort === undefined ? [] : ["--effort", effort]),
-    probePrompt,
+    prompt,
   ];
 }
 
-function codexArgs(
+/** Shared with the real summarizer run (`summary-run.ts`); only the prompt text differs. */
+export function codexArgs(
   model: string | undefined,
   effort: string | undefined,
   directory: string,
   replyFile: string,
+  prompt: string,
 ): string[] {
   return [
     "exec",
@@ -226,7 +230,7 @@ function codexArgs(
     "-C",
     directory,
     ...disabledCodexFeatures.flatMap((feature) => ["--disable", feature]),
-    probePrompt,
+    prompt,
   ];
 }
 
