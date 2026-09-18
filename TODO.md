@@ -305,6 +305,32 @@ generation moved here and comes first.
     `PROGRESS.md`) — there is now a place for history to accumulate, though
     nothing reads more than one date yet.
 
+### Web UI framework migration (raised by Josh 2026-09-18, mid-Phase-5)
+
+Not a Phase 5 deliverable — Josh asked to move the web UI off framework-free
+TypeScript/DOM onto React + Vite (chosen over Next.js; see "Current phase"
+in `PROGRESS.md` for the full reasoning). The constellation uses React Flow
+(`@xyflow/react`), picked partly because its nodes/edges will also suit the
+undesigned cross-day "knowledge map" idea (decision 1 in `PROGRESS.md`).
+Five tasks, each expected to temporarily leave the page less capable than
+the version it replaces until the next task restores that piece — not a
+regression to fix mid-task.
+
+- [x] Task 1: scaffold Vite + React + a proof-of-build shell; server
+      untouched. (`f1b5718`)
+- [x] Task 2: constellation on React Flow, fetching the real report; same
+      no-report/zero-achievements/incomplete states as before. Two real
+      layout bugs (a zero-measured node, an unresolvable container height)
+      found only by checking the browser. (`a7f7144`)
+- [ ] Task 3: port Expand/Show source/Edit/Remove into the React Flow node
+      component (`web/Constellation.tsx`). `web/styles.css` already has the
+      old rules for these (`.node-controls`, `.evidence`, `.node-edit-form`,
+      etc.) to adapt.
+- [ ] Task 4: port the Local activity and Report sign-in panels.
+- [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
+      component-level tests (e.g. `@testing-library/react`); nothing chosen
+      yet.
+
 ### Phase 6 — Daily automation
 
 - [ ] Schedule exactly one daily report with idempotent catch-up after sleep/wake.

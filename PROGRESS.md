@@ -469,43 +469,65 @@ Open decisions for the remaining report-generation items:
 
 ## Handoff
 
-- Checkout: work in `/Users/joshtsai/Documents/agent-daily-achievements` on
-  branch `master`. On 2026-09-18 `master` was fast-forwarded to the former
-  `codex/ui-skeleton` tip (`f673a67`, 164 commits, no divergence) and the
-  `.worktrees/ui-skeleton` worktree was removed, so a new session opens on the
-  current work instead of the stale project-setup state. No remote and no PR.
+Written 2026-09-18 at a session boundary; Josh's next session may be with a
+different agent CLI (Codex or "Antigravity"), so this assumes no memory of
+this conversation, only this repo's files.
+
+- Checkout: `/Users/joshtsai/Documents/agent-daily-achievements`, branch
+  `master`, working tree clean at handoff, latest commit `d52ae08`. No
+  remote, no PR, no other branches or worktrees.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
-  shell's default Node 25 is broken. Gate: `npm run check` (268 tests at
-  handoff).
-- Dev server: Josh starts it with `npm run dev` from the checkout
-  (`http://127.0.0.1:4317/`). On startup it sweeps stale probe temp
-  directories, fetches model lists (Codex `codex debug models`, Claude Code
-  initialize-only request; no prompt), and now also checks which summarizer
-  executables are locatable (`availableSummaryProviders`) — a cheap `locate`
-  call, not a readiness check, not a model call. Local settings live in
-  ignored `data/` files, including `data/summarizer-models.json` and, as of
-  today, `data/summary-permission.json`. `data/reports/latest.json` currently
-  holds stale pre-consolidation demo content — see the flagged item under
-  "Phase 5 remaining" above.
-- Key documents for Phase 5: [payload and manifest design](docs/plans/2026-09-18-report-day-payload-design.md),
+  shell's default Node 25 fails to start (missing Homebrew library). Gate:
+  `npm run check` (268 tests at handoff) — runs format, lint, two `tsc`
+  passes (server, then `-p tsconfig.web.json` for the web app's JSX/DOM
+  types), Vitest, then the build (`tsc` + `vite build`).
+- Dev server: `npm run dev` from the checkout
+  (`http://127.0.0.1:4317/`). No web hot-reload yet — a `web/` change needs
+  a fresh `npm run dev` (or `npm run build`) to show up, since the React
+  side has no dev-server proxy set up, only a production `vite build`. On
+  startup the server sweeps stale probe temp directories, fetches model
+  lists, and checks which summarizer executables are locatable (a cheap
+  `locate`, never a readiness check or a model call).
+- **Active work: migrating the web UI from framework-free TypeScript/DOM to
+  React + Vite, in 5 tasks (see "Current phase" at the top of this file for
+  the full reasoning and order). Tasks 1–2 are done; Task 3 (port
+  Expand/Show source/Edit/Remove into the React Flow node component,
+  `web/Constellation.tsx`) is next.** Read that "Current phase" section
+  before starting Task 3 — it explains why React Flow was picked and what
+  each remaining task covers. Each task is expected to temporarily leave
+  the page less capable than the vanilla-DOM version it replaced; that is
+  the plan, not a regression to fix mid-task.
+- Local state that already reflects real use, not synthetic data:
+  `data/local-sources.json` (`claude-code` consented), `data/summary-permission.json`
+  (`claude-code`/`codex` both permitted, `claude-code` preferred), and
+  `data/reports/2026-09-09.json` (one real generated-and-edited report —
+  see "Phase 5 progress" above for what was verified against it). All are
+  git-ignored local files, not committed.
+- Key documents for the current work: this file's "Current phase" section
+  (framework decision and 5-task order), `web/Constellation.tsx` and
+  `web/report-view.ts` (the pure logic it reuses, still covered by
+  `test/web/report-view.test.ts`), `web/styles.css` (has both the old
+  Expand/Related/Show-source/edit-form rules Task 3 will adapt, and the new
+  `.achievement-card`/`.constellation` rules Task 2 added).
+- Earlier key documents: [summary-run design](docs/plans/2026-09-18-summary-run-design.md),
+  [payload and manifest design](docs/plans/2026-09-18-report-day-payload-design.md),
   [tool truncation decision](docs/decisions/2026-09-18-tool-result-truncation.md),
-  [fictional eval payloads](docs/evals/synthetic-set-02-payloads.md),
-  prompt draft in `src/report/summary-prompt.ts`, eval harness in
-  `scripts/experiments/eval-summary.mts`.
-- Earlier key documents: [report contract design](docs/plans/2026-09-17-report-contract-design.md),
-  [synthetic set 02](docs/evals/synthetic-set-02.md),
+  [report contract design](docs/plans/2026-09-17-report-contract-design.md),
   [readiness probe, model, effort, and leak-fix design](docs/plans/2026-09-17-readiness-probe-design.md),
-  [Phase 4 exit review](docs/reviews/2026-09-18-phase-4-exit-review.md),
-  [roadmap amendment](docs/decisions/2026-09-16-revised-phase-roadmap.md).
-- Working agreement with Josh (from this session):
-  - follow AGENTS.md and the AI-assisted development process linked from
-    BRIEF.md;
+  [Phase 4 exit review](docs/reviews/2026-09-18-phase-4-exit-review.md).
+- Working agreement observed with Josh, worth continuing regardless of
+  which agent is driving:
+  - follow `AGENTS.md` (canonical) and the AI-assisted development process
+    linked from `BRIEF.md`;
   - bring decisions one at a time with options and a recommendation; do not
     bundle several decisions into one question;
-  - propose test cases with fixed IDs and wait for approval before test code;
-    run RED, then GREEN, then `npm run check`; mutation-check important tests;
-    commit each meaningful part; record only verified status;
+  - propose test cases (with fixed IDs for product-behavior tests) before
+    writing test code; run `npm run check`; mutation-check important tests
+    by deliberately breaking the logic and confirming the test catches it;
+    commit each meaningful part; record only verified status, and say
+    plainly when something is not yet verified;
   - ask before any real CLI or model run, and state exactly what it sends;
-    never read or transmit conversation history; metadata-only checks need
-    approval;
-  - reply to Josh in both English and Traditional Chinese.
+    never read or transmit conversation history without saved consent;
+  - when changing shared files (`PROGRESS.md`, `TODO.md`, `AGENTS.md`),
+    read the current version first — Josh or another agent may have
+    changed them since this was written.
