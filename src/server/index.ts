@@ -4,10 +4,13 @@ import { join, resolve } from "node:path";
 import { createApp } from "./app.js";
 import { createLocalCollector } from "../collector/local-collector.js";
 import { createReportStore } from "../storage/report-store.js";
+import type { SummaryProvider } from "../storage/summary-permission.js";
 import {
   createLocalCommandExecutor,
   createMacTerminalLauncher,
   createProviderLoginService,
+  executableName,
+  summaryProviders,
 } from "../summarizer/provider-login.js";
 import { createModelCatalogLoader } from "../summarizer/model-catalog.js";
 import { createSummarizerModelsService } from "../summarizer/model-settings.js";
@@ -16,6 +19,7 @@ import {
   createReadinessProbe,
   readReplyFileFromDisk,
 } from "../summarizer/readiness-probe.js";
+import { createSummaryRunner } from "../summarizer/summary-run.js";
 import {
   createTrackedTempDirs,
   installShutdownCleanup,
@@ -67,12 +71,39 @@ const providerLoginService = macOS
         (await summarizerModels?.effectiveSettings(provider)) ?? {},
     })
   : undefined;
+// Which CLI a report-generation request may try, checked once at startup by
+// the same cheap `locate` used elsewhere here — not a readiness check (that
+// spends a real model call and only runs on explicit request, decision C1).
+const availableSummaryProviders: SummaryProvider[] = macOS
+  ? (
+      await Promise.all(
+        summaryProviders.map(async (provider) =>
+          (await executor.locate(executableName(provider)))
+            ? provider
+            : undefined,
+        ),
+      )
+    ).filter((provider): provider is SummaryProvider => provider !== undefined)
+  : [];
+const summaryRunner = summarizerModels
+  ? createSummaryRunner({
+      locate: (provider) => executor.locate(executableName(provider)),
+      models: summarizerModels,
+      runner: createProcessRunner(),
+      tempDirs,
+      readReplyFile: readReplyFileFromDisk,
+      reportStore,
+    })
+  : undefined;
 const server = createApp({
+  availableSummaryProviders,
   collector,
   consentPath: resolve("data/local-sources.json"),
   providerLoginService,
   reportStore,
   summarizerModels,
+  summaryPermissionPath: resolve("data/summary-permission.json"),
+  summaryRunner,
   staticDirectory: resolve("dist/web"),
 });
 
