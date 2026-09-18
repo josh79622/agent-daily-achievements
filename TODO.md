@@ -253,7 +253,25 @@ generation moved here and comes first.
         missing report in the browser pane. Evidence is still not turned
         into child nodes; the "Related" control now only shows when a node
         has children.
-- [ ] Source trace-back in the report UI.
+- [x] Source trace-back in the report UI. (`e46f0c6`)
+  - Each achievement gets a "Show source" control that fetches the local
+    collector session for each evidence reference and shows only the cited
+    messages, in evidence order. Reuses the existing consent-gated
+    `/api/collector/sessions/:id` route, extended with an optional `date`
+    query param so a past day is collected as it was that day (the live
+    "Local activity" panel is unaffected, still defaulting to today).
+  - `web/report-view.ts` adds `pickEvidenceMessages` (order preserved,
+    missing cited ids reported rather than dropped) and `isLocallyTraceable`
+    (only `claude-code`/`codex` have a local collector; the other three
+    `ReportSource` values are named but not previewable, since the Chrome
+    add-on doesn't exist). RV-4/RV-5 cover both; three deliberate mutations
+    each caught.
+  - Manually verified against the real 2026-09-09 report: saved local-source
+    consent through the existing panel, clicked "Show source" on all three
+    achievements, confirmed each shows only its cited messages (checked
+    against the network request and the rendered text). A CSS pass
+    (`.evidence`, `.has-source`) was needed after the panel first overflowed
+    and overlapped sibling nodes.
 - [ ] Edit and remove incorrect achievements.
 - [x] Define and enforce local retention. (`a80e313`)
   - Josh decided 2026-09-18: reports are kept indefinitely by default, one

@@ -11,10 +11,10 @@ summarization behind a separate permission, validate and score model-shaped
 reports, and manage provider sign-in, readiness, model, and effort settings.
 As of later that day, it can also run the real summarizer end to end and show
 the result: one real day (2026-09-09) has been summarized by Claude Code
-`haiku` and rendered in the browser, and reports are now kept with history
-rather than overwritten. Remaining Phase 5 work — source trace-back, editing
-achievements, and designing the cross-day view — is listed under "Phase 5
-remaining" below.
+`haiku` and rendered in the browser, source trace-back works against real
+local history, and reports are now kept with history rather than
+overwritten. Remaining Phase 5 work — editing achievements and designing
+the cross-day view — is listed under "Phase 5 remaining" below.
 
 ## Completed
 
@@ -89,10 +89,11 @@ remaining" below.
 ## Next task
 
 **The first real day (2026-09-09) has been summarized end to end, shown in
-the browser, and retention is decided** (`71f3987`, `ddc8c70`, `4c7922f`, the
-real run, `45b606a`, `a80e313`). **Next up is source trace-back in the
-report UI** (first item below "Phase 5 remaining"). Retention being resolved
-also unblocks the cross-day "knowledge map" idea Josh raised (decision 1
+the browser, source trace-back works against real local history, and
+retention is decided** (`71f3987`, `ddc8c70`, `4c7922f`, the real run,
+`45b606a`, `a80e313`, `e46f0c6`). **Next up is editing/removing achievements**
+(first item below "Phase 5 remaining"). Retention being resolved also
+unblocks the cross-day "knowledge map" idea Josh raised (decision 1
 below), but that is still undesigned — resolving retention only removed the
 storage blocker, not the design work.
 
@@ -207,12 +208,24 @@ stated:
   is regenerated later — covered by its own test). Six cases pass; three
   deliberate mutations each caught. The one real report on disk was migrated
   to the new filename and reverified served correctly by the real server.
+- **Source trace-back (`e46f0c6`)**: each achievement gets a "Show source"
+  control. It fetches the local collector session for each evidence
+  reference and shows only the cited messages, in evidence order — the
+  existing consent-gated `/api/collector/sessions/:id` route now takes an
+  optional `date` so trace-back can collect a past day as it was that day
+  (the live "Local activity" panel is unaffected). `pickEvidenceMessages`
+  and `isLocallyTraceable` (only `claude-code`/`codex` have a local
+  collector; the other three sources are named but not previewable, since
+  the Chrome add-on doesn't exist) are in `web/report-view.ts`; RV-4/RV-5
+  cover both, three deliberate mutations each caught. Manually verified
+  against the real 2026-09-09 report and real local history: saved
+  local-source consent, opened "Show source" on all three achievements, and
+  confirmed each showed only its own cited messages.
 
 ### Phase 5 remaining
 
-1. Source trace-back in the report UI.
-2. Edit and remove incorrect achievements.
-3. **Design the cross-day "knowledge map"** (decision 1 below), now that
+1. Edit and remove incorrect achievements.
+2. **Design the cross-day "knowledge map"** (decision 1 below), now that
    retention has removed the storage blocker. Still needed: a way to decide
    which achievements count as the same recurring theme across days, and
    what the UI does with more than one day's history — neither is designed
@@ -301,6 +314,13 @@ Open decisions for the remaining report-generation items:
 
 ## Latest verification
 
+- Source trace-back (2026-09-18, `e46f0c6`): browser-pane check against the
+  real 2026-09-09 report and real local Claude Code history — saved
+  local-source consent, opened "Show source" on all three achievements,
+  each showed only its own cited messages (checked against the network
+  request and the rendered text), scrollable rather than overflowing after
+  a CSS fix. `npm run check` passed with 258 tests (RV-4/RV-5 new, plus a
+  server test for the date param); three deliberate mutations each caught.
 - Retention (2026-09-18, `a80e313`): `npm run check` passed with 255 tests
   (6 report-store cases new/extended); three deliberate mutations each
   caught. Migrated the one real report on disk to `2026-09-09.json` and
@@ -361,7 +381,7 @@ Open decisions for the remaining report-generation items:
   `.worktrees/ui-skeleton` worktree was removed, so a new session opens on the
   current work instead of the stale project-setup state. No remote and no PR.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
-  shell's default Node 25 is broken. Gate: `npm run check` (255 tests at
+  shell's default Node 25 is broken. Gate: `npm run check` (258 tests at
   handoff).
 - Dev server: Josh starts it with `npm run dev` from the checkout
   (`http://127.0.0.1:4317/`). On startup it sweeps stale probe temp
