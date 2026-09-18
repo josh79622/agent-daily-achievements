@@ -222,13 +222,15 @@ Open decisions for the remaining report-generation items (none approved yet):
 
 ## Handoff
 
-- Worktree: `/Users/joshtsai/Documents/agent-daily-achievements/.worktrees/ui-skeleton`
-  on branch `codex/ui-skeleton` (no PR opened; do not merge to master unless
-  Josh asks). The working tree was clean at handoff.
+- Checkout: work in `/Users/joshtsai/Documents/agent-daily-achievements` on
+  branch `master`. On 2026-09-18 `master` was fast-forwarded to the former
+  `codex/ui-skeleton` tip (`f673a67`, 164 commits, no divergence) and the
+  `.worktrees/ui-skeleton` worktree was removed, so a new session opens on the
+  current work instead of the stale project-setup state. No remote and no PR.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
   shell's default Node 25 is broken. Gate: `npm run check` (237 tests at
   handoff).
-- Dev server: Josh starts it with `npm run dev` from the worktree
+- Dev server: Josh starts it with `npm run dev` from the checkout
   (`http://127.0.0.1:4317/`). On startup it sweeps stale probe temp
   directories and fetches model lists (Codex `codex debug models`, Claude Code
   initialize-only request; no prompt). Local settings live in ignored `data/`
