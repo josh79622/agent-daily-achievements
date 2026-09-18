@@ -51,10 +51,21 @@ file's whole new contents rather than just a path. Two-thirds of the payload was
 tool traffic and only a third was conversation.
 
 Both tool kinds are therefore capped by the same constant under the same three
-conditions. A truncated `tool_use` placeholder is no longer valid JSON inside its
+conditions. The constant was tightened from 500 to **250** head and tail on the
+same day, on Josh's decision. 250 still holds a test or build run's closing
+verdict in the tail and the file or command being acted on in the head, which is
+where the evidence value is; 100 was measured as available if more is needed. A truncated `tool_use` placeholder is no longer valid JSON inside its
 brackets; that is acceptable, because it is a text placeholder and the omission
-is disclosed. Measured effect on that day: 2.15 MB to 1.79 MB, about 610k to
-510k estimated tokens, a 16.4% reduction against a predicted 17%.
+is disclosed. Measured effect on that day, cumulative:
+
+| Cap | Payload | Est. tokens |
+| --- | --- | --- |
+| `tool_result` only, 500 | 2.15 MB | 610k |
+| both kinds, 500 | 1.79 MB | 510k |
+| both kinds, 250 | **1.55 MB** | **443k** |
+
+Overall the two changes took the heaviest of 15 days down 27%, and the median day
+from 164k to 142k estimated tokens.
 
 ## What this does not change
 

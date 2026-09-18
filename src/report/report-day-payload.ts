@@ -24,7 +24,7 @@ import type {
  * leaves the machine: content-blind, uniform, and disclosed. Decision:
  * docs/decisions/2026-09-18-tool-result-truncation.md.
  */
-export const toolPartCap = 500;
+export const toolPartCap = 250;
 
 /**
  * Both tool kinds are capped. `tool_use` was measured at 24.6% of a real day's

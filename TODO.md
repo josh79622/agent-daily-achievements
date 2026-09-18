@@ -193,7 +193,9 @@ generation moved here and comes first.
     the original looser assertions had missed.
   - Measured on real records: `tool_use` was 24.6% of a day's content at 1,134
     bytes per part, because `Edit`/`Write` carry whole file contents. The
-    heaviest day fell from 610k to 510k estimated tokens.
+    heaviest day fell from 610k to 510k estimated tokens, and to 443k after
+    Josh tightened the cap from 500 to 250 head and tail. Tests are written
+    against the constant, so the change needed no test edits.
 - [ ] Run the selected summarizer CLI on that payload under saved permission,
       with the approved model, effort, tool restrictions, re-analysis limit
       (three attempts), and fallback rules, assembling an `AchievementReportV1`.
