@@ -212,7 +212,7 @@ generation moved here and comes first.
   - PB-17 was added for the point of the asymmetry: a truncated part never loses
     the tool name or the ok/error outcome. Eight mutations were each caught,
     including both window sides and the marker.
-- [ ] Run the selected summarizer CLI on that payload under saved permission,
+- [x] Run the selected summarizer CLI on that payload under saved permission,
       with the approved model, effort, tool restrictions, re-analysis limit
       (three attempts), and fallback rules, assembling an `AchievementReportV1`.
       **Implemented, storage consolidated, and wired 2026-09-18**
@@ -272,7 +272,24 @@ generation moved here and comes first.
     against the network request and the rendered text). A CSS pass
     (`.evidence`, `.has-source`) was needed after the panel first overflowed
     and overlapped sibling nodes.
-- [ ] Edit and remove incorrect achievements.
+- [x] Edit and remove incorrect achievements. (`8d40af6`)
+  - New `PATCH`/`DELETE /api/reports/:date/achievements/:id`, gated the same
+    way as the other local mutating routes. `PATCH` edits title/detail only
+    — never `id`, `category`, or `evidence`, since a correction changes
+    what is said, not what it is evidenced by. `DELETE` removes just that
+    achievement; report status/coverage/incomplete are untouched (zero
+    achievements is already a valid `complete` report).
+  - `isValidAchievementEdit` (`contract.ts`): non-empty, in-limit
+    title/detail, no other keys. RE-a to RE-d and RE-1 to RE-11 cover it and
+    the route; mutation testing caught a real test gap (a no-Origin-header
+    request wasn't tested, so removing the state-changing method's own
+    origin check went unnoticed until that case was added).
+  - `web/app.ts`: each achievement gets Edit (inline form, Save/Cancel) and
+    Remove (two-step Remove/Confirm remove, never a bare one-click delete).
+    Manually verified against the real 2026-09-09 report: edited a title
+    (persisted, correct on reload), confirmed Cancel leaves all three
+    untouched, removed one (persisted, down to two). The real report was
+    backed up before the remove test and restored afterward.
 - [x] Define and enforce local retention. (`a80e313`)
   - Josh decided 2026-09-18: reports are kept indefinitely by default, one
     file per date, no automatic deletion — a report holds a derived summary

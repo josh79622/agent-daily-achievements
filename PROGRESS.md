@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**Phase 5 — Report control** (in progress)
+**Phase 5 — Report control** (scoped work complete as of 2026-09-18)
 
 Phase 4 closed as scoped on 2026-09-18 after its
 [exit review](docs/reviews/2026-09-18-phase-4-exit-review.md). The tool can
@@ -12,9 +12,17 @@ reports, and manage provider sign-in, readiness, model, and effort settings.
 As of later that day, it can also run the real summarizer end to end and show
 the result: one real day (2026-09-09) has been summarized by Claude Code
 `haiku` and rendered in the browser, source trace-back works against real
-local history, and reports are now kept with history rather than
-overwritten. Remaining Phase 5 work — editing achievements and designing
-the cross-day view — is listed under "Phase 5 remaining" below.
+local history, reports are kept with history rather than overwritten, and
+Josh can edit or remove an incorrect achievement. Every `TODO.md` checkbox
+under Phase 5 is now checked. Not done, and not in scope as originally
+written: the cross-day "knowledge map" idea (decision 1 below) is a new,
+undesigned feature Josh raised mid-phase, not a Phase 5 deliverable.
+
+**Framework decision reopened, 2026-09-18 (discussion pending).** Josh asked
+to move the web UI onto a framework (currently framework-free TypeScript and
+raw DOM, per the Phase 1 decision recorded in `AGENTS.md`). Nothing has been
+chosen or changed yet; this needs the same one-decision-with-trade-offs
+treatment as any other stack choice before code moves.
 
 ## Completed
 
@@ -88,14 +96,13 @@ the cross-day view — is listed under "Phase 5 remaining" below.
 
 ## Next task
 
-**The first real day (2026-09-09) has been summarized end to end, shown in
-the browser, source trace-back works against real local history, and
-retention is decided** (`71f3987`, `ddc8c70`, `4c7922f`, the real run,
-`45b606a`, `a80e313`, `e46f0c6`). **Next up is editing/removing achievements**
-(first item below "Phase 5 remaining"). Retention being resolved also
-unblocks the cross-day "knowledge map" idea Josh raised (decision 1
-below), but that is still undesigned — resolving retention only removed the
-storage blocker, not the design work.
+**Phase 5 as scoped is done** (`71f3987`, `ddc8c70`, `4c7922f`, the real run,
+`45b606a`, `a80e313`, `e46f0c6`, `8d40af6`): a real day is summarized, shown
+in the browser, traceable to real local history, correctable/removable, and
+kept with history. **Next up, pending Josh's steer**: the web UI framework
+decision he just reopened (see the top of this file and "Decisions parked"
+below), which touches everything before either Phase 6 (daily automation) or
+the cross-day "knowledge map" gets its own implementation work.
 
 ### Phase 5 progress
 
@@ -221,16 +228,35 @@ stated:
   against the real 2026-09-09 report and real local history: saved
   local-source consent, opened "Show source" on all three achievements, and
   confirmed each showed only its own cited messages.
+- **Edit and remove (`8d40af6`)**: `PATCH`/`DELETE /api/reports/:date/achievements/:id`,
+  gated like the other local mutating routes. `PATCH` edits title/detail
+  only (never id/category/evidence — a correction changes what is said, not
+  what it is evidenced by); `DELETE` removes just that achievement, leaving
+  status/coverage/incomplete untouched. `isValidAchievementEdit` in
+  `contract.ts`; RE-a to RE-d and RE-1 to RE-11 cover the validator and
+  route. Mutation testing caught a real test gap (a missing-Origin-header
+  case) before the route's own origin check was confirmed load-bearing.
+  `web/app.ts` gets Edit (inline form) and Remove (two-step
+  Remove/Confirm remove). Manually verified against the real 2026-09-09
+  report: edited a title (persisted), confirmed Cancel is a no-op, removed
+  an achievement (persisted, down to two) — the real report was backed up
+  first and restored byte-for-byte afterward.
 
 ### Phase 5 remaining
 
-1. Edit and remove incorrect achievements.
-2. **Design the cross-day "knowledge map"** (decision 1 below), now that
+Every `TODO.md` checkbox under Phase 5 is checked. What is left is not a
+Phase 5 deliverable, but work Josh raised mid-phase:
+
+1. **Design the cross-day "knowledge map"** (decision 1 below), now that
    retention has removed the storage blocker. Still needed: a way to decide
    which achievements count as the same recurring theme across days, and
    what the UI does with more than one day's history — neither is designed
    yet, and neither is in `BRIEF.md`'s first-version scope, so treat this as
    its own scoped feature, not an extension of today's single-day view.
+2. **The web UI framework decision** (new, 2026-09-18): Josh asked to move
+   off the current framework-free TypeScript/DOM approach. Discussion
+   pending — no framework has been named yet, so there is nothing to
+   compare trade-offs on until that happens.
 
 ### Decisions parked, waiting on Josh
 
@@ -314,6 +340,14 @@ Open decisions for the remaining report-generation items:
 
 ## Latest verification
 
+- Edit/remove (2026-09-18, `8d40af6`): browser-pane check against the real
+  2026-09-09 report and real server — edited a title (persisted, correct on
+  reload), confirmed Cancel is a no-op, removed an achievement (persisted,
+  down to two achievements); the real report was backed up first and
+  restored afterward. `npm run check` passed with 273 tests (RE-a to RE-d,
+  RE-1 to RE-11 new); mutation testing caught a real test gap (added a
+  no-Origin-header case) before the route's own origin check was confirmed
+  load-bearing.
 - Source trace-back (2026-09-18, `e46f0c6`): browser-pane check against the
   real 2026-09-09 report and real local Claude Code history — saved
   local-source consent, opened "Show source" on all three achievements,
@@ -381,7 +415,7 @@ Open decisions for the remaining report-generation items:
   `.worktrees/ui-skeleton` worktree was removed, so a new session opens on the
   current work instead of the stale project-setup state. No remote and no PR.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
-  shell's default Node 25 is broken. Gate: `npm run check` (258 tests at
+  shell's default Node 25 is broken. Gate: `npm run check` (273 tests at
   handoff).
 - Dev server: Josh starts it with `npm run dev` from the checkout
   (`http://127.0.0.1:4317/`). On startup it sweeps stale probe temp
