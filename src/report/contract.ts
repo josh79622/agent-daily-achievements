@@ -307,3 +307,35 @@ export function assembleReport({
     incomplete,
   };
 }
+
+export type AchievementEdit = Partial<Pick<Achievement, "title" | "detail">>;
+
+/**
+ * Josh's own correction to an achievement in an already-saved report
+ * (BRIEF.md: an incorrect item must be correctable or removable). Distinct
+ * from `validateSummaryCandidate`, which checks untrusted summarizer output
+ * before a report is first saved; this checks a human edit to a report
+ * already on disk, and never touches `id`, `category`, or `evidence` — a
+ * correction changes what is said, not what it is evidenced by.
+ */
+export function isValidAchievementEdit(
+  value: unknown,
+): value is AchievementEdit {
+  if (!isPlainObject(value)) return false;
+  if (
+    Object.keys(value).length === 0 ||
+    !hasOnlyKeys(value, ["title", "detail"])
+  )
+    return false;
+  for (const field of ["title", "detail"] as const) {
+    if (!(field in value)) continue;
+    const text = value[field];
+    if (
+      typeof text !== "string" ||
+      text.trim() === "" ||
+      text.length > limits[field]
+    )
+      return false;
+  }
+  return true;
+}

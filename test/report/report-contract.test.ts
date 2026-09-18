@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   assembleReport,
+  isValidAchievementEdit,
   validateSummaryCandidate,
   type EvidenceManifest,
   type ReportCoverage,
@@ -438,5 +439,39 @@ describe("RA assembly", () => {
       { reason: "source-incomplete", source: "gemini-web" },
       { reason: "summary-unavailable" },
     ]);
+  });
+});
+
+describe("RE isValidAchievementEdit", () => {
+  test("RE-a: a title-only, detail-only, or both edit is valid", () => {
+    expect(isValidAchievementEdit({ title: "Fixed title" })).toBe(true);
+    expect(isValidAchievementEdit({ detail: "Fixed detail" })).toBe(true);
+    expect(
+      isValidAchievementEdit({ title: "Fixed title", detail: "Fixed detail" }),
+    ).toBe(true);
+  });
+
+  test("RE-b: empty object, unknown keys, or id/category/evidence are rejected", () => {
+    expect(isValidAchievementEdit({})).toBe(false);
+    expect(isValidAchievementEdit({ title: "ok", status: "done" })).toBe(false);
+    expect(isValidAchievementEdit({ id: "new-id" })).toBe(false);
+    expect(isValidAchievementEdit({ category: "learning" })).toBe(false);
+    expect(isValidAchievementEdit({ evidence: [] })).toBe(false);
+  });
+
+  test("RE-c: empty, whitespace-only, overlong, or non-string text is rejected", () => {
+    expect(isValidAchievementEdit({ title: "" })).toBe(false);
+    expect(isValidAchievementEdit({ title: "   " })).toBe(false);
+    expect(isValidAchievementEdit({ title: "x".repeat(121) })).toBe(false);
+    expect(isValidAchievementEdit({ title: "x".repeat(120) })).toBe(true);
+    expect(isValidAchievementEdit({ detail: "x".repeat(501) })).toBe(false);
+    expect(isValidAchievementEdit({ detail: "x".repeat(500) })).toBe(true);
+    expect(isValidAchievementEdit({ title: 5 })).toBe(false);
+  });
+
+  test("RE-d: non-object input is rejected", () => {
+    expect(isValidAchievementEdit(null)).toBe(false);
+    expect(isValidAchievementEdit("title")).toBe(false);
+    expect(isValidAchievementEdit([])).toBe(false);
   });
 });

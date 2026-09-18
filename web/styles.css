@@ -333,6 +333,55 @@ main,
   margin: 0 0 0.4rem;
 }
 
+.constellation-node.is-editing {
+  z-index: 3;
+  width: min(340px, 38vw);
+}
+
+.node-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.node-edit-form textarea {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.78rem;
+  resize: vertical;
+}
+
+.node-edit-error {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.7rem;
+}
+
+.node-edit-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.text-button {
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.68rem;
+}
+
+.text-button:hover,
+.text-button:focus-visible {
+  color: var(--text);
+}
+
 .event-node,
 .detail-node {
   width: min(190px, 20vw);

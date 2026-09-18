@@ -45,6 +45,15 @@ test("builds the achievement constellation", async () => {
   expect(app).toMatch(/&date=/);
   expect(app).toMatch(/isLocallyTraceable/);
   expect(css).toMatch(/\.evidence/);
+  // Edit and remove (BRIEF.md: an incorrect item must be correctable or
+  // removable): a two-step Remove/Confirm remove, never a bare one-click
+  // delete, and edits go through PATCH, never a free-text id/category/
+  // evidence field.
+  expect(app).toMatch(/"Edit"/);
+  expect(app).toMatch(/"Confirm remove"/);
+  expect(app).toMatch(/method: "PATCH"/);
+  expect(app).toMatch(/method: "DELETE"/);
+  expect(css).toMatch(/\.node-edit-form/);
 });
 
 test("builds the report sign-in panel without credential or command surfaces", async () => {

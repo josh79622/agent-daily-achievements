@@ -28,6 +28,9 @@ let currentReportDate: string | undefined;
 let expandedNodeId: string | undefined;
 let relatedNodeId: string | undefined;
 let sourceOpenId: string | undefined;
+let editingId: string | undefined;
+let removingId: string | undefined;
+let editError: string | undefined;
 let reportRevision = 0;
 const sourceResults = new Map<string, HTMLElement>();
 const sourceLoading = new Set<string>();
@@ -272,7 +275,12 @@ async function loadReport(): Promise<void> {
     return;
   }
   const body = (await response.json()) as { report: AchievementReportV1 };
-  const report = body.report;
+  applyReport(body.report);
+}
+
+/** Renders a report already fetched — the initial load, or the updated
+ * report an edit/remove endpoint hands back, without a second fetch. */
+function applyReport(report: AchievementReportV1): void {
   nodes = mapAchievementsToNodes(report.achievements);
   currentReportDate = report.date;
   reportDate.textContent = report.date;
@@ -355,6 +363,51 @@ function textParagraph(text: string, className?: string): HTMLParagraphElement {
   return paragraph;
 }
 
+/** Josh's own correction to an achievement already in the saved report
+ * (BRIEF.md: an incorrect item must be correctable or removable). */
+async function saveEdit(
+  node: ConstellationNode,
+  edit: { title?: string; detail?: string },
+): Promise<void> {
+  if (!currentReportDate) return;
+  try {
+    const body = await api<{ report: AchievementReportV1 }>(
+      `/api/reports/${encodeURIComponent(currentReportDate)}/achievements/${encodeURIComponent(node.id)}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(edit),
+      },
+    );
+    editingId = undefined;
+    editError = undefined;
+    applyReport(body.report);
+  } catch (error) {
+    editError =
+      error instanceof Error ? error.message : "The edit could not be saved.";
+    renderConstellation();
+  }
+}
+
+async function removeAchievement(node: ConstellationNode): Promise<void> {
+  if (!currentReportDate) return;
+  try {
+    const body = await api<{ report: AchievementReportV1 }>(
+      `/api/reports/${encodeURIComponent(currentReportDate)}/achievements/${encodeURIComponent(node.id)}`,
+      { method: "DELETE" },
+    );
+    removingId = undefined;
+    applyReport(body.report);
+  } catch (error) {
+    removingId = undefined;
+    setConstellationStatus(
+      error instanceof Error
+        ? error.message
+        : "The achievement could not be removed.",
+    );
+  }
+}
+
 function setConstellationStatus(message: string | undefined): void {
   constellationStatus.hidden = !message;
   constellationStatus.textContent = message ?? "";
@@ -406,6 +459,12 @@ function createNode(node: ConstellationNode): HTMLElement {
   if (expandedNodeId === node.id) article.classList.add("is-expanded");
   if (relatedNodeId === node.id) article.classList.add("has-related");
   if (sourceOpenId === node.id) article.classList.add("has-source");
+  if (editingId === node.id) article.classList.add("is-editing");
+
+  if (editingId === node.id) {
+    article.append(createEditForm(node));
+    return article;
+  }
 
   const title = document.createElement("h2");
   title.textContent = node.title;
@@ -446,6 +505,31 @@ function createNode(node: ConstellationNode): HTMLElement {
         renderConstellation();
       }),
     );
+  if (node.kind === "achievement") {
+    // An incorrect item must be correctable or removable (BRIEF.md).
+    controls.append(
+      createControl("Edit", false, () => {
+        editingId = node.id;
+        editError = undefined;
+        renderConstellation();
+      }),
+    );
+    if (removingId === node.id)
+      controls.append(
+        actionButton("Confirm remove", () => void removeAchievement(node)),
+        actionButton("Cancel", () => {
+          removingId = undefined;
+          renderConstellation();
+        }),
+      );
+    else
+      controls.append(
+        createControl("Remove", false, () => {
+          removingId = node.id;
+          renderConstellation();
+        }),
+      );
+  }
   article.append(controls);
 
   if (sourceOpenId === node.id)
@@ -483,6 +567,64 @@ function createControl(
   button.setAttribute("aria-pressed", String(pressed));
   button.addEventListener("click", onClick);
   return button;
+}
+
+/** A plain action button (Save, Cancel, Confirm remove) — not a toggle, so
+ * it skips createControl's aria-pressed state and +/− prefix. */
+function actionButton(label: string, onClick: () => void): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "text-button";
+  button.textContent = label;
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+function createEditForm(node: ConstellationNode): HTMLFormElement {
+  const form = document.createElement("form");
+  form.className = "node-edit-form";
+
+  const titleField = document.createElement("textarea");
+  titleField.value = node.title;
+  titleField.maxLength = 120;
+  titleField.rows = 2;
+  titleField.setAttribute("aria-label", "Title");
+  form.append(titleField);
+
+  const detailField = document.createElement("textarea");
+  detailField.value = node.detail;
+  detailField.maxLength = 500;
+  detailField.rows = 5;
+  detailField.setAttribute("aria-label", "Detail");
+  form.append(detailField);
+
+  if (editError) form.append(textParagraph(editError, "node-edit-error"));
+
+  const actions = document.createElement("div");
+  actions.className = "node-edit-actions";
+  const saveButton = document.createElement("button");
+  saveButton.type = "submit";
+  saveButton.className = "text-button";
+  saveButton.textContent = "Save";
+  actions.append(
+    saveButton,
+    actionButton("Cancel", () => {
+      editingId = undefined;
+      editError = undefined;
+      renderConstellation();
+    }),
+  );
+  form.append(actions);
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void saveEdit(node, {
+      title: titleField.value,
+      detail: detailField.value,
+    });
+  });
+
+  return form;
 }
 
 type SigninProvider = "codex" | "claude-code";

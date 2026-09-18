@@ -25,6 +25,7 @@ import {
   buildReportDayPayload,
   type ReportDayPayload,
 } from "../report/report-day-payload.js";
+import { isValidAchievementEdit } from "../report/contract.js";
 import type { SummarizerModelsService } from "../summarizer/model-settings.js";
 import {
   isSummaryProvider,
@@ -630,6 +631,86 @@ export function createApp({
         }
 
         sendJson(response, 200, { report: result.report });
+        return;
+      }
+
+      // Josh's own correction to an already-saved report (BRIEF.md: an
+      // incorrect item must be correctable or removable). This never
+      // touches the summarizer, the payload, or evidence — only title/detail
+      // text (PATCH) or removing the whole item (DELETE).
+      const achievementMatch = pathname.match(
+        /^\/api\/reports\/(\d{4}-\d{2}-\d{2})\/achievements\/([^/]+)$/,
+      );
+      if (achievementMatch) {
+        const origin = localOrigin(request);
+        if (
+          !origin ||
+          (request.headers.origin && request.headers.origin !== origin) ||
+          request.headers["sec-fetch-site"] === "cross-site"
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Edit reports from the local app." },
+          });
+          return;
+        }
+        if (request.method !== "PATCH" && request.method !== "DELETE") {
+          sendJson(response, 405, {
+            error: {
+              code: "method_not_allowed",
+              message: "Method not allowed.",
+            },
+          });
+          return;
+        }
+        if (
+          request.headers.origin !== origin ||
+          (request.method === "PATCH" &&
+            request.headers["content-type"]?.split(";")[0] !==
+              "application/json")
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Edit reports from the local app." },
+          });
+          return;
+        }
+        const [, date, rawId] = achievementMatch;
+        const achievementId = decodeURIComponent(rawId ?? "");
+        const existing = await reportStore.read(date ?? "");
+        if (!existing.found) {
+          sendJson(response, 404, {
+            error: { message: "No report was saved for that date." },
+          });
+          return;
+        }
+        const index = existing.report.achievements.findIndex(
+          (achievement) => achievement.id === achievementId,
+        );
+        if (index === -1) {
+          sendJson(response, 404, {
+            error: { message: "That achievement was not found." },
+          });
+          return;
+        }
+        let achievements = existing.report.achievements;
+        if (request.method === "DELETE") {
+          achievements = achievements.filter(
+            (achievement) => achievement.id !== achievementId,
+          );
+        } else {
+          const edit = await parseJsonBody(request).catch(() => undefined);
+          if (!isValidAchievementEdit(edit)) {
+            sendJson(response, 400, {
+              error: { message: "Provide a valid title and/or detail." },
+            });
+            return;
+          }
+          achievements = achievements.map((achievement, position) =>
+            position === index ? { ...achievement, ...edit } : achievement,
+          );
+        }
+        const updated = { ...existing.report, achievements };
+        await reportStore.save(updated);
+        sendJson(response, 200, { report: updated });
         return;
       }
 
