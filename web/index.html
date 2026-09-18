@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="A fictional interactive view of today's achievements."
+      content="An interactive view of your day's achievements."
     />
     <title>Daily Proof</title>
     <link rel="stylesheet" href="/styles.css" />
@@ -16,7 +16,7 @@
 
     <header class="page-header">
       <a class="brand" href="/" aria-label="Daily Proof home">Daily Proof</a>
-      <time datetime="2026-09-16">16 Sep 2026</time>
+      <time id="report-date"></time>
       <div class="header-actions">
         <button id="signin-toggle" type="button" aria-expanded="false">
           Report sign-in
@@ -28,10 +28,16 @@
     </header>
 
     <main>
+      <p
+        id="constellation-status"
+        class="constellation-status"
+        role="status"
+        hidden
+      ></p>
       <section
         id="constellation"
         class="constellation"
-        aria-label="Today's fictional achievement constellation"
+        aria-label="Today's achievement constellation"
       ></section>
       <aside
         id="signin-panel"

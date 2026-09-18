@@ -10,9 +10,11 @@ test("builds the achievement constellation", async () => {
   expect(build.status, build.stderr).toBe(0);
   const html = await readFile("dist/web/index.html", "utf8");
   const app = await readFile("dist/web/app.js", "utf8");
+  const reportView = await readFile("dist/web/report-view.js", "utf8");
   const css = await readFile("dist/web/styles.css", "utf8");
   expect(html).toMatch(/id="constellation"/);
-  expect(html).toMatch(/<time/);
+  expect(html).toMatch(/id="constellation-status"/);
+  expect(html).toMatch(/id="report-date"/);
   expect(html).toMatch(/id="collector-toggle"/);
   expect(html).toMatch(/id="collector-panel"/);
   expect(html).toMatch(/id="source-consent-form"/);
@@ -23,7 +25,13 @@ test("builds the achievement constellation", async () => {
   expect(html).toMatch(/separate consent/);
   expect(app).toMatch(/api\/collector\/consent/);
   expect(app).toMatch(/function replaceCollection/);
-  expect(app.match(/kind: "achievement"/g) ?? []).toHaveLength(3);
+  // The constellation is now built from a real fetched report, not a
+  // hardcoded sample: no fictional achievement titles, and the mapping
+  // function (which is where the "achievement" kind literal lives) is
+  // imported from the separate, unit-tested report-view module.
+  expect(app).toMatch(/\/api\/reports\/latest/);
+  expect(app).not.toMatch(/Made the report generator reliable/);
+  expect(reportView).toMatch(/kind: "achievement"/);
   expect(app).toMatch(/Expand/);
   expect(app).toMatch(/Related/);
   expect(app).toMatch(/Preview locally/);

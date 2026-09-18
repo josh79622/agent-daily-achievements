@@ -1,108 +1,26 @@
-type NodeKind = "achievement" | "event" | "detail";
-
-interface ConstellationNode {
-  id: string;
-  parentId?: string;
-  title: string;
-  detail: string;
-  kind: NodeKind;
-  x: number;
-  y: number;
-}
+import type { AchievementReportV1 } from "../src/report/contract.js";
+import {
+  describeIncomplete,
+  mapAchievementsToNodes,
+  type ConstellationNode,
+} from "./report-view.js";
 
 const constellation = requiredElement<HTMLElement>("constellation");
+const constellationStatus = requiredElement<HTMLElement>(
+  "constellation-status",
+);
+const reportDate = requiredElement<HTMLTimeElement>("report-date");
 const collectorToggle = requiredElement<HTMLButtonElement>("collector-toggle");
 const collectorPanel = requiredElement<HTMLElement>("collector-panel");
 const collectorClose = requiredElement<HTMLButtonElement>("collector-close");
 const collectorStatus = requiredElement<HTMLElement>("collector-status");
 const collectorSources = requiredElement<HTMLElement>("collector-sources");
 const collectorSessions = requiredElement<HTMLElement>("collector-sessions");
-const nodes: ConstellationNode[] = [
-  {
-    id: "reliable-reports",
-    title: "Made the report generator reliable",
-    detail: "Fixed the date-boundary bug and confirmed the regression test.",
-    kind: "achievement",
-    x: 27,
-    y: 42,
-  },
-  {
-    id: "local-first",
-    title: "Kept the first release local",
-    detail: "Protected private work records by keeping the workflow on-device.",
-    kind: "achievement",
-    x: 51,
-    y: 54,
-  },
-  {
-    id: "verification",
-    title: "Clarified what verification means",
-    detail:
-      "Separated recording a change from proving that it behaves correctly.",
-    kind: "achievement",
-    x: 75,
-    y: 37,
-  },
-  {
-    id: "boundary-test",
-    parentId: "reliable-reports",
-    title: "Date-boundary regression",
-    detail: "A focused test captured the issue before the fix.",
-    kind: "event",
-    x: 14,
-    y: 67,
-  },
-  {
-    id: "focused-check",
-    parentId: "reliable-reports",
-    title: "Focused check passed",
-    detail: "The repaired path produced the expected report.",
-    kind: "event",
-    x: 36,
-    y: 74,
-  },
-  {
-    id: "privacy-choice",
-    parentId: "local-first",
-    title: "Privacy choice",
-    detail: "The first release remains local-first by design.",
-    kind: "event",
-    x: 55,
-    y: 79,
-  },
-  {
-    id: "commit-evidence",
-    parentId: "verification",
-    title: "Commit versus evidence",
-    detail: "A commit records work; verification supplies confidence.",
-    kind: "event",
-    x: 86,
-    y: 66,
-  },
-  {
-    id: "test-evidence",
-    parentId: "boundary-test",
-    title: "Regression evidence",
-    detail: "The failure was reproduced before implementation changed it.",
-    kind: "detail",
-    x: 8,
-    y: 84,
-  },
-  {
-    id: "local-control",
-    parentId: "privacy-choice",
-    title: "User control",
-    detail: "Local records stay under the user's control.",
-    kind: "detail",
-    x: 46,
-    y: 90,
-  },
-];
-
+let nodes: ConstellationNode[] = [];
 let expandedNodeId: string | undefined;
 let relatedNodeId: string | undefined;
 
-renderConstellation();
+void loadReport();
 collectorToggle.addEventListener("click", () => {
   hideSignin();
   void showCollector();
@@ -318,6 +236,40 @@ function createSession(
   return article;
 }
 
+async function loadReport(): Promise<void> {
+  const response = await fetch("/api/reports/latest");
+  if (response.status === 404) {
+    nodes = [];
+    reportDate.textContent = "";
+    reportDate.removeAttribute("datetime");
+    setConstellationStatus("No report has been generated yet.");
+    renderConstellation();
+    return;
+  }
+  if (!response.ok) {
+    nodes = [];
+    setConstellationStatus("The report could not be loaded.");
+    renderConstellation();
+    return;
+  }
+  const body = (await response.json()) as { report: AchievementReportV1 };
+  const report = body.report;
+  nodes = mapAchievementsToNodes(report.achievements);
+  reportDate.textContent = report.date;
+  reportDate.dateTime = report.date;
+  const incomplete = describeIncomplete(report.incomplete);
+  if (incomplete.length) setConstellationStatus(incomplete.join(" "));
+  else if (report.achievements.length === 0)
+    setConstellationStatus("No achievements were found for this day.");
+  else setConstellationStatus(undefined);
+  renderConstellation();
+}
+
+function setConstellationStatus(message: string | undefined): void {
+  constellationStatus.hidden = !message;
+  constellationStatus.textContent = message ?? "";
+}
+
 function renderConstellation(): void {
   constellation.replaceChildren();
   constellation.append(createConnectionLayer());
@@ -380,11 +332,17 @@ function createNode(node: ConstellationNode): HTMLElement {
       expandedNodeId = expandedNodeId === node.id ? undefined : node.id;
       renderConstellation();
     }),
-    createControl("Related", relatedNodeId === node.id, () => {
-      relatedNodeId = relatedNodeId === node.id ? undefined : node.id;
-      renderConstellation();
-    }),
   );
+  // Evidence is not yet turned into child nodes (a separate task), so a real
+  // achievement currently has none; only show Related where there is
+  // something for it to reveal.
+  if (nodes.some((other) => other.parentId === node.id))
+    controls.append(
+      createControl("Related", relatedNodeId === node.id, () => {
+        relatedNodeId = relatedNodeId === node.id ? undefined : node.id;
+        renderConstellation();
+      }),
+    );
   article.append(controls);
 
   article.addEventListener("pointermove", (event) => {

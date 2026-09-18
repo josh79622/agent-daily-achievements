@@ -188,6 +188,13 @@ main,
   overflow: hidden;
 }
 
+.constellation-status {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 1rem;
+  text-align: center;
+}
+
 .constellation-lines {
   position: absolute;
   inset: 0;

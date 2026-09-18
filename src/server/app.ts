@@ -746,6 +746,10 @@ function staticAssetFor(
       contentType: "text/javascript; charset=utf-8",
       file: "app.js",
     },
+    "/report-view.js": {
+      contentType: "text/javascript; charset=utf-8",
+      file: "report-view.js",
+    },
     "/styles.css": {
       contentType: "text/css; charset=utf-8",
       file: "styles.css",
