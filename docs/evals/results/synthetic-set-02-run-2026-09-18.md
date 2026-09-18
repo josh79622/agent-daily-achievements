@@ -11,13 +11,17 @@ temporary directory was removed.
 
 ## Results
 
-| Model | Pass | Critical | Other failures | Per-case time |
-| --- | --- | --- | --- | --- |
-| Codex `gpt-5.6-luna` | 7/8 | 0 | 1 | 6–18s |
-| Claude Code `haiku` | 7/8 | 0 | 1 | 12–31s |
+| Model | Tier | Pass | Critical | Other failures | Per-case time |
+| --- | --- | --- | --- | --- | --- |
+| Codex `gpt-5.6-luna` | cheapest | 7/8 | 0 | 1 | 6–18s |
+| Claude Code `haiku` | cheapest | 7/8 | 0 | 1 | 12–31s |
+| Codex `gpt-5.6-terra` | next tier | 7/8 | 0 | 1 | 8–16s |
+| Claude Code `sonnet` | next tier | 7/8 | 0 | 1 | 4–11s |
 
-Both models failed the same case and no other. No run produced a critical
-failure, so neither fabricated a completion nor counted one activity twice.
+All four models scored identically, failed the same single case, and produced no
+critical failure: none fabricated a completion or counted one activity twice.
+Paying for a higher tier bought nothing measurable on this set. Sonnet was the
+fastest run of the four, so speed here does not track tier either.
 
 - Case 06 (conflicting evidence) was not reported as complete by either model.
 - Case 07 was reported `incomplete` with both `claude-code` and `gemini-web`
@@ -32,8 +36,9 @@ same fix, no further change). Both models produced exactly one item — the
 duplicate-counting rule held — but cited only `codex-203` and omitted
 `claude-code-202`.
 
-Because the same omission appeared in two unrelated models, and because Claude
-`sonnet` omitted a required source ID in the earlier
+Because the same omission appeared in all four models across two providers and
+two price tiers, and because Claude `sonnet` omitted a required source ID in the
+earlier
 [synthetic day 01 review](synthetic-day-01-review.md), this reads as a gap in the
 draft prompt's instruction to cite every supporting source, not as a capability
 limit of cheap models. Incomplete evidence also has a cost consequence: the
@@ -43,24 +48,33 @@ attempts.
 ## Case 02 divergence, within the approved rule
 
 Case 02 requires zero achievements and forbids any item evidenced only by the
-stated intention. Codex reported one item (the passing lint run with no change);
-Claude Code reported none. The approved case makes that lint item optional, so
-both scored as passes. This is the fixture's deliberate latitude, not a
-disagreement between the models.
+stated intention. Both Codex models reported one item (the passing lint run with
+no change); both Claude Code models reported none. The approved case makes that
+lint item optional, so all four scored as passes. The split is by provider, not
+by tier, and it is the fixture's deliberate latitude rather than a disagreement
+about the rule.
 
 ## Measured cost
 
-Read from the account usage card immediately before and after the Claude Code
-run: the 5-hour window moved 40% → 41% and the weekly all-models window stayed
-at 79%. That single point includes this session's own conversation, so eight
-haiku cases cost less than one percentage point of the 5-hour window — below the
-low end of the 1–15% share estimated before the run. The Codex run spends
-ChatGPT Plus quota, which this project's sessions do not otherwise consume; no
-comparable figure was captured for it.
+Read from the account usage card immediately before and after each Claude Code
+run: haiku moved the 5-hour window 40% → 41%, and sonnet moved it 45% → 46%. The
+weekly all-models window did not move for either (79%, then 80%). Both readings
+include this session's own conversation, so eight cases cost under one
+percentage point of the 5-hour window at either tier — below the low end of the
+1–15% share estimated before the runs. The Codex runs spend ChatGPT Plus quota,
+which this project's sessions do not otherwise consume; no comparable figure was
+captured for them.
+
+At the time of these runs the weekly all-models window was already at 79–80%
+with two days to reset, which is the practical reason to keep iterating on the
+cheap tier.
 
 ## What this does not establish
 
-One eight-case fictional set does not choose a permanent summarizer. It does not
+One eight-case fictional set does not choose a permanent summarizer. Identical
+scores across four models mean this set no longer separates them; a harder set
+would be needed to tell tiers apart, and that is a reason to distrust the set for
+model choice, not evidence that model choice does not matter. It does not
 test real source parsing, a long real day against the model input limit, Chrome
 collection, scheduling, or report edits. The harness does not save raw model
 replies, so these runs cannot be re-read; a specific case must be re-run to
