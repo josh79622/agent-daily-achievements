@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import { once } from "node:events";
 import { afterEach, expect, test } from "vitest";
 
-import type { DailyReport } from "../../src/domain/report.js";
+import type { AchievementReportV1 } from "../../src/report/contract.js";
 import type { LocalCollector } from "../../src/collector/local-collector.js";
 import { createApp } from "../../src/server/app.js";
 import {
@@ -50,47 +50,34 @@ test("returns 404 when no latest report has been generated", async () => {
   });
 });
 
-test("generates a sample report and reads the stored result back", async () => {
-  const baseUrl = await startTestApp();
-
-  const generationResponse = await fetch(`${baseUrl}/api/reports/sample`, {
-    method: "POST",
-  });
-  const generationBody = (await generationResponse.json()) as {
-    report: unknown;
+function sampleReport(): AchievementReportV1 {
+  return {
+    schemaVersion: 1,
+    date: "2026-09-16",
+    timezone: "Australia/Sydney",
+    status: "complete",
+    achievements: [],
+    coverage: [],
+    incomplete: [],
   };
-  const latestResponse = await fetch(`${baseUrl}/api/reports/latest`);
+}
 
-  expect(generationResponse.status).toBe(201);
-  expect(latestResponse.status).toBe(200);
-  expect(await latestResponse.json()).toEqual(generationBody);
-});
-
-test("returns the persisted report after sample generation", async () => {
-  let savedReport: DailyReport | undefined;
+test("serves whatever the store holds, unchanged", async () => {
+  const report = sampleReport();
   const reportStore: ReportStore = {
-    async save(report) {
-      savedReport = report;
+    async save() {
+      throw new Error("Nothing in this test saves a report.");
     },
     async readLatest() {
-      if (!savedReport) {
-        throw new Error("Expected the sample report to be saved first.");
-      }
-      return {
-        found: true,
-        report: { ...savedReport, title: "Read-back report" },
-      };
+      return { found: true, report };
     },
   };
   const baseUrl = await startTestApp(reportStore);
 
-  const response = await fetch(`${baseUrl}/api/reports/sample`, {
-    method: "POST",
-  });
-  const body = (await response.json()) as { report: DailyReport };
+  const response = await fetch(`${baseUrl}/api/reports/latest`);
 
-  expect(response.status).toBe(201);
-  expect(body.report.title).toBe("Read-back report");
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ report });
 });
 
 test("returns a structured 404 for an unknown API route", async () => {
@@ -107,7 +94,9 @@ test("returns a structured 404 for an unknown API route", async () => {
 test("returns 405 when a report route receives the wrong method", async () => {
   const baseUrl = await startTestApp();
 
-  const response = await fetch(`${baseUrl}/api/reports/sample`);
+  const response = await fetch(`${baseUrl}/api/reports/latest`, {
+    method: "POST",
+  });
 
   expect(response.status).toBe(405);
   expect(await response.json()).toEqual({

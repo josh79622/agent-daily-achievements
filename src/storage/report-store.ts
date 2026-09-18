@@ -2,13 +2,13 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { DailyReport } from "../domain/report.js";
+import type { AchievementReportV1 } from "../report/contract.js";
 
 export type ReadReportResult =
-  { found: false } | { found: true; report: DailyReport };
+  { found: false } | { found: true; report: AchievementReportV1 };
 
 export interface ReportStore {
-  save(report: DailyReport): Promise<void>;
+  save(report: AchievementReportV1): Promise<void>;
   readLatest(): Promise<ReadReportResult>;
 }
 
@@ -38,7 +38,7 @@ export function createReportStore(directory: string): ReportStore {
         const contents = await readFile(reportPath, "utf8");
         return {
           found: true,
-          report: JSON.parse(contents) as DailyReport,
+          report: JSON.parse(contents) as AchievementReportV1,
         };
       } catch (error) {
         if (isMissingFileError(error)) {

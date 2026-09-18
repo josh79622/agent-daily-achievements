@@ -8,8 +8,6 @@ import {
 import { join } from "node:path";
 
 import type { LocalCollector } from "../collector/local-collector.js";
-import { generateSampleReport } from "../domain/generate-sample-report.js";
-import { sampleRecords } from "../domain/sample-records.js";
 import type { ReportStore } from "../storage/report-store.js";
 
 import {
@@ -586,27 +584,6 @@ export function createApp({
         sendJson(response, 503, {
           report: { status: "incomplete", reason: failures.join(" ") },
         });
-        return;
-      }
-
-      if (pathname === "/api/reports/sample") {
-        if (request.method !== "POST") {
-          sendJson(response, 405, {
-            error: {
-              code: "method_not_allowed",
-              message: "Method not allowed.",
-            },
-          });
-          return;
-        }
-
-        const report = generateSampleReport(sampleRecords, reportDate());
-        await reportStore.save(report);
-        const storedReport = await reportStore.readLatest();
-        if (!storedReport.found) {
-          throw new Error("Saved report could not be read back.");
-        }
-        sendJson(response, 201, { report: storedReport.report });
         return;
       }
 

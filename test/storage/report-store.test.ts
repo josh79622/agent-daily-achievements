@@ -3,8 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
 
-import { generateSampleReport } from "../../src/domain/generate-sample-report.js";
-import { sampleRecords } from "../../src/domain/sample-records.js";
+import type { AchievementReportV1 } from "../../src/report/contract.js";
 import { createReportStore } from "../../src/storage/report-store.js";
 
 const directories: string[] = [];
@@ -16,6 +15,28 @@ afterEach(async () => {
       .map((directory) => rm(directory, { force: true, recursive: true })),
   );
 });
+
+function sampleReport(): AchievementReportV1 {
+  return {
+    schemaVersion: 1,
+    date: "2026-09-16",
+    timezone: "Australia/Sydney",
+    status: "complete",
+    achievements: [
+      {
+        id: "wrote-payload-builder",
+        category: "progress",
+        title: "Wrote the report-day payload builder",
+        detail: "Added buildReportDayPayload with a passing test suite.",
+        evidence: [
+          { source: "codex", recordId: "codex-1", messageIds: ["m1"] },
+        ],
+      },
+    ],
+    coverage: [{ source: "codex", state: "included" }],
+    incomplete: [],
+  };
+}
 
 test("returns a distinct missing result before a report is saved", async () => {
   const directory = await mkdtemp(join(tmpdir(), "daily-report-store-"));
@@ -29,7 +50,7 @@ test("writes and reads back the same report", async () => {
   const directory = await mkdtemp(join(tmpdir(), "daily-report-store-"));
   directories.push(directory);
   const store = createReportStore(directory);
-  const report = generateSampleReport(sampleRecords, "2026-09-16");
+  const report = sampleReport();
 
   await store.save(report);
 

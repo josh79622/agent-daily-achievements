@@ -253,19 +253,21 @@ export type SummaryOutcome =
   { kind: "candidate"; candidate: unknown } | { kind: "unavailable" };
 
 /**
- * Builds the stored report. Status and coverage come only from local facts
- * (collector coverage and the summarizer outcome), never from the candidate.
- */
-/**
- * Minimal storage the real summarizer run needs. Deliberately not the
- * existing `ReportStore` (`src/storage/report-store.ts`), which still stores
- * the older `DailyReport` shape for the unrendered sample route — reconciling
- * the two is parked decision 1 in `PROGRESS.md`, not settled by this type.
+ * Minimal storage the real summarizer run needs: just the one method it
+ * calls. `src/storage/report-store.ts`'s `ReportStore` now stores this same
+ * `AchievementReportV1` shape (decision 1, resolved 2026-09-18), so
+ * `index.ts` can pass one store to both the app and the summary runner —
+ * this interface just avoids handing the runner `readLatest`, which it never
+ * calls.
  */
 export interface AchievementReportStore {
   save(report: AchievementReportV1): Promise<void>;
 }
 
+/**
+ * Builds the stored report. Status and coverage come only from local facts
+ * (collector coverage and the summarizer outcome), never from the candidate.
+ */
 export function assembleReport({
   date,
   timezone,
