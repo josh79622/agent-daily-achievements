@@ -79,3 +79,30 @@ test real source parsing, a long real day against the model input limit, Chrome
 collection, scheduling, or report edits. The harness does not save raw model
 replies, so these runs cannot be re-read; a specific case must be re-run to
 inspect its output. No real day has been summarized.
+
+## Case 05 is unstable, and one run per model cannot score it
+
+After the prompt change in `5236667`, a full haiku run still failed case 05, but
+the same case passed when re-run alone moments later. Repeating case 05 on haiku
+gave these results:
+
+| Prompt | Runs | Passed |
+| --- | --- | --- |
+| Before `5236667` | 6 | 0 |
+| After `5236667` | 7 | 3 |
+
+The before row is one full-set run plus five deliberate baseline repeats; the
+after row is one full-set run plus six repeats. The baseline repeats were run by
+checking out the previous prompt, running, and restoring it.
+
+Two consequences:
+
+1. The prompt change is suggestive but not established. Zero of six against
+   three of seven is a one-sided Fisher probability near 0.12, so this could
+   still be chance. It is not a fix and is not recorded as one.
+2. The four-model table above rests on one run per model. Case 05 is a coin flip
+   on at least one model, so that table cannot separate a model's ability from
+   its luck on this case. Any later model comparison on this set needs repeated
+   runs per case, not one.
+
+The other seven cases have not been repeated, so their stability is unknown.
