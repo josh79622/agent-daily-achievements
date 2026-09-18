@@ -2,13 +2,11 @@ import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { expect, test } from "vitest";
 
-// Task 1 of the React + Vite migration (framework decision, 2026-09-18):
-// this replaces the old assertions against the vanilla-DOM bundle (which no
-// longer exists — constellation, source trace-back, edit/remove, and the
-// sign-in/local-activity panels are being rebuilt in React over the next
-// tasks, not ported in this one). This only checks that the new build
-// pipeline produces a working shell; it is not a claim that those features
-// are back yet.
+// React + Vite migration (framework decision, 2026-09-18): this replaces the
+// old assertions against the vanilla-DOM bundle, which no longer exists.
+// Real component-level tests are their own task (Task 5); until then this
+// only checks that each migration task's build still produces a working
+// page, updated task by task as web/App.tsx changes.
 test("the Vite build produces a working React shell", async () => {
   const build = spawnSync(
     process.execPath,
@@ -27,8 +25,11 @@ test("the Vite build produces a working React shell", async () => {
   const scriptPath = `dist/web${scriptMatch![1]}`;
   const script = await readFile(scriptPath, "utf8");
 
+  // Task 2: the constellation fetches the real report instead of showing
+  // fixed scaffold text.
   expect(script).toMatch(/Daily Proof/);
-  expect(script).toMatch(/React \+ Vite scaffold/);
+  expect(script).toMatch(/api\/reports\/latest/);
+  expect(script).toMatch(/No report has been generated yet\./);
   // The old vanilla entry point is gone; nothing should still reference it.
   expect(html).not.toMatch(/app\.js/);
 });

@@ -185,6 +185,10 @@ main,
 
 .constellation {
   position: relative;
+  /* React Flow's own container needs height: 100% to resolve against, which
+     min-height alone (above) does not provide — a percentage height on a
+     min-height-only ancestor computes to auto/0. */
+  height: 100vh;
   overflow: hidden;
 }
 
@@ -193,6 +197,36 @@ main,
   margin: 0 auto;
   padding: 1rem;
   text-align: center;
+}
+
+/* React Flow node card (migration Task 2). Deliberately not
+   .constellation-node: that class is absolutely positioned for the old
+   manual layout, which collapses to zero size inside a React Flow node
+   (whose own wrapper handles positioning) and leaves it permanently
+   invisible. Expand/Related/Show source styling returns in Task 3. */
+.achievement-card {
+  width: 260px;
+  padding: 0.9rem 1rem;
+  color: var(--text);
+  background: color-mix(in srgb, var(--background) 85%, var(--text) 6%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.achievement-card h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 510;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.achievement-card p {
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
 }
 
 .constellation-lines {
