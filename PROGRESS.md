@@ -69,7 +69,19 @@ regression to fix mid-task.
   2026-09-09 report (three achievements, scroll-to-zoom, no console errors)
   and against a temporarily removed report (same empty state as before,
   restored afterward). `npm run check` passed with 268 tests.
-- **Not started**: Tasks 3–5.
+- **Task 3 done (`e342648`)**: `web/Constellation.tsx`'s `AchievementNode`
+  ports the 4 interactive controls from vanilla DOM: Expand (toggles
+  `.is-expanded` and reveals `.node-detail`), Show source (on-demand fetches
+  `/api/collector/sessions/:recordId?source=:source&date=:reportDate` and
+  renders cited messages or non-traceable notice via `report-view.ts`), Edit
+  (inline `<form>` with title/detail textareas, sending `PATCH
+  /api/reports/:date/achievements/:id`, inline error handling, and
+  Save/Cancel), and Remove (two-step confirmation with `DELETE
+  /api/reports/:date/achievements/:id`). `web/styles.css` rules adapted to
+  `.achievement-card` for hover/focus controls, expanded width/detail,
+  source list, and edit form, excluding `.text-button` from the `+` prefix.
+  `format:check`, `lint`, `typecheck` (both configs), and `build` passed.
+- **Not started**: Tasks 4–5.
 
 ## Completed
 
@@ -145,8 +157,8 @@ regression to fix mid-task.
 
 **Phase 5 as scoped is done** (`71f3987`, `ddc8c70`, `4c7922f`, the real run,
 `45b606a`, `a80e313`, `e46f0c6`, `8d40af6`). The React + Vite migration is
-now the active work: **Tasks 1–2 are done (`f1b5718`, `a7f7144`); Task 3
-(port Expand/Show source/Edit/Remove into node components) is next.** See
+now the active work: **Tasks 1–3 are done (`f1b5718`, `a7f7144`, `e342648`);
+Task 4 (port the Local activity and Report sign-in panels) is next.** See
 "Current phase" above for the full 5-task order and why React was chosen
 over Next.js.
 Phase 6 (daily automation) and the cross-day "knowledge map" both wait
@@ -388,6 +400,12 @@ Open decisions for the remaining report-generation items:
 
 ## Latest verification
 
+- React Flow node interactions (2026-09-18, `e342648`): `AchievementNode`
+  component ports Expand, Show source, Edit, and Remove into React Flow cards.
+  Styles in `web/styles.css` adapted to `.achievement-card` for hover/focus
+  controls, expanded detail, source session previews, and inline edit forms
+  with text-button Save/Cancel. `npm run format:check`, `npm run lint`,
+  `npm run typecheck` (server and web), and `npm run build` all pass.
 - React Flow constellation (2026-09-18, `a7f7144`): browser-pane check
   against the real 2026-09-09 report — three achievement cards render with
   correct text, scroll-to-zoom works, no console errors — and against a
@@ -474,13 +492,12 @@ different agent CLI (Codex or "Antigravity"), so this assumes no memory of
 this conversation, only this repo's files.
 
 - Checkout: `/Users/joshtsai/Documents/agent-daily-achievements`, branch
-  `master`, working tree clean at handoff, latest commit `d52ae08`. No
-  remote, no PR, no other branches or worktrees.
+  `master`, working tree clean at handoff.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
   shell's default Node 25 fails to start (missing Homebrew library). Gate:
-  `npm run check` (268 tests at handoff) — runs format, lint, two `tsc`
-  passes (server, then `-p tsconfig.web.json` for the web app's JSX/DOM
-  types), Vitest, then the build (`tsc` + `vite build`).
+  `npm run check` — runs format, lint, two `tsc` passes (server, then
+  `-p tsconfig.web.json` for the web app's JSX/DOM types), Vitest, then the
+  build (`tsc` + `vite build`).
 - Dev server: `npm run dev` from the checkout
   (`http://127.0.0.1:4317/`). No web hot-reload yet — a `web/` change needs
   a fresh `npm run dev` (or `npm run build`) to show up, since the React
@@ -490,13 +507,11 @@ this conversation, only this repo's files.
   `locate`, never a readiness check or a model call).
 - **Active work: migrating the web UI from framework-free TypeScript/DOM to
   React + Vite, in 5 tasks (see "Current phase" at the top of this file for
-  the full reasoning and order). Tasks 1–2 are done; Task 3 (port
-  Expand/Show source/Edit/Remove into the React Flow node component,
-  `web/Constellation.tsx`) is next.** Read that "Current phase" section
-  before starting Task 3 — it explains why React Flow was picked and what
-  each remaining task covers. Each task is expected to temporarily leave
-  the page less capable than the vanilla-DOM version it replaced; that is
-  the plan, not a regression to fix mid-task.
+  the full reasoning and order). Tasks 1–3 are done; Task 4 (port the
+  Local activity and Report sign-in panels) is next.** Read that "Current
+  phase" section before starting Task 4. Each task is expected to temporarily
+  leave the page less capable than the vanilla-DOM version it replaced; that
+  is the plan, not a regression to fix mid-task.
 - Local state that already reflects real use, not synthetic data:
   `data/local-sources.json` (`claude-code` consented), `data/summary-permission.json`
   (`claude-code`/`codex` both permitted, `claude-code` preferred), and

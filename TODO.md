@@ -322,10 +322,9 @@ regression to fix mid-task.
       no-report/zero-achievements/incomplete states as before. Two real
       layout bugs (a zero-measured node, an unresolvable container height)
       found only by checking the browser. (`a7f7144`)
-- [ ] Task 3: port Expand/Show source/Edit/Remove into the React Flow node
-      component (`web/Constellation.tsx`). `web/styles.css` already has the
-      old rules for these (`.node-controls`, `.evidence`, `.node-edit-form`,
-      etc.) to adapt.
+- [x] Task 3: port Expand/Show source/Edit/Remove into the React Flow node
+      component (`web/Constellation.tsx`). `web/styles.css` rules adapted to
+      `.achievement-card`. (`e342648`)
 - [ ] Task 4: port the Local activity and Report sign-in panels.
 - [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
       component-level tests (e.g. `@testing-library/react`); nothing chosen
