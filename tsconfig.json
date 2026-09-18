@@ -20,6 +20,7 @@
     "test/**/*.ts",
     "web/**/*.ts",
     "scripts/**/*.mjs",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vite.config.ts"
   ]
 }

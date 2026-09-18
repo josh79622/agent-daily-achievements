@@ -5,7 +5,7 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
-import { join } from "node:path";
+import { extname, normalize, resolve, sep } from "node:path";
 
 import type { LocalCollector } from "../collector/local-collector.js";
 import type { ReportStore } from "../storage/report-store.js";
@@ -714,17 +714,21 @@ export function createApp({
         return;
       }
 
-      const staticAsset = staticAssetFor(pathname);
-      if (request.method === "GET" && staticDirectory && staticAsset) {
-        const contents = await readFile(
-          join(staticDirectory, staticAsset.file),
-        );
-        response.writeHead(200, {
-          "content-type": staticAsset.contentType,
-          "cache-control": "no-store",
-        });
-        response.end(contents);
-        return;
+      if (request.method === "GET" && staticDirectory) {
+        const staticFile = resolveStaticFile(staticDirectory, pathname);
+        if (staticFile) {
+          try {
+            const contents = await readFile(staticFile.path);
+            response.writeHead(200, {
+              "content-type": staticFile.contentType,
+              "cache-control": "no-store",
+            });
+            response.end(contents);
+            return;
+          } catch (error) {
+            if (!isMissingFile(error)) throw error;
+          }
+        }
       }
 
       sendJson(response, 404, {
@@ -838,25 +842,43 @@ async function parseGenerationRequest(
   }
 }
 
-function staticAssetFor(
+const staticContentTypes: Record<string, string> = {
+  ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".ico": "image/x-icon",
+  ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+};
+
+/**
+ * Resolves a request path to a file inside `staticDirectory`, refusing
+ * anything that would escape it (e.g. `..`). The built web app (Vite) picks
+ * its own file names and hashes, so this serves whatever exists there
+ * rather than a fixed map of known files.
+ */
+function resolveStaticFile(
+  staticDirectory: string,
   pathname: string,
-): { contentType: string; file: string } | undefined {
-  const assets: Record<string, { contentType: string; file: string }> = {
-    "/": { contentType: "text/html; charset=utf-8", file: "index.html" },
-    "/app.js": {
-      contentType: "text/javascript; charset=utf-8",
-      file: "app.js",
-    },
-    "/report-view.js": {
-      contentType: "text/javascript; charset=utf-8",
-      file: "report-view.js",
-    },
-    "/styles.css": {
-      contentType: "text/css; charset=utf-8",
-      file: "styles.css",
-    },
+): { path: string; contentType: string } | undefined {
+  const relative = pathname === "/" ? "index.html" : pathname.slice(1);
+  const root = resolve(staticDirectory);
+  const target = resolve(root, normalize(relative));
+  if (target !== root && !target.startsWith(root + sep)) return undefined;
+  return {
+    path: target,
+    contentType:
+      staticContentTypes[extname(target)] ?? "application/octet-stream",
   };
-  return assets[pathname];
+}
+
+function isMissingFile(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
 function sendJson(

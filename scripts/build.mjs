@@ -1,4 +1,4 @@
-import { cp, mkdir, readdir, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 
 await rm("dist", { force: true, recursive: true });
@@ -15,14 +15,15 @@ if (compiler.status !== 0) {
   process.exit(compiler.status ?? 1);
 }
 
-const webFiles = await readdir("web").catch(() => []);
-const staticFiles = webFiles.filter((file) => !file.endsWith(".ts"));
+// The web/ React app has its own build (vite.config.ts), separate from the
+// server's tsc compile above; it writes into dist/web, which
+// src/server/app.ts serves as static files.
+const webBuild = spawnSync(
+  process.execPath,
+  ["node_modules/vite/bin/vite.js", "build"],
+  { stdio: "inherit" },
+);
 
-if (staticFiles.length > 0) {
-  await mkdir("dist/web", { recursive: true });
-  await Promise.all(
-    staticFiles.map((file) =>
-      cp(`web/${file}`, `dist/web/${file}`, { recursive: true }),
-    ),
-  );
+if (webBuild.status !== 0) {
+  process.exit(webBuild.status ?? 1);
 }
