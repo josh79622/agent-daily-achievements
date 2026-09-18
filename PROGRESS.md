@@ -18,11 +18,43 @@ under Phase 5 is now checked. Not done, and not in scope as originally
 written: the cross-day "knowledge map" idea (decision 1 below) is a new,
 undesigned feature Josh raised mid-phase, not a Phase 5 deliverable.
 
-**Framework decision reopened, 2026-09-18 (discussion pending).** Josh asked
-to move the web UI onto a framework (currently framework-free TypeScript and
-raw DOM, per the Phase 1 decision recorded in `AGENTS.md`). Nothing has been
-chosen or changed yet; this needs the same one-decision-with-trade-offs
-treatment as any other stack choice before code moves.
+**Framework decision made, 2026-09-18: React + Vite, migrating in 5 tasks.**
+Chosen over Next.js: `src/server/app.ts` already does this app's genuinely
+complex, privacy-sensitive work (local file reads, consent, CLI invocation)
+as a plain Node server, and this is a single local page with no
+SSR/multi-page/SEO need — Next.js would mean rewriting that server as Route
+Handlers or running two servers side by side, for no benefit here. React
+only replaces the front end; the server keeps its own `tsc` build,
+untouched. For the constellation itself, Josh suggested finding an existing
+library rather than hand-rolling layout again; **React Flow (`@xyflow/react`)
+is the pick** — its nodes are real React components (so the existing
+Expand/Show source/Edit/Remove controls and forms can move in directly) and
+it has built-in edges, which the still-undesigned cross-day "knowledge map"
+(decision 1 below) will need anyway.
+
+Migration order (approved by Josh): (1) scaffold Vite + React + a proof-of-
+build shell, server untouched; (2) constellation on React Flow, fetching the
+real report; (3) port Expand/Show source/Edit/Remove into node components;
+(4) port the Local activity and Report sign-in panels; (5) replace the
+bundle-string assertions in `test/web/*.test.ts` with component-level tests.
+Each task is expected to temporarily leave the page less capable than the
+version it replaces, restored feature by feature — that is the plan, not a
+regression to fix mid-task.
+
+- **Task 1 done (`f1b5718`)**: `vite.config.ts` (builds `web/` into
+  `dist/web`), `tsconfig.web.json` (JSX/DOM/bundler settings for
+  `web/**/*.{ts,tsx}` only, `typecheck` now runs both configs),
+  `scripts/build.mjs` now runs `tsc` then `vite build`. `web/app.ts` (742
+  lines of hand-written DOM) is removed, not kept as dead code; `web/report-view.ts`
+  (pure, already-tested) and `web/styles.css` are kept for reuse. Server's
+  static file serving generalized from a fixed 3-path map to resolving any
+  file under `staticDirectory`, path-traversal guarded (Vite's output has
+  its own hashed names). Manually verified: real server boots, serves the
+  real built page and its hashed JS/CSS, and correctly 404s a literal and a
+  percent-encoded `../` traversal attempt. `npm run check` passed with 268
+  tests; the six old bundle-string assertions in `build-output.test.ts` were
+  retired (not left failing) and replaced with one shell smoke test.
+- **Not started**: Tasks 2–5.
 
 ## Completed
 
@@ -97,12 +129,12 @@ treatment as any other stack choice before code moves.
 ## Next task
 
 **Phase 5 as scoped is done** (`71f3987`, `ddc8c70`, `4c7922f`, the real run,
-`45b606a`, `a80e313`, `e46f0c6`, `8d40af6`): a real day is summarized, shown
-in the browser, traceable to real local history, correctable/removable, and
-kept with history. **Next up, pending Josh's steer**: the web UI framework
-decision he just reopened (see the top of this file and "Decisions parked"
-below), which touches everything before either Phase 6 (daily automation) or
-the cross-day "knowledge map" gets its own implementation work.
+`45b606a`, `a80e313`, `e46f0c6`, `8d40af6`). The React + Vite migration is
+now the active work: **Task 1 (scaffold) is done (`f1b5718`); Task 2
+(constellation on React Flow, real report) is next.** See "Current phase"
+above for the full 5-task order and why React was chosen over Next.js.
+Phase 6 (daily automation) and the cross-day "knowledge map" both wait
+behind this migration.
 
 ### Phase 5 progress
 
@@ -340,6 +372,11 @@ Open decisions for the remaining report-generation items:
 
 ## Latest verification
 
+- React/Vite scaffold (2026-09-18, `f1b5718`): booted the real server on the
+  new build; `GET /` served the built shell, both hashed asset requests
+  (`/assets/*.js`, `/assets/*.css`) returned 200, no console errors. A
+  literal and a percent-encoded `../` traversal attempt and a request for a
+  nonexistent file all correctly 404. `npm run check` passed with 268 tests.
 - Edit/remove (2026-09-18, `8d40af6`): browser-pane check against the real
   2026-09-09 report and real server — edited a title (persisted, correct on
   reload), confirmed Cancel is a no-op, removed an achievement (persisted,
@@ -415,7 +452,7 @@ Open decisions for the remaining report-generation items:
   `.worktrees/ui-skeleton` worktree was removed, so a new session opens on the
   current work instead of the stale project-setup state. No remote and no PR.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
-  shell's default Node 25 is broken. Gate: `npm run check` (273 tests at
+  shell's default Node 25 is broken. Gate: `npm run check` (268 tests at
   handoff).
 - Dev server: Josh starts it with `npm run dev` from the checkout
   (`http://127.0.0.1:4317/`). On startup it sweeps stale probe temp
