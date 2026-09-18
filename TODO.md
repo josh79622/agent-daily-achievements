@@ -233,13 +233,32 @@ generation moved here and comes first.
       two previously-dead settings (`availableSummaryProviders`,
       `summaryPermissionPath`) that made this route always fail regardless.
       Manually verified the real server boots and serves `/api/reports/latest`
-      and `/api/summarizer/permission`. Still missing: **no real CLI has run
-      through this path and no real day has been summarized** — that needs
-      Josh's go-ahead. `data/reports/latest.json` (local, git-ignored) holds
-      stale pre-consolidation demo content until then; see `PROGRESS.md`.
+      and `/api/summarizer/permission`.
+  - [x] **First real run, 2026-09-18** (Josh approved): 2026-09-09 (lightest
+        available day, ~31k estimated tokens, measured with
+        `scripts/experiments/measure-days.mts`), through the real
+        permission/generate routes with `reportDate` overridden for the
+        test (`scripts/experiments/run-real-day.mts`, since the route
+        itself only supports "today"), Claude Code `haiku` preferred.
+        `status: complete`, 3 evidenced achievements, no fabricated
+        completion, `codex` correctly `no-activity`. Saved to
+        `data/reports/latest.json`, replacing the stale pre-consolidation
+        demo content.
+  - [x] **Constellation UI connected, 2026-09-18** (`45b606a`): `web/app.ts`
+        fetches `/api/reports/latest` instead of showing three hardcoded
+        sample achievements. New `web/report-view.ts` (pure, unit-tested:
+        RV-1 to RV-3) maps achievements to nodes with a deterministic
+        layout and describes incomplete reasons in plain language.
+        Manually verified against the real 2026-09-09 report and against a
+        missing report in the browser pane. Evidence is still not turned
+        into child nodes; the "Related" control now only shows when a node
+        has children.
 - [ ] Source trace-back in the report UI.
 - [ ] Edit and remove incorrect achievements.
-- [ ] Define and enforce local retention.
+- [ ] Define and enforce local retention. **Now a blocker for the cross-day
+      "knowledge map" idea Josh raised (see decision 1 in `PROGRESS.md`):**
+      `ReportStore` only keeps the single latest report today, so there is
+      no history to map yet.
 
 ### Phase 6 — Daily automation
 

@@ -2,15 +2,18 @@
 
 ## Current phase
 
-**Phase 5 — Report control** (not started)
+**Phase 5 — Report control** (in progress)
 
 Phase 4 closed as scoped on 2026-09-18 after its
 [exit review](docs/reviews/2026-09-18-phase-4-exit-review.md). The tool can
 collect consented local Claude Code and Codex records, gate external
 summarization behind a separate permission, validate and score model-shaped
 reports, and manage provider sign-in, readiness, model, and effort settings.
-**No report is generated from real conversations yet;** Phase 5 starts with
-that work.
+As of later that day, it can also run the real summarizer end to end and show
+the result: one real day (2026-09-09) has been summarized by Claude Code
+`haiku` and rendered in the browser. Remaining Phase 5 work — source
+trace-back, editing achievements, and retention — is listed under "Phase 5
+remaining" below.
 
 ## Completed
 
@@ -84,10 +87,11 @@ that work.
 
 ## Next task
 
-**The real summarizer runner is implemented, storage is consolidated, and it is
-wired into `src/server/index.ts` (`71f3987`, `ddc8c70`, `4c7922f`). Nothing has
-run against a real day yet — that needs Josh's go-ahead (first item below
-"Phase 5 remaining").**
+**The first real day (2026-09-09) has been summarized end to end and shown in
+the browser** (`71f3987`, `ddc8c70`, `4c7922f`, then the real run and
+`45b606a`). **Next up is source trace-back in the report UI** (first item
+below "Phase 5 remaining"); Josh also raised a cross-day "knowledge map" idea
+that is deliberately sequenced after retention is decided (decision 1 below).
 
 ### Phase 5 progress
 
@@ -165,36 +169,54 @@ stated:
   `executor.locate` check, never a readiness check (that spends a real model
   call and only runs on explicit request, decision C1).
 - Manually booted the real server: `GET /api/reports/latest` and
-  `GET /api/summarizer/permission` both respond 200. `/api/reports/latest`
-  still serves `data/reports/latest.json`'s pre-existing content from before
-  today's report-format change (see the flagged item below) — no real
-  summary has been generated, so nothing new has overwritten it yet.
+  `GET /api/summarizer/permission` both respond 200.
+- **The first real run (2026-09-18), approved by Josh**: date 2026-09-09
+  (measured as the lightest available day, 124KB / ~31k estimated tokens,
+  `claude-code` only — see `scripts/experiments/measure-days.mts`), through
+  the real `/api/summarizer/permission` and `/api/reports/generate` routes
+  (`scripts/experiments/run-real-day.mts`, since the route itself only
+  supports "today"), Claude Code `haiku` preferred. Result: `status:
+  complete`, 3 achievements, each with real message-ID evidence; no
+  fabricated completion (two items correctly note a commit not yet pushed /
+  a job not yet applied to); `codex` correctly `no-activity` rather than
+  incomplete. No leftover temp directory. Saved to `data/reports/latest.json`,
+  replacing the stale pre-consolidation demo content that was there before.
+- **The constellation UI now shows this (`45b606a`)**: `web/app.ts` fetches
+  `/api/reports/latest` on load instead of three hardcoded sample
+  achievements. Manually verified in the browser against the real
+  2026-09-09 report (three real achievements, Expand works, date updates)
+  and against a missing report (temporarily moved `latest.json` aside):
+  a "No report has been generated yet." status line, no date. New
+  `web/report-view.ts` holds the pure mapping (`mapAchievementsToNodes`,
+  `describeIncomplete`, `layoutPosition` — a deterministic ellipse layout
+  replacing the old hand-authored x/y coordinates); RV-1 to RV-3 cover it,
+  three deliberate mutations each caught. Evidence is still not turned into
+  child nodes — that stays the separate "source trace-back" task, so the
+  "Related" control is now only shown on a node that actually has children.
 
 ### Phase 5 remaining
 
-1. **Run a real summary.** Everything up to the CLI call is wired and unit
-   tested; nothing has touched a real day. Needs Josh's go-ahead, and a
-   choice of provider/model for the first real attempt.
-2. Source trace-back in the report UI.
-3. Edit and remove incorrect achievements.
-4. Define and enforce local retention.
-5. **Flagged, not yet acted on**: `data/reports/latest.json` (git-ignored
-   local data) holds a stale, old-`DailyReport`-shaped sample report from
-   before today's consolidation (copied in during the worktree-to-checkout
-   move). It is fictional demo content, not real conversation data, but it
-   is the wrong shape for `AchievementReportV1` and will read oddly until a
-   real report overwrites it. Delete it, or leave it until the first real
-   run replaces it — Josh's call.
+1. Source trace-back in the report UI.
+2. Edit and remove incorrect achievements.
+3. Define and enforce local retention — now the practical blocker for
+   anything cross-day (see decision 1 below): `ReportStore` still keeps only
+   the single latest report, no history.
 
 ### Decisions parked, waiting on Josh
 
-1. **What the UI shows.** Resolved as far as storage goes (report storage
-   consolidated on `AchievementReportV1`, `ddc8c70`) — still open: whether the
-   web constellation should assemble from the approved fictional set so the
-   node shape is visible before a real day exists, or wait for real
-   collection and show the empty/incomplete states. `web/app.ts`'s
-   constellation is still a hardcoded `const nodes` array; it fetches no
-   report at all yet.
+1. **What the UI shows.** Resolved: the constellation now fetches and
+   renders the real `/api/reports/latest` (`45b606a`), with empty/no-report
+   states. **New, from this session**: Josh asked about a cross-day
+   "knowledge star map" style — nodes as recurring themes/projects rather
+   than one day's achievements, connected across days as they recur. Judged
+   a good fit for the actual problem (accumulated progress, not a daily
+   snapshot) and a better direction than the current single-day view, but
+   explicitly sequenced *after*, not instead of, today's single-day wiring,
+   because it needs two things that do not exist yet: (a) retention/history
+   storage (item 3 above — today's `ReportStore` only keeps "latest"), and
+   (b) a way to decide which achievements count as the same theme across
+   days, which is undesigned and outside `BRIEF.md`'s first-version scope.
+   Not started; raise retention as its own decision before designing this.
 2. **Conversation order in the payload** follows the approved source scope rather
    than the clock, so a later Codex session can precede an earlier Claude Code
    one. Chronological order would read as one day.
@@ -205,11 +227,12 @@ stated:
 
 ### Still not true
 
-No CLI has run against a real day and no report has ever been generated from
-real records. The full path from a saved permission through the real
-summarizer run to a saved `AchievementReportV1` is now implemented and
-unit-tested, and the server boots with it wired in; it has just never been
-exercised against anything but fakes.
+Cross-day history: only the single latest report is kept, so nothing
+persists once the next report is generated. The report contract, real
+summarizer run, and constellation UI have now all been exercised against one
+real day (2026-09-09) end to end, including the browser render — this is no
+longer only tested against fakes, but it is still exactly one day, one
+provider (Claude Code haiku), and one machine.
 
 ## Measured payload cost (2026-09-18, local sizes only, nothing transmitted)
 
@@ -263,6 +286,17 @@ Open decisions for the remaining report-generation items:
 
 ## Latest verification
 
+- Constellation UI on the real report (2026-09-18, `45b606a`): browser-pane
+  check against the real 2026-09-09 report — three achievements render with
+  their real text, Expand works, date shows `2026-09-09`, no `Related`
+  button on any of them (no children yet) — and against a temporarily
+  removed `latest.json` — "No report has been generated yet.", no date.
+  `npm run check` passed with 251 tests (RV-1 to RV-3 new); three deliberate
+  mutations each caught.
+- First real run (2026-09-18): 2026-09-09 through the real permission and
+  generate routes with Claude Code `haiku`. `status: complete`, 3
+  achievements, all evidenced, no fabricated completion, `codex` correctly
+  `no-activity`. No leftover temp directory.
 - Server wiring (2026-09-18, `4c7922f`): booted the real server with
   `npx tsx src/server/index.ts`; `GET /` (static page), `GET /api/reports/latest`,
   and `GET /api/summarizer/permission` all returned 200. `npm run check`
@@ -307,7 +341,7 @@ Open decisions for the remaining report-generation items:
   `.worktrees/ui-skeleton` worktree was removed, so a new session opens on the
   current work instead of the stale project-setup state. No remote and no PR.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
-  shell's default Node 25 is broken. Gate: `npm run check` (247 tests at
+  shell's default Node 25 is broken. Gate: `npm run check` (251 tests at
   handoff).
 - Dev server: Josh starts it with `npm run dev` from the checkout
   (`http://127.0.0.1:4317/`). On startup it sweeps stale probe temp
