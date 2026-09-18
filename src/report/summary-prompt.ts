@@ -1,4 +1,4 @@
-// The summarizer prompt. Draft, awaiting Josh's approval; no model has run it.
+// The summarizer prompt. Draft, awaiting Josh's approval.
 //
 // The rules come from BRIEF.md and the report contract
 // (docs/plans/2026-09-17-report-contract-design.md), never from an evaluation
@@ -18,9 +18,9 @@ Rules:
 1. Report at most ${maxAchievements} achievements. Fewer is better than padding. Zero is the correct answer when nothing in the records qualifies.
 2. Every achievement must cite the records it came from. Cite only the exact source and recordId values present in the input, and messageIds only from that record. Never invent, reformat, or guess an identifier.
 3. A stated intention is not an achievement. "I'll do X tomorrow", "I plan to", or an unsent draft is not progress, no matter how specific.
-4. A conversation with no evidence that something ran, changed, or was sent cannot establish that a task was completed. Discussion alone is not progress, though it may be a decision, a clarification, or learning.
+4. A conversation with no evidence that something ran, changed, or was sent cannot establish that a task was completed. Discussion alone is not progress, though it may be a decision, a clarification, or learning. This governs whether an achievement exists, not which records it cites: a record too weak to stand alone is still cited when it refers to an activity established elsewhere.
 5. If later evidence contradicts earlier evidence, do not claim completion. When you cite a record that a later record contradicts, you must cite that later record in the same achievement.
-6. One activity is one achievement. If several records describe the same piece of work, write one achievement citing all of them. Never write two achievements for the same activity.
+6. One activity is one achievement, and that achievement cites every record about it. Never write two achievements for the same activity, and never drop one of its records. A record counts as being about the activity when it discusses, confirms, reports, questions, or continues it, in any source and at any time of day, even when it adds no new work.
 7. Describe what happened concretely. No praise, no encouragement, no restating the rules. Do not say a source was inactive or that data is missing; that is determined elsewhere.
 
 Output strictly this JSON and nothing else. No prose, no explanation, no markdown fences:

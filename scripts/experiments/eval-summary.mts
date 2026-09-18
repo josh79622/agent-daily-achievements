@@ -144,6 +144,7 @@ for (const c of set.cases) {
     failed++;
     continue;
   }
+  if (process.env.DUMP) console.log(`--- ${c.id} raw reply ---\n${reply}\n---`);
   const candidate = parseCandidate(reply);
   const report = assembleReport({
     date: "2026-09-18",
