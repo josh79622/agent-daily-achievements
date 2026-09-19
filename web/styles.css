@@ -1648,3 +1648,276 @@ main,
   gap: 10px;
   line-height: 1.5;
 }
+
+/* ==========================================================================
+   Theme Toggle Button & Light Theme Specification
+   ========================================================================== */
+
+.zen-theme-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zen-theme-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.theme-btn-text {
+  font-size: 0.75rem;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+body[data-theme="light"] {
+  color: #0f172a;
+  background: radial-gradient(
+    circle at 50% 15%,
+    #f1f5f9 0%,
+    #f8fafc 80%,
+    #edf2f7 100%
+  );
+}
+
+[data-theme="light"] .zen-app-shell {
+  color: #0f172a;
+}
+
+[data-theme="light"] .zen-header {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .brand-badge {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.1);
+}
+
+[data-theme="light"] .date-string {
+  color: #0f172a;
+}
+
+[data-theme="light"] .status-tag.verified {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+[data-theme="light"] .zen-nav-btn {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #475569;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .zen-nav-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .zen-theme-btn {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .zen-theme-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .concept-switcher-bar {
+  background: rgba(241, 245, 249, 0.9);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .concept-btn {
+  color: #64748b;
+}
+
+[data-theme="light"] .concept-btn:hover {
+  color: #0f172a;
+}
+
+[data-theme="light"] .concept-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .zen-meta-bar {
+  color: #64748b;
+}
+
+[data-theme="light"] .meta-count {
+  color: #475569;
+}
+
+[data-theme="light"] .meta-count strong {
+  color: #0f172a;
+}
+
+[data-theme="light"] .meta-divider {
+  color: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .meta-source {
+  color: #64748b;
+}
+
+[data-theme="light"] .zen-status-alert {
+  background: rgba(2, 132, 199, 0.08);
+  border-color: rgba(2, 132, 199, 0.25);
+  color: #0369a1;
+}
+
+[data-theme="light"] .journal-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .journal-card:hover {
+  background: #ffffff;
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.07),
+    0 0 16px rgba(16, 185, 129, 0.08);
+}
+
+[data-theme="light"] .card-title {
+  color: #0f172a;
+}
+
+[data-theme="light"] .card-detail {
+  color: #334155;
+}
+
+[data-theme="light"] .action-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #475569;
+}
+
+[data-theme="light"] .action-btn:hover {
+  background: rgba(0, 0, 0, 0.09);
+  color: #0f172a;
+}
+
+[data-theme="light"] .evidence-pill {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #475569;
+}
+
+[data-theme="light"] .evidence-pill:hover,
+[data-theme="light"] .evidence-pill.active {
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+[data-theme="light"] .evidence-drawer {
+  background: #f8fafc;
+  border-color: rgba(16, 185, 129, 0.25);
+  border-left-color: #059669;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .evidence-drawer-header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .evidence-drawer-title {
+  color: #047857;
+}
+
+[data-theme="light"] .evidence-drawer-id {
+  color: #64748b;
+}
+
+[data-theme="light"] .msg-text {
+  color: #1e293b;
+}
+
+[data-theme="light"] .hero-card {
+  background: linear-gradient(145deg, #ffffff, #f0fdf4) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.06),
+    0 0 20px rgba(16, 185, 129, 0.08) !important;
+}
+
+[data-theme="light"] .hero-badge-tag {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+[data-theme="light"] .briefing-paper-view {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .briefing-conclusion-callout {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #065f46;
+}
+
+[data-theme="light"] .zen-state-card {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .zen-empty-title {
+  color: #0f172a;
+}
+
+[data-theme="light"] .form-group label {
+  color: #475569;
+}
+
+[data-theme="light"] .form-group input,
+[data-theme="light"] .form-group textarea {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #0f172a;
+}
+
+[data-theme="light"] .btn-secondary {
+  background: rgba(0, 0, 0, 0.06);
+  color: #334155;
+}
+
+[data-theme="light"] .btn-secondary:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
+  color: #0f172a;
+}
+
+[data-theme="light"] .zen-footer {
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .zen-footer p {
+  color: #94a3b8;
+}

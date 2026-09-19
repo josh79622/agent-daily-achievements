@@ -357,10 +357,39 @@ function AchievementCard({
   );
 }
 
+type Theme = "dark" | "light";
+
 export function ZenJournal() {
   const [report, setReport] = useState<AchievementReportV1 | null>(null);
   const [status, setStatus] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const saved = localStorage.getItem("daily_proof_theme");
+      if (saved === "dark" || saved === "light") {
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.body.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    try {
+      localStorage.setItem("daily_proof_theme", next);
+    } catch {
+      // ignore
+    }
+  };
+
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     try {
       const saved = localStorage.getItem("daily_proof_view_mode");
@@ -480,6 +509,22 @@ export function ZenJournal() {
               →
             </button>
           </div>
+          <button
+            type="button"
+            className="zen-theme-btn"
+            onClick={toggleTheme}
+            title={
+              theme === "dark"
+                ? "切換至淺色模式 (Light)"
+                : "切換至深色模式 (Dark)"
+            }
+            aria-label="切換主題"
+          >
+            <span>{theme === "dark" ? "☀️" : "🌙"}</span>
+            <span className="theme-btn-text">
+              {theme === "dark" ? "淺色" : "深色"}
+            </span>
+          </button>
         </div>
       </header>
 
