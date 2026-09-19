@@ -84,25 +84,40 @@ regression to fix mid-task.
 - **UI Overhaul to Style A: Cosmic Constellation (`45eb363`)**:
   Josh reviewed the UI, found the previous plain wireframe unattractive,
   and asked why the radiating node connection feature was missing. He compared
-  two design prototypes and explicitly selected **Style A: 深空星系 (Cosmic
-  Constellation)** with a corner theme color palette picker.
-  - Restored dynamic React Flow satellite nodes that fan out radially around
-    each achievement node when expanded, connected by animated flowing
-    constellation edges and subtle star-loop spine edges.
-  - Clicking any satellite node opens a focused session inspection modal
-    fetching `/api/collector/sessions/:id` to inspect cited conversation messages.
-  - Integrated a corner `<ColorPalette />` component in the header featuring
-    5 nebula color presets (Emerald, Cyan, Violet, Gold, Rose) plus a custom
-    color input, dynamically updating `--accent*` CSS variables and persisting
-    choice in `localStorage`.
-  - Added a global `✦ 全部展開` / `⬡ 全部收合` toggle in the header.
-  - Preserved inline editing (`PATCH`) and removal (`DELETE`) with safety confirmation.
-  - Replaced the default React Flow dot grid with a full-screen animated `<StarfieldBackground />`
-    canvas featuring 140 twinkling celestial stars, dynamic theme-color-synced nebula dust clouds,
-    and occasional shooting stars (meteors).
-  - Verification: Prettier code style check, ESLint (`npm run lint` with 0 errors/warnings),
-    dual TypeScript compilation (`tsc` and `tsc -p tsconfig.web.json`), Vitest
-    suites (web, report, collector, storage, summarizer), and Vite production build all passed.
+  two design prototypes and selected Style A: 深空星系 (Cosmic Constellation).
+- **Core Value Refocus & Prompt Overhaul (`95419c1`)**:
+  Josh observed that 3D stars and cosmic visuals drifted from the tool's core
+  value: providing cognitive relief, emotional closure, and confidence that
+  the day was not wasted. Summaries must remain human-centered:
+  - 3-5 punchy conclusions (<40 chars) per day.
+  - 1-2 clean outcome sentences focusing on tangible decisions and deliverables.
+  - Zero conversational audit jargon ("使用者指出...", "經查 git log...").
+  - First-class credit for negative/rejection decisions (`decision` category).
+  - Strict alignment with developer's primary language.
+- **Google Antigravity / Gemini CLI (`agy`) Integration (`1d40a7a`)**:
+  Integrated Google Antigravity / Gemini CLI (`agy`) as a first-class Summarizer
+  provider alongside Claude Code and Codex:
+  - Extended `SummaryProvider` to include `"agy"` across permissions, model catalog,
+    readiness probe, and summary runner.
+  - Implemented dynamic local model catalog detection via `agy models` (14 local models
+    detected, including `gemini-3.8-flash`, `gemini-3.8-pro`, `gemini-2.5-pro`).
+  - Readiness probe using `gemini-3.8-flash-low` and JSON envelope output parsing.
+  - 7 unit test suites updated; all 279 tests passing.
+  - Real 2026-09-09 summary generated with Gemini 3.8 Flash and saved to `data/reports/`.
+- **UI Pivot to Zen Daily Journal & Multi-Direction Layout (`04662b0`, `11f01cd`, `b26dcc3`)**:
+  Per Josh's instruction ("別做星圖了，幫我想一下類似的功能有沒有更好看的設計，更簡潔的"),
+  retired the heavy 3D React Flow constellation canvas (bundle size dropped from 414 kB
+  to 229 kB, 173 modules down to 18).
+  Created `web/ZenJournal.tsx`:
+  - 3-way layout switcher in header (persisted in `localStorage` as `daily_proof_view_mode`):
+    1. 📖 **方案 A: 極簡手帳 (Linear / Raycast)**: Clean vertical cards with status badges and glowing dots.
+    2. 🍱 **方案 B: 焦點 Bento (Apple / Things 3)**: Hero card for the primary milestone + responsive 2-column grid.
+    3. 📝 **方案 C: 晨昏簡報 (Notion / Axios)**: Editorial overview grouped by Deliverables & Key Decisions.
+  - Inline expandable evidence drawer fetching traceable session messages on-demand.
+  - Inline editing (`PATCH`) and safe two-step deletion (`DELETE`).
+  - Date navigation (previous/next day, latest).
+  - Full **Light Theme (明亮主題)** support with ☀️/🌙 toggle in header (persisted in `localStorage` as `daily_proof_theme`).
+- **Next frontend task**: Task 4 (port the Local activity and Report sign-in / settings panels into the Zen interface).
 - **Not started**: Tasks 4–5.
 
 ## Completed
@@ -342,15 +357,10 @@ Phase 5 deliverable, but work Josh raised mid-phase:
 
 ### Decisions parked, waiting on Josh
 
-1. **What the UI shows.** Resolved: the constellation now fetches and
-   renders the real `/api/reports/latest` (`45b606a`), with empty/no-report
-   states. **Cross-day "knowledge star map" idea (raised this session,
-   still open)**: nodes as recurring themes/projects rather than one day's
-   achievements, connected across days as they recur. Judged a good fit for
-   the actual problem (accumulated progress, not a daily snapshot). Its
-   storage blocker is now removed (retention, `a80e313`), but the design
-   itself has not started — see item 3 under "Phase 5 remaining" for what
-   is still undecided.
+1. **What the UI shows.** Resolved: Josh explicitly abandoned the 3D star map /
+   particle constellation ("別做星圖了，幫我想一下類似的功能有沒有更好看的設計，更簡潔的").
+   Replaced with the Zen Daily Journal (`web/ZenJournal.tsx`) supporting 3 switchable
+   layouts (Journal, Bento, Briefing) and Light/Dark themes.
 2. **Conversation order in the payload** follows the approved source scope rather
    than the clock, so a later Codex session can precede an earlier Claude Code
    one. Chronological order would read as one day.
@@ -361,14 +371,11 @@ Phase 5 deliverable, but work Josh raised mid-phase:
 
 ### Still not true
 
-No UI reads more than one date: `ReportStore` now keeps history
-(`a80e313`), but `/api/reports/latest` and the constellation still only ever
-show the single most recent one — nothing yet lists or displays multiple
-days. The report contract, real summarizer run, and constellation UI have
-now all been exercised against one real day (2026-09-09) end to end,
-including the browser render — this is no longer only tested against fakes,
-but it is still exactly one day, one provider (Claude Code haiku), and one
-machine.
+Cross-day historical synthesis / clustering across multiple dates into meta-themes
+has not been built yet (date navigation between separate days is now supported
+in `ZenJournal.tsx`, but there is no cross-day aggregation engine). Two providers
+have been exercised on real data (Claude Code `haiku` and Gemini `gemini-3.8-flash`),
+while Codex `gpt-5.6` was evaluated on synthetic fixtures and verified ready via probe.
 
 ## Measured payload cost (2026-09-18, local sizes only, nothing transmitted)
 
@@ -422,6 +429,31 @@ Open decisions for the remaining report-generation items:
 
 ## Latest verification
 
+- Light Theme & theme switcher (2026-09-19, `b26dcc3`): added soft warm slate
+  background, crisp white cards, high-contrast typography, and emerald/violet
+  accents for Light mode. Added ☀️/🌙 toggle in the header, persisted in
+  `localStorage` as `daily_proof_theme`. Verified in browser across all 3 layout views.
+  `npm run check` passed (26 test files, 279 tests).
+- 3-Way Layout Switcher (2026-09-19, `11f01cd`): added top pill switcher for:
+  1. 📖 方案 A: 極簡手帳 (Linear / Raycast)
+  2. 🍱 方案 B: 焦點 Bento (Apple / Things 3)
+  3. 📝 方案 C: 晨昏簡報 (Notion / Axios)
+  Persisted in `localStorage` as `daily_proof_view_mode`. Verified with real
+  2026-09-09 data in browser. `npm run check` passed.
+- Zen Daily Journal UI pivot (2026-09-19, `04662b0`): replaced heavy 3D React Flow
+  constellation with `web/ZenJournal.tsx` (reduced bundle size from 414 kB to 229 kB,
+  modules down to 18). Tested against real report with inline expandable evidence
+  drawer, date navigation, inline editing (`PATCH`), and deletion (`DELETE`).
+- Google Antigravity / Gemini CLI (`agy`) integration (2026-09-19, `1d40a7a`):
+  integrated `agy` as a third first-class summarizer provider. Model catalog
+  detected 14 local models via `agy models`. Readiness probe via `gemini-3.8-flash-low`.
+  Summary runner executes `agy` and parses JSON envelope. Tested against real
+  2026-09-09 data using `gemini-3.8-flash` and saved to `data/reports/2026-09-09.json`.
+  7 unit test suites updated; all 279 tests pass.
+- Universal concise prompt overhaul (2026-09-19, `95419c1`): rewrote prompt in
+  `src/report/summary-prompt.ts` to strictly require 3-5 punchy conclusions (<40 chars),
+  1-2 concise outcome sentences, negative decision credit, and no conversational audit
+  jargon. Tested on real 2026-09-09 sessions.
 - React Flow node interactions (2026-09-18, `e342648`): `AchievementNode`
   component ports Expand, Show source, Edit, and Remove into React Flow cards.
   Styles in `web/styles.css` adapted to `.achievement-card` for hover/focus
@@ -509,62 +541,50 @@ Open decisions for the remaining report-generation items:
 
 ## Handoff
 
-Written 2026-09-18 at a session boundary; Josh's next session may be with a
+Written 2026-09-19 at a session boundary; Josh's next session may be with a
 different agent CLI (Codex or "Antigravity"), so this assumes no memory of
 this conversation, only this repo's files.
 
 - Checkout: `/Users/joshtsai/Documents/agent-daily-achievements`, branch
-  `master`, working tree clean at handoff.
+  `master`.
+- Exact dev server command (user rule):
+  `cd /Users/joshtsai/Documents/agent-daily-achievements && npm run dev`
+  Server runs at `http://127.0.0.1:4317/`.
 - Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
   shell's default Node 25 fails to start (missing Homebrew library). Gate:
   `npm run check` — runs format, lint, two `tsc` passes (server, then
   `-p tsconfig.web.json` for the web app's JSX/DOM types), Vitest, then the
   build (`tsc` + `vite build`).
-- Dev server: `npm run dev` from the checkout
-  (`http://127.0.0.1:4317/`). No web hot-reload yet — a `web/` change needs
-  a fresh `npm run dev` (or `npm run build`) to show up, since the React
-  side has no dev-server proxy set up, only a production `vite build`. On
-  startup the server sweeps stale probe temp directories, fetches model
-  lists, and checks which summarizer executables are locatable (a cheap
-  `locate`, never a readiness check or a model call).
-- **Active work: migrating the web UI from framework-free TypeScript/DOM to
-  React + Vite, in 5 tasks (see "Current phase" at the top of this file for
-  the full reasoning and order). Tasks 1–3 are done; Task 4 (port the
-  Local activity and Report sign-in panels) is next.** Read that "Current
-  phase" section before starting Task 4. Each task is expected to temporarily
-  leave the page less capable than the vanilla-DOM version it replaced; that
-  is the plan, not a regression to fix mid-task.
+- Merge verification rule (user rule): ALWAYS run `npm run lint` and verify
+  before merging any branches into `main`.
+- Active frontend work:
+  - The heavy 3D constellation was rejected by Josh ("別做星圖了，幫我想一下類似的功能有沒有更好看的設計，更簡潔的").
+  - Replaced with **Zen Daily Journal (`web/ZenJournal.tsx`)**, featuring:
+    - 3-Way Layout Switcher (persisted in `localStorage` as `daily_proof_view_mode`):
+      1. 📖 **方案 A: 極簡手帳 (Linear / Raycast)**
+      2. 🍱 **方案 B: 焦點 Bento (Apple / Things 3)**
+      3. 📝 **方案 C: 晨昏簡報 (Notion / Axios)**
+    - Full **Light Theme (明亮主題)** and Dark Theme with ☀️/🌙 header toggle
+      (persisted in `localStorage` as `daily_proof_theme`).
+    - Inline expandable evidence drawer, date navigation, inline edit (`PATCH`),
+      and two-step delete (`DELETE`).
+  - Next task: **Task 4: port the Local activity and Report sign-in / settings panels into the Zen interface**
+    (so users can configure preferred CLI, view model lists, and adjust source permissions directly in the UI).
+- Summarizer & Prompt:
+  - Universal concise prompt in `src/report/summary-prompt.ts`: strictly 3-5 punchy
+    items (<40 chars), 1-2 outcome sentences, negative decision credit, no audit jargon.
+  - Three first-class providers supported: `agy` (Google Antigravity / Gemini CLI),
+    `claude-code`, and `codex`.
 - Local state that already reflects real use, not synthetic data:
-  `data/local-sources.json` (`claude-code` consented), `data/summary-permission.json`
-  (`claude-code`/`codex` both permitted, `claude-code` preferred), and
-  `data/reports/2026-09-09.json` (one real generated-and-edited report —
-  see "Phase 5 progress" above for what was verified against it). All are
-  git-ignored local files, not committed.
-- Key documents for the current work: this file's "Current phase" section
-  (framework decision and 5-task order), `web/Constellation.tsx` and
-  `web/report-view.ts` (the pure logic it reuses, still covered by
-  `test/web/report-view.test.ts`), `web/styles.css` (has both the old
-  Expand/Related/Show-source/edit-form rules Task 3 will adapt, and the new
-  `.achievement-card`/`.constellation` rules Task 2 added).
-- Earlier key documents: [summary-run design](docs/plans/2026-09-18-summary-run-design.md),
-  [payload and manifest design](docs/plans/2026-09-18-report-day-payload-design.md),
-  [tool truncation decision](docs/decisions/2026-09-18-tool-result-truncation.md),
-  [report contract design](docs/plans/2026-09-17-report-contract-design.md),
-  [readiness probe, model, effort, and leak-fix design](docs/plans/2026-09-17-readiness-probe-design.md),
-  [Phase 4 exit review](docs/reviews/2026-09-18-phase-4-exit-review.md).
-- Working agreement observed with Josh, worth continuing regardless of
-  which agent is driving:
-  - follow `AGENTS.md` (canonical) and the AI-assisted development process
-    linked from `BRIEF.md`;
-  - bring decisions one at a time with options and a recommendation; do not
-    bundle several decisions into one question;
-  - propose test cases (with fixed IDs for product-behavior tests) before
-    writing test code; run `npm run check`; mutation-check important tests
-    by deliberately breaking the logic and confirming the test catches it;
-    commit each meaningful part; record only verified status, and say
-    plainly when something is not yet verified;
-  - ask before any real CLI or model run, and state exactly what it sends;
-    never read or transmit conversation history without saved consent;
-  - when changing shared files (`PROGRESS.md`, `TODO.md`, `AGENTS.md`),
-    read the current version first — Josh or another agent may have
-    changed them since this was written.
+  `data/local-sources.json`, `data/summary-permission.json`, and
+  `data/reports/2026-09-09.json` / `latest.json` (real generated report with 3 achievements
+  generated by Gemini 3.8 Flash).
+- Key documents for the current work:
+  `web/ZenJournal.tsx` (primary UI), `web/styles.css` (themes and layout styles),
+  `src/report/summary-prompt.ts` (summarization guidelines), `src/summarizer/summary-run.ts`
+  (multi-provider execution runner).
+- Working agreement observed with Josh:
+  - follow `AGENTS.md` (canonical);
+  - bring decisions one at a time with options and a recommendation;
+  - run `npm run check` and verify before claiming tasks complete;
+  - never transmit raw conversation data without saved consent.

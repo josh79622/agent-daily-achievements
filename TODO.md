@@ -327,7 +327,28 @@ regression to fix mid-task.
       `.achievement-card`. (`e342648`)
 - [x] UI Overhaul: Cosmic Constellation (Style A) with radiating satellite nodes,
       flowing edges, session inspection modal, and corner theme color palette (`45eb363`).
-- [ ] Task 4: port the Local activity and Report sign-in panels.
+- [x] Refocus on core value & prompt overhaul (`95419c1`):
+      Josh noted 3D stars/particles drifted from the core goal (daily cognitive relief).
+      Prompt overhauled: 3-5 punchy conclusions (<40 chars), 1-2 clean outcome sentences,
+      zero conversational audit jargon ("使用者指出...", "經查 git log..."), first-class
+      credit for negative decisions (`decision`), matching developer's primary language.
+- [x] Integrate Google Antigravity / Gemini CLI (`agy`) as full Summarizer Provider (`1d40a7a`):
+      Added `agy` across permissions, model catalog discovery (14 models detected locally),
+      readiness probe (`gemini-3.8-flash-low`), summary runner with JSON envelope parsing,
+      and server APIs. 7 unit test suites updated; all 279 tests pass. Real 2026-09-09
+      Gemini 3.8 Flash summary saved to `data/reports/`.
+- [x] UI Pivot to Zen Daily Journal & Multi-Direction Layout (`04662b0`, `11f01cd`, `b26dcc3`):
+      Retired heavy 3D React Flow constellation canvas (reduced bundle size from 414 kB to 233 kB).
+      Created `web/ZenJournal.tsx`:
+      - 3-way view switcher in header (preserved in `localStorage`):
+        1. 📖 方案 A: 極簡手帳 (Linear / Raycast)
+        2. 🍱 方案 B: 焦點 Bento (Apple / Things 3)
+        3. 📝 方案 C: 晨昏簡報 (Notion / Axios)
+      - Inline expandable evidence drawer fetching traceable session messages on-demand.
+      - Inline editing (`PATCH`) and safe two-step deletion (`DELETE`).
+      - Date navigation (previous/next day, latest).
+      - Full Light Theme (明亮主題) support with ☀️/🌙 toggle in header.
+- [ ] Task 4: port the Local activity and Report sign-in / settings panels into the Zen interface.
 - [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
       component-level tests (e.g. `@testing-library/react`); nothing chosen
       yet.
