@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Proof — 簡潔新設計探索</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b0f17;
+        --card-bg: rgba(22, 29, 43, 0.7);
+        --card-hover: rgba(30, 41, 59, 0.85);
+        --card-border: rgba(255, 255, 255, 0.08);
+        --card-border-hover: rgba(16, 185, 129, 0.3);
+        --text-main: #f1f5f9;
+        --text-muted: #94a3b8;
+        --text-faint: #64748b;
+        --accent-green: #10b981;
+        --accent-purple: #a855f7;
+        --accent-blue: #38bdf8;
+        --accent-amber: #f59e0b;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: var(--bg);
+        color: var(--text-main);
+        font-family:
+          "Plus Jakarta Sans",
+          "Noto Sans TC",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 40px 20px 80px;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Concept switcher bar */
+      .switcher-bar {
+        position: sticky;
+        top: 20px;
+        z-index: 100;
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 9999px;
+        padding: 5px;
+        display: flex;
+        gap: 4px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        margin-bottom: 40px;
+      }
+
+      .switcher-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        padding: 8px 18px;
+        font-size: 13.5px;
+        font-weight: 600;
+        border-radius: 9999px;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .switcher-btn:hover {
+        color: var(--text-main);
+      }
+
+      .switcher-btn.active {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .concept-container {
+        width: 100%;
+        max-width: 680px;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Common Date & Header */
+      .date-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .date-nav .date-title {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .date-badge {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--accent-green);
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-weight: 700;
+      }
+
+      .nav-arrows {
+        display: flex;
+        gap: 6px;
+      }
+
+      .nav-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--text-muted);
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.2s;
+      }
+
+      .nav-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+
+      .day-meta {
+        font-size: 13px;
+        color: var(--text-faint);
+        margin-top: -16px;
+        margin-bottom: 28px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      /* =========================================
+       CONCEPT 1: Zen Daily Journal (Linear/Raycast)
+       ========================================= */
+      .journal-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .journal-item {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 14px;
+        padding: 22px 24px;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        position: relative;
+      }
+
+      .journal-item:hover {
+        background: var(--card-hover);
+        border-color: var(--card-border-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      }
+
+      .item-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .item-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .item-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        box-shadow: 0 0 10px currentColor;
+      }
+
+      .item-indicator.progress {
+        background-color: var(--accent-green);
+        color: var(--accent-green);
+      }
+      .item-indicator.decision {
+        background-color: var(--accent-purple);
+        color: var(--accent-purple);
+      }
+
+      .item-title {
+        font-size: 16.5px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--text-main);
+      }
+
+      .item-actions {
+        display: flex;
+        gap: 6px;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+
+      .journal-item:hover .item-actions {
+        opacity: 1;
+      }
+
+      .action-btn {
+        background: rgba(255, 255, 255, 0.06);
+        border: none;
+        color: var(--text-muted);
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        cursor: pointer;
+      }
+
+      .action-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+      }
+
+      .item-detail {
+        font-size: 14px;
+        line-height: 1.65;
+        color: var(--text-muted);
+        margin-left: 18px;
+      }
+
+      .item-footer {
+        margin-top: 14px;
+        margin-left: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .evidence-pill {
+        font-size: 11.5px;
+        color: var(--text-faint);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 4px 10px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .evidence-pill:hover {
+        color: var(--accent-green);
+        border-color: rgba(16, 185, 129, 0.3);
+        background: rgba(16, 185, 129, 0.08);
+      }
+
+      .evidence-drawer {
+        margin-top: 12px;
+        margin-left: 18px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        padding: 12px 14px;
+        border-left: 2px solid var(--accent-green);
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: #cbd5e1;
+        display: none;
+      }
+
+      .evidence-drawer.open {
+        display: block;
+      }
+
+      /* =========================================
+       CONCEPT 2: Daily Focus Bento (Apple/Things 3)
+       ========================================= */
+      .bento-container {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .hero-card {
+        background: linear-gradient(
+          145deg,
+          rgba(30, 41, 59, 0.8),
+          rgba(15, 23, 42, 0.9)
+        );
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        border-radius: 18px;
+        padding: 28px;
+        box-shadow:
+          0 12px 36px rgba(0, 0, 0, 0.4),
+          0 0 30px rgba(16, 185, 129, 0.08);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 140px;
+        height: 140px;
+        background: radial-gradient(
+          circle,
+          rgba(16, 185, 129, 0.15) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+
+      .hero-tag {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--accent-green);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .hero-title {
+        font-size: 21px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 12px;
+        letter-spacing: -0.02em;
+      }
+
+      .hero-detail {
+        font-size: 14.5px;
+        line-height: 1.65;
+        color: #cbd5e1;
+        margin-bottom: 16px;
+      }
+
+      .sub-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .sub-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 20px;
+        transition: all 0.2s;
+      }
+
+      .sub-card:hover {
+        background: var(--card-hover);
+        border-color: rgba(255, 255, 255, 0.18);
+        transform: translateY(-2px);
+      }
+
+      .sub-title {
+        font-size: 15.5px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-main);
+      }
+
+      .sub-detail {
+        font-size: 13px;
+        line-height: 1.55;
+        color: var(--text-muted);
+      }
+
+      /* =========================================
+       CONCEPT 3: Executive Briefing (Notion/Axios)
+       ========================================= */
+      .briefing-paper {
+        background: rgba(18, 24, 38, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
+        padding: 36px 40px;
+      }
+
+      .briefing-section-title {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--accent-blue);
+        margin-bottom: 18px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .briefing-item {
+        margin-bottom: 26px;
+        padding-left: 18px;
+        border-left: 2px solid rgba(255, 255, 255, 0.1);
+        transition: border-color 0.2s;
+      }
+
+      .briefing-item:hover {
+        border-left-color: var(--accent-blue);
+      }
+
+      .briefing-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 6px;
+      }
+
+      .briefing-detail {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text-muted);
+      }
+
+      .conclusion-callout {
+        margin-top: 30px;
+        padding: 16px 20px;
+        background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        border-radius: 10px;
+        font-size: 13.5px;
+        color: #a7f3d0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .philosophy-banner {
+        margin-top: 40px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px dashed rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 18px 24px;
+        font-size: 13px;
+        color: var(--text-faint);
+        line-height: 1.6;
+      }
+
+      .philosophy-banner strong {
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Switcher Toolbar -->
+    <div class="switcher-bar">
+      <button class="switcher-btn active" onclick="switchConcept('journal')">
+        <span>📖</span> 方案 A：極簡手帳流 (Linear)
+      </button>
+      <button class="switcher-btn" onclick="switchConcept('bento')">
+        <span>🍱</span> 方案 B：每日焦點 Bento
+      </button>
+      <button class="switcher-btn" onclick="switchConcept('briefing')">
+        <span>📝</span> 方案 C：高管晨昏簡報
+      </button>
+    </div>
+
+    <!-- CONCEPT 1: Zen Daily Journal -->
+    <div id="concept-journal" class="concept-container">
+      <div class="date-nav">
+        <div>
+          <div class="date-title">
+            2026 年 9 月 9 日 · 週三
+            <span class="date-badge">已驗證</span>
+          </div>
+        </div>
+        <div class="nav-arrows">
+          <button class="nav-btn" title="前一天">←</button>
+          <button class="nav-btn" title="後一天">→</button>
+        </div>
+      </div>
+      <div class="day-meta">
+        <span>🎯 3 項主要成果</span>
+        <span>•</span>
+        <span>🤖 由 Gemini 3.8 Flash 提煉</span>
+        <span>•</span>
+        <span>💬 來源自 Claude Code (3 個對話)</span>
+      </div>
+
+      <div class="journal-list">
+        <!-- Item 1 -->
+        <div class="journal-item">
+          <div class="item-header">
+            <div class="item-left">
+              <span class="item-indicator progress"></span>
+              <h3 class="item-title">定稿 Energetica 求職信</h3>
+            </div>
+            <div class="item-actions">
+              <button class="action-btn">編輯</button>
+              <button class="action-btn">刪除</button>
+            </div>
+          </div>
+          <p class="item-detail">
+            完成 Energetica
+            軟體工程師職缺的求職信定稿並納入投遞追蹤。信件聚焦於既有的前端專案建立實績，刪除不必要的技能缺口描述並修正未經查證的共用元件宣稱。
+          </p>
+          <div class="item-footer">
+            <span class="evidence-pill" onclick="toggleEvidence('ev-1')">
+              📎 Claude Code · 19 條紀錄佐證 ▾
+            </span>
+          </div>
+          <div id="ev-1" class="evidence-drawer">
+            <strong>對話紀錄摘要：</strong><br />
+            • 14:30 掃描 SEEK 找到 Energetica (Melbourne, Hybrid, $105–135k)<br />
+            • 14:42 修正求職信中主動揭露的技能缺口，聚焦專案 setup<br />
+            • 14:50 完成定稿並寫入 applied-jobs.md (commit 6b85f62)
+          </div>
+        </div>
+
+        <!-- Item 2 -->
+        <div class="journal-item">
+          <div class="item-header">
+            <div class="item-left">
+              <span class="item-indicator progress"></span>
+              <h3 class="item-title">完成租寓面試準備</h3>
+            </div>
+            <div class="item-actions">
+              <button class="action-btn">編輯</button>
+              <button class="action-btn">刪除</button>
+            </div>
+          </div>
+          <p class="item-detail">
+            完成租寓資深軟體工程師線上面試的賽前準備文件與通話小抄。內容涵蓋薪資錨定策略、專案經驗主軸、反問清單與常見追問邊界。
+          </p>
+          <div class="item-footer">
+            <span class="evidence-pill" onclick="toggleEvidence('ev-2')">
+              📎 Claude Code · 18 條紀錄佐證 ▾
+            </span>
+          </div>
+          <div id="ev-2" class="evidence-drawer">
+            <strong>對話紀錄摘要：</strong><br />
+            • 11:05 產出 interview/company-prep/zuyou-prep.md 與一頁通話小抄<br />
+            • 11:10 錨定薪資範圍 11.5–12 萬，整理反問 16 題與追問邊界
+          </div>
+        </div>
+
+        <!-- Item 3 -->
+        <div class="journal-item">
+          <div class="item-header">
+            <div class="item-left">
+              <span class="item-indicator decision"></span>
+              <h3 class="item-title">排除 8 筆不合適職缺</h3>
+            </div>
+            <div class="item-actions">
+              <button class="action-btn">編輯</button>
+              <button class="action-btn">刪除</button>
+            </div>
+          </div>
+          <p class="item-detail">
+            評估多筆職缺後，因簽證身分、技術棧不符、職級差距或缺乏設計系統經驗等因素排除八筆職缺。決定當天停止搜尋，將時間集中於隔日面試的準備。
+          </p>
+          <div class="item-footer">
+            <span class="evidence-pill" onclick="toggleEvidence('ev-3')">
+              📎 Claude Code · 14 條紀錄佐證 ▾
+            </span>
+          </div>
+          <div id="ev-3" class="evidence-drawer">
+            <strong>對話紀錄摘要：</strong><br />
+            • 10:48 依序評估 ubank、Temple & Webster、Easygo、Lottery Corp<br />
+            • 11:02 查證 104 專案無獨立 design
+            system，果斷跳過該職缺，當日及時停損
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONCEPT 2: Daily Focus Bento -->
+    <div id="concept-bento" class="concept-container" style="display: none">
+      <div class="date-nav">
+        <div class="date-title">2026 年 9 月 9 日 · 今日焦點</div>
+        <div class="nav-arrows">
+          <button class="nav-btn">←</button>
+          <button class="nav-btn">→</button>
+        </div>
+      </div>
+
+      <div class="bento-container">
+        <!-- Hero Card -->
+        <div class="hero-card">
+          <div class="hero-tag">🌟 今日核心里程碑</div>
+          <h2 class="hero-title">定稿 Energetica 求職信</h2>
+          <p class="hero-detail">
+            完成 Energetica
+            軟體工程師職缺的求職信定稿並納入投遞追蹤。信件聚焦於既有的前端專案建立實績，刪除不必要的技能缺口描述並修正未經查證的共用元件宣稱。
+          </p>
+          <span class="evidence-pill">📎 19 條佐證紀錄 · 已定稿保存</span>
+        </div>
+
+        <!-- 2-col Sub Grid -->
+        <div class="sub-grid">
+          <div class="sub-card">
+            <div class="hero-tag" style="color: var(--accent-purple)">
+              🧭 戰略決策
+            </div>
+            <h3 class="sub-title">排除 8 筆不合適職缺</h3>
+            <p class="sub-detail">
+              因身分、技術棧或缺乏設計系統經驗果斷排除 8
+              筆職缺。及時停損停止搜尋，將精力聚焦於隔日面試。
+            </p>
+          </div>
+
+          <div class="sub-card">
+            <div class="hero-tag" style="color: var(--accent-blue)">
+              🎯 準備就緒
+            </div>
+            <h3 class="sub-title">完成租寓面試準備</h3>
+            <p class="sub-detail">
+              產出線上面試賽前文件與通話小抄，涵蓋薪資錨定策略、專案經驗主軸、反問清單與常見追問邊界。
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONCEPT 3: Executive Briefing -->
+    <div id="concept-briefing" class="concept-container" style="display: none">
+      <div class="briefing-paper">
+        <div
+          class="date-nav"
+          style="border: none; margin-bottom: 12px; padding-bottom: 0"
+        >
+          <h1
+            style="font-size: 24px; font-weight: 700; letter-spacing: -0.02em"
+          >
+            Daily Briefing · 2026.09.09
+          </h1>
+          <div class="nav-arrows">
+            <button class="nav-btn">←</button>
+            <button class="nav-btn">→</button>
+          </div>
+        </div>
+        <p
+          style="font-size: 13px; color: var(--text-faint); margin-bottom: 30px"
+        >
+          當日對話提煉完成 · 3 項結論 · 0 項未決阻礙
+        </p>
+
+        <div class="briefing-section-title">
+          <span>🚀</span> 關鍵成果 (Deliverables)
+        </div>
+
+        <div class="briefing-item">
+          <h3 class="briefing-title">1. 定稿 Energetica 求職信</h3>
+          <p class="briefing-detail">
+            完成 Energetica
+            軟體工程師職缺的求職信定稿並納入投遞追蹤。信件聚焦於既有的前端專案建立實績，刪除不必要的技能缺口描述並修正未經查證的共用元件宣稱。
+          </p>
+        </div>
+
+        <div class="briefing-item">
+          <h3 class="briefing-title">2. 完成租寓面試準備</h3>
+          <p class="briefing-detail">
+            完成租寓資深軟體工程師線上面試的賽前準備文件與通話小抄。內容涵蓋薪資錨定策略、專案經驗主軸、反問清單與常見追問邊界。
+          </p>
+        </div>
+
+        <div
+          class="briefing-section-title"
+          style="color: var(--accent-purple); margin-top: 36px"
+        >
+          <span>🧭</span> 關鍵決策與止損 (Decisions)
+        </div>
+
+        <div
+          class="briefing-item"
+          style="border-left-color: rgba(168, 85, 247, 0.4)"
+        >
+          <h3 class="briefing-title">3. 排除 8 筆不合適職缺</h3>
+          <p class="briefing-detail">
+            評估多筆職缺後，因簽證身分、技術棧不符、職級差距或缺乏設計系統經驗等因素排除八筆職缺。決定當天停止搜尋，將時間集中於隔日面試的準備。
+          </p>
+        </div>
+
+        <div class="conclusion-callout">
+          <span>✨</span>
+          今日評估：關鍵目標（求職信與面試賽前檔）全數落地，及時停止無效海投，時間利用率高。
+        </div>
+      </div>
+    </div>
+
+    <!-- Philosophy Footer -->
+    <div class="concept-container">
+      <div class="philosophy-banner">
+        💡 <strong>為什麼這些設計比星圖更適合你？</strong><br />
+        •
+        <strong>零認知負擔</strong
+        >：不用拖拉視角、不用尋找節點、不用辨識連線。<br />
+        • <strong>成果一目了然</strong>：標題極短有力、內文 1～2
+        句直接講淨結果，3 秒鐘確認今日收穫。<br />
+        •
+        <strong>可查證但不干擾</strong
+        >：想看佐證點擊即可展開，不想看時視覺乾淨舒服。
+      </div>
+    </div>
+
+    <script>
+      function switchConcept(type) {
+        document
+          .querySelectorAll(".concept-container[id]")
+          .forEach((el) => (el.style.display = "none"));
+        document
+          .querySelectorAll(".switcher-btn")
+          .forEach((btn) => btn.classList.remove("active"));
+
+        const target = document.getElementById("concept-" + type);
+        if (target) target.style.display = "block";
+
+        event.currentTarget.classList.add("active");
+      }
+
+      function toggleEvidence(id) {
+        const drawer = document.getElementById(id);
+        if (drawer) {
+          drawer.classList.toggle("open");
+        }
+      }
+    </script>
+  </body>
+</html>

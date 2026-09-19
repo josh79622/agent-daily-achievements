@@ -27,11 +27,12 @@
 body {
   min-height: 100vh;
   margin: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   color: var(--text);
   background: radial-gradient(
-    circle at 50% 30%,
-    #0d1624 0%,
+    circle at 50% 20%,
+    #0e1524 0%,
     #07090e 75%,
     #050608 100%
   );
@@ -982,4 +983,540 @@ main,
 .session-close-btn:hover {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* ==========================================================================
+   Zen Daily Journal (Linear / Raycast Inspired Minimalist Aesthetics)
+   ========================================================================== */
+
+.zen-app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem 1.5rem 6rem;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #f1f5f9;
+}
+
+.zen-header {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.brand-badge {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 0.35rem 0.8rem;
+  border-radius: 9999px;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.15);
+}
+
+.zen-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.date-display {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.date-string {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.status-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+}
+
+.status-tag.verified {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.nav-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.zen-nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zen-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.zen-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.zen-main-container {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+}
+
+.zen-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  font-size: 0.86rem;
+  color: #64748b;
+}
+
+.meta-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.meta-count {
+  color: #94a3b8;
+}
+
+.meta-count strong {
+  color: #f1f5f9;
+}
+
+.meta-divider {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.meta-source {
+  color: #64748b;
+}
+
+.zen-status-alert {
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 10px;
+  padding: 0.85rem 1.1rem;
+  font-size: 0.86rem;
+  color: #bae6fd;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.journal-cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.journal-card {
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1.5rem 1.65rem;
+  backdrop-filter: blur(12px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.journal-card:hover {
+  background: rgba(23, 33, 53, 0.85);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.45),
+    0 0 20px rgba(16, 185, 129, 0.05);
+}
+
+.card-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+  gap: 1rem;
+}
+
+.card-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.status-dot.progress {
+  background-color: #10b981;
+  color: #10b981;
+}
+
+.status-dot.decision {
+  background-color: #a855f7;
+  color: #a855f7;
+}
+
+.status-dot.clarification {
+  background-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.status-dot.learning {
+  background-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: #ffffff;
+  line-height: 1.4;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.journal-card:hover .card-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.action-btn.action-danger {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.action-btn.action-danger:hover {
+  background: rgba(239, 68, 68, 0.35);
+  color: #ffffff;
+}
+
+.remove-confirm-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.remove-prompt {
+  font-size: 0.75rem;
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+.card-detail {
+  margin: 0 0 1rem 1.35rem;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: #cbd5e1;
+}
+
+.card-evidence-section {
+  margin-left: 1.35rem;
+  margin-top: 0.5rem;
+}
+
+.evidence-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.evidence-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.evidence-pill:hover {
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.evidence-pill.active {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.pill-arrow {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+.evidence-drawer {
+  margin-top: 0.85rem;
+  background: rgba(10, 15, 26, 0.95);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-left: 3px solid #10b981;
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.evidence-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.evidence-drawer-title {
+  font-weight: 700;
+  color: #10b981;
+}
+
+.evidence-drawer-id {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-family: monospace;
+}
+
+.evidence-text-faint {
+  color: #94a3b8;
+  margin: 0;
+}
+
+.evidence-error {
+  color: #f87171;
+  margin: 0;
+}
+
+.evidence-messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 0.4rem;
+}
+
+.evidence-msg-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.msg-role-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
+  color: #38bdf8;
+}
+
+.msg-role-badge.assistant {
+  color: #34d399;
+}
+
+.msg-text {
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.evidence-stale-id {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  font-style: italic;
+  margin: 0;
+}
+
+/* Edit Form */
+.journal-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.form-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.form-group input,
+.form-group textarea {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.form-error {
+  color: #f87171;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+.btn {
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.btn-primary {
+  background: #10b981;
+  color: #041f14;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #34d399;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+/* Empty & Loading States */
+.zen-state-card {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: rgba(17, 24, 39, 0.5);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+}
+
+.zen-empty-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.5rem;
+}
+
+.zen-state-text {
+  font-size: 0.92rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* Footer */
+.zen-footer {
+  width: 100%;
+  max-width: 720px;
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+.zen-footer p {
+  font-size: 0.78rem;
+  color: #475569;
+  margin: 0;
 }
