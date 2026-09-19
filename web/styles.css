@@ -1520,3 +1520,131 @@ main,
   color: #475569;
   margin: 0;
 }
+
+/* ==========================================================================
+   Design Concept Switcher & Multi-Direction Styles (Bento / Briefing)
+   ========================================================================== */
+
+.concept-switcher-bar {
+  display: inline-flex;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.concept-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.concept-btn:hover {
+  color: #ffffff;
+}
+
+.concept-btn.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* Concept B: Bento Grid */
+.bento-layout-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.hero-card {
+  background: linear-gradient(
+    145deg,
+    rgba(22, 33, 50, 0.9),
+    rgba(13, 20, 32, 0.95)
+  ) !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.5),
+    0 0 35px rgba(16, 185, 129, 0.1) !important;
+  padding: 2rem !important;
+}
+
+.hero-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  margin-bottom: 0.85rem;
+}
+
+.bento-sub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+/* Concept C: Executive Briefing */
+.briefing-paper-view {
+  background: rgba(15, 22, 35, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 2.5rem 2.5rem;
+  backdrop-filter: blur(14px);
+}
+
+.briefing-inner-paper {
+  display: flex;
+  flex-direction: column;
+}
+
+.briefing-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+  margin-bottom: 1.25rem;
+}
+
+.briefing-items-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.briefing-conclusion-callout {
+  margin-top: 2.5rem;
+  padding: 1.1rem 1.4rem;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 12px;
+  font-size: 0.88rem;
+  color: #a7f3d0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.5;
+}

@@ -12,6 +12,8 @@ import {
   type EvidenceMessage,
 } from "./report-view.js";
 
+type ViewMode = "journal" | "bento" | "briefing";
+
 interface EvidenceDrawerProps {
   refData: EvidenceRef;
   reportDate?: string;
@@ -123,6 +125,7 @@ interface AchievementCardProps {
   reportDate: string;
   onReportUpdated: (report: AchievementReportV1) => void;
   onError: (message: string) => void;
+  isHero?: boolean;
 }
 
 function AchievementCard({
@@ -130,6 +133,7 @@ function AchievementCard({
   reportDate,
   onReportUpdated,
   onError,
+  isHero = false,
 }: AchievementCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -196,9 +200,16 @@ function AchievementCard({
   }
 
   const category = achievement.category || "progress";
+  const cardClassName = `journal-card category-${category} ${isHero ? "hero-card" : ""}`;
 
   return (
-    <article className={`journal-card category-${category}`}>
+    <article className={cardClassName}>
+      {isHero ? (
+        <div className="hero-badge-tag">
+          <span>🌟</span> 今日核心里程碑
+        </div>
+      ) : null}
+
       {isEditing ? (
         <form className="journal-edit-form" onSubmit={handleSave}>
           <div className="form-group">
@@ -350,6 +361,26 @@ export function ZenJournal() {
   const [report, setReport] = useState<AchievementReportV1 | null>(null);
   const [status, setStatus] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try {
+      const saved = localStorage.getItem("daily_proof_view_mode");
+      if (saved === "journal" || saved === "bento" || saved === "briefing") {
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return "journal";
+  });
+
+  const changeViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem("daily_proof_view_mode", mode);
+    } catch {
+      // ignore
+    }
+  };
 
   const loadReport = useCallback(async (date?: string) => {
     setLoading(true);
@@ -401,6 +432,12 @@ export function ZenJournal() {
     void loadReport(nextDate);
   }
 
+  // Briefing Categorization
+  const deliverables =
+    report?.achievements.filter((a) => a.category !== "decision") ?? [];
+  const decisions =
+    report?.achievements.filter((a) => a.category === "decision") ?? [];
+
   return (
     <div className="zen-app-shell">
       <header className="zen-header">
@@ -446,6 +483,31 @@ export function ZenJournal() {
         </div>
       </header>
 
+      {/* 3 Design Directions Switcher Bar */}
+      <nav className="concept-switcher-bar" aria-label="設計風格切換">
+        <button
+          type="button"
+          className={`concept-btn ${viewMode === "journal" ? "active" : ""}`}
+          onClick={() => changeViewMode("journal")}
+        >
+          <span>📖</span> 方案 A：極簡手帳 (Linear)
+        </button>
+        <button
+          type="button"
+          className={`concept-btn ${viewMode === "bento" ? "active" : ""}`}
+          onClick={() => changeViewMode("bento")}
+        >
+          <span>🍱</span> 方案 B：焦點 Bento (Apple)
+        </button>
+        <button
+          type="button"
+          className={`concept-btn ${viewMode === "briefing" ? "active" : ""}`}
+          onClick={() => changeViewMode("briefing")}
+        >
+          <span>📝</span> 方案 C：晨昏簡報 (Notion)
+        </button>
+      </nav>
+
       <main className="zen-main-container">
         {loading ? (
           <div className="zen-state-card">
@@ -473,17 +535,103 @@ export function ZenJournal() {
               </div>
             ) : null}
 
-            <section className="journal-cards-container">
-              {report.achievements.map((ach) => (
-                <AchievementCard
-                  key={ach.id}
-                  achievement={ach}
-                  reportDate={report.date}
-                  onReportUpdated={(updated) => setReport(updated)}
-                  onError={(err) => setStatus(err)}
-                />
-              ))}
-            </section>
+            {/* View 1: Zen Journal (Vertical cards) */}
+            {viewMode === "journal" && (
+              <section className="journal-cards-container">
+                {report.achievements.map((ach) => (
+                  <AchievementCard
+                    key={ach.id}
+                    achievement={ach}
+                    reportDate={report.date}
+                    onReportUpdated={(updated) => setReport(updated)}
+                    onError={(err) => setStatus(err)}
+                  />
+                ))}
+              </section>
+            )}
+
+            {/* View 2: Bento Grid (Hero card + 2-col subcards) */}
+            {viewMode === "bento" && (
+              <section className="bento-layout-container">
+                {report.achievements[0] ? (
+                  <AchievementCard
+                    key={report.achievements[0].id}
+                    achievement={report.achievements[0]}
+                    reportDate={report.date}
+                    onReportUpdated={(updated) => setReport(updated)}
+                    onError={(err) => setStatus(err)}
+                    isHero={true}
+                  />
+                ) : null}
+
+                {report.achievements.length > 1 ? (
+                  <div className="bento-sub-grid">
+                    {report.achievements.slice(1).map((ach) => (
+                      <AchievementCard
+                        key={ach.id}
+                        achievement={ach}
+                        reportDate={report.date}
+                        onReportUpdated={(updated) => setReport(updated)}
+                        onError={(err) => setStatus(err)}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+            )}
+
+            {/* View 3: Executive Briefing (Editorial typography) */}
+            {viewMode === "briefing" && (
+              <section className="briefing-paper-view">
+                <div className="briefing-inner-paper">
+                  <div className="briefing-section-header">
+                    <span className="sec-icon">🚀</span> 關鍵成果 (Deliverables)
+                  </div>
+                  <div className="briefing-items-group">
+                    {deliverables.map((ach) => (
+                      <AchievementCard
+                        key={ach.id}
+                        achievement={ach}
+                        reportDate={report.date}
+                        onReportUpdated={(updated) => setReport(updated)}
+                        onError={(err) => setStatus(err)}
+                      />
+                    ))}
+                    {deliverables.length === 0 ? (
+                      <p className="evidence-text-faint">本日無進展類成果。</p>
+                    ) : null}
+                  </div>
+
+                  {decisions.length > 0 ? (
+                    <>
+                      <div
+                        className="briefing-section-header"
+                        style={{ color: "#c084fc", marginTop: "2rem" }}
+                      >
+                        <span className="sec-icon">🧭</span> 關鍵決策與止損
+                        (Decisions)
+                      </div>
+                      <div className="briefing-items-group">
+                        {decisions.map((ach) => (
+                          <AchievementCard
+                            key={ach.id}
+                            achievement={ach}
+                            reportDate={report.date}
+                            onReportUpdated={(updated) => setReport(updated)}
+                            onError={(err) => setStatus(err)}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+
+                  <div className="briefing-conclusion-callout">
+                    <span>✨</span>{" "}
+                    今日評估：關鍵目標全數落地，及時排除無效雜訊，時間利用率高。
+                  </div>
+                </div>
+              </section>
+            )}
           </>
         ) : (
           <div className="zen-state-card">
