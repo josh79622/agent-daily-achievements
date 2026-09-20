@@ -84,14 +84,14 @@ regression to fix mid-task.
 - **UI Overhaul to Style A: Cosmic Constellation (`45eb363`)**:
   Josh reviewed the UI, found the previous plain wireframe unattractive,
   and asked why the radiating node connection feature was missing. He compared
-  two design prototypes and selected Style A: 深空星系 (Cosmic Constellation).
+  two design prototypes and selected Style A: Cosmic Constellation.
 - **Core Value Refocus & Prompt Overhaul (`95419c1`)**:
   Josh observed that 3D stars and cosmic visuals drifted from the tool's core
   value: providing cognitive relief, emotional closure, and confidence that
   the day was not wasted. Summaries must remain human-centered:
   - 3-5 punchy conclusions (<40 chars) per day.
   - 1-2 clean outcome sentences focusing on tangible decisions and deliverables.
-  - Zero conversational audit jargon ("使用者指出...", "經查 git log...").
+  - Zero conversational audit jargon ("the user pointed out...", "checked git log...").
   - First-class credit for negative/rejection decisions (`decision` category).
   - Strict alignment with developer's primary language.
 - **Google Antigravity / Gemini CLI (`agy`) Integration (`1d40a7a`)**:
@@ -105,20 +105,76 @@ regression to fix mid-task.
   - 7 unit test suites updated; all 279 tests passing.
   - Real 2026-09-09 summary generated with Gemini 3.8 Flash and saved to `data/reports/`.
 - **UI Pivot to Zen Daily Journal & Multi-Direction Layout (`04662b0`, `11f01cd`, `b26dcc3`)**:
-  Per Josh's instruction ("別做星圖了，幫我想一下類似的功能有沒有更好看的設計，更簡潔的"),
+  Per Josh's instruction to replace the complex star graph with a cleaner, more minimalist design,
   retired the heavy 3D React Flow constellation canvas (bundle size dropped from 414 kB
   to 229 kB, 173 modules down to 18).
   Created `web/ZenJournal.tsx`:
   - 3-way layout switcher in header (persisted in `localStorage` as `daily_proof_view_mode`):
-    1. 📖 **方案 A: 極簡手帳 (Linear / Raycast)**: Clean vertical cards with status badges and glowing dots.
-    2. 🍱 **方案 B: 焦點 Bento (Apple / Things 3)**: Hero card for the primary milestone + responsive 2-column grid.
-    3. 📝 **方案 C: 晨昏簡報 (Notion / Axios)**: Editorial overview grouped by Deliverables & Key Decisions.
+    1. 📖 **Concept A: Minimal Journal (Linear / Raycast)**: Clean vertical cards with status badges and glowing dots.
+    2. 🍱 **Concept B: Focus Bento (Apple / Things 3)**: Hero card for the primary milestone + responsive 2-column grid.
+    3. 📝 **Concept C: Executive Briefing (Notion / Axios)**: Editorial overview grouped by Deliverables & Key Decisions.
   - Inline expandable evidence drawer fetching traceable session messages on-demand.
   - Inline editing (`PATCH`) and safe two-step deletion (`DELETE`).
   - Date navigation (previous/next day, latest).
-  - Full **Light Theme (明亮主題)** support with ☀️/🌙 toggle in header (persisted in `localStorage` as `daily_proof_theme`).
-- **Next frontend task**: Task 4 (port the Local activity and Report sign-in / settings panels into the Zen interface).
-- **Not started**: Tasks 4–5.
+- **Model Settings Modal, Unified Language, and Key Milestone (`isPrimary`)**:
+  Per Josh's requirements:
+  1. **UI Model & Provider Settings**: Restored summarizer settings in a Zen modal (`web/SettingsModal.tsx`) with full support for Google Antigravity / Gemini CLI (`agy`), Anthropic Claude Code, and OpenAI Codex. Supports dynamic model selection (including 14 local Gemini models), reasoning effort configuration, readiness testing, and manual summary generation (`POST /api/reports/generate`).
+  2. **Unified Language (UI & Summary)**: Merged UI and summary generation language into a single setting (`zh-TW` Traditional Chinese and `en` English). Seamlessly updates all UI text via `web/i18n.ts`, persists in `localStorage` and `summary-permission.json`, and injects strict language instructions into the AI summary prompt.
+  3. **Key Milestone Designation (`isPrimary`)**: Added optional `isPrimary?: boolean` to the `Achievement` contract with fail-closed single-milestone validation in `checkCandidate`. The summary prompt instructs AI to designate the single most impactful milestone of the day. Highlighted with amber glow and `🌟 Key Milestone` badges across Minimal Journal, Bento Grid (hero card anchor), and Executive Briefing views. Supports user toggling in inline edit (`PATCH`).
+  - Unit tests updated (282 tests passing); `npm run check` passed cleanly.
+- **Google Antigravity Agent History Collection & Date Navigation**:
+  - Integrated `antigravity` into `LocalSource` and `ReportSource`, reading `~/.gemini/antigravity/brain/**/transcript.jsonl`.
+  - Parsed `USER_INPUT`, `PLANNER_RESPONSE` (tool calls), `GENERIC` (tool results), while excluding thinking steps and checkpoints. 6 synthetic unit tests added.
+  - ZenJournal `selectedDate` defaults to yesterday (`getYesterdayDate()`), with quick navigation (`←`, `Yesterday`, `Today`, `→`, and date input).
+  - Added empty date state with one-click on-demand summary generation.
+  - Supported Stdin streaming for CLI summarizers (`agy`), eliminating `ARG_MAX` limit for large day payloads. Generated real complete report for 2026-09-18 with `agy` (Gemini 3.8 Flash).
+- **Button Disabled States & Visual Feedback Fix**:
+  - Added universal `:disabled` and `:disabled:hover` rules in `web/styles.css` (lowered opacity, `cursor: not-allowed !important`, no shadows/transitions).
+  - Replaced interactive hover selectors with `:hover:not(:disabled)` across dark and light themes.
+  - Unified `isBusy` lock in `SettingsModal.tsx` covering all async operations (generating, testing, saving provider/language/model/effort).
+  - Added `isDeleting` state in `AchievementCard` and disabled header controls during active generation.
+- **Task 4 done: Local Activity & Raw Collector Inspection Panel**:
+  - Built `web/LocalActivityModal.tsx` and `web/local-activity-view.ts` implementing approved test cases LA-1 through LA-8.
+  - Added `📂 Local Activity` button in `ZenJournal.tsx` header with unified `isBusy` disabling.
+  - Consent scope management for Claude Code, Codex, and Antigravity via `PUT /api/collector/consent`.
+  - Source coverage status cards (`available`, `incomplete`, `no-activity`, `not-installed`, `not-authorized`) with localized labels, session counts, and issue warnings.
+  - Discovered sessions list for the selected date with expandable on-demand local message preview drawer.
+  - Refined with unified `DateSelector` (`[←] [Date] [Today] [→]`), lazy session search upon user clicking `[ 🔍 Search ]`, and removal of the header "Verified" badge.
+  - Full support for dark and light themes, verified with Vitest (295 tests passing) and `npm run check`.
+- **Language Switcher Extracted to Header Navigation**:
+  - Extracted language selection out of `web/SettingsModal.tsx` so settings solely handles AI model/provider configuration.
+  - Added dedicated language toggle button (`🌐 English` / `🌐 繁體中文`) in `web/ZenJournal.tsx` header.
+  - Persisted in `localStorage` and synchronized with `PUT /api/summarizer/permission` for AI summary output language.
+  - *Known UI Polish*: Switching language currently causes slight header layout shifting due to variable string lengths in flex buttons without fixed min-widths. To be polished in upcoming styling pass.
+- **Task L1 done: language packs as plain strings, built-in zh-TW / en / es, searchable language dropdown**
+  (design agreed with Josh 2026-09-21; test cases LC-1 to LC-9 approved by him):
+  - `web/locales/{en,zh-TW,es}.ts` hold string-only packs (`{n}`/`{date}` placeholders instead of functions);
+    `web/i18n.ts` adds `format`, `withEnglishFallback` (a missing key shows English) and
+    `resolveSavedLanguage` (unknown saved code → English; nothing saved → zh-TW, as before).
+    `Language` is now any string, no longer a two-value union.
+  - `src/report/languages.ts` is one fixed catalog of 41 languages (code, English name, native name)
+    shared by the web app and the server. The header button became `web/LanguageSelector.tsx`, a
+    searchable dropdown ("Spanish (Español)"); built-ins are listed first and the rest are greyed out
+    as "Not available yet" until Task L2.
+  - The summary prompt now names the language from the catalog and throws on an unlisted code;
+    `summary-permission.ts` and the generate route accept only `auto` or a catalog code (before: any
+    string up to 20 characters, placed in the prompt as written).
+  - Behavior change: choosing a language no longer creates a summary permission when none is saved
+    (the old header toggle did, with all three sources); it only updates an existing one.
+  - Removed four unused settings keys; theme, layout-switcher and language labels are now translated.
+  - 319 tests pass (24 new, LC-1 to LC-9); `npm run check` passes. Eight deliberate mutations were each
+    caught (one first survived because it was equivalent; the real "default a permission" mutation is caught).
+    Checked in the browser against the real server: dropdown, search ("espanol" finds Spanish, no match
+    shows the empty line), the whole page switches to Spanish, and the saved permission followed
+    (`es`, then restored to `zh-TW` byte-for-byte).
+  - Known gaps: the "No report has been generated yet." status line comes from the server and is
+    not translated; right-to-left languages (Arabic, Hebrew, Persian, Urdu) are listed but need layout
+    work before they can be offered in Task L2.
+- **Next**: Task L2 (generate a pack for a non-built-in language on demand through the chosen summarizer
+  provider, validate it, cache it in `data/locales/`, show English while it generates). Its test cases
+  are not written yet. Then frontend Task 5.
+- **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
+- **Not started**: Task 5.
 
 ## Completed
 
@@ -194,8 +250,8 @@ regression to fix mid-task.
 
 **Phase 5 as scoped is done** (`71f3987`, `ddc8c70`, `4c7922f`, the real run,
 `45b606a`, `a80e313`, `e46f0c6`, `8d40af6`). The React + Vite migration is
-now the active work: **Tasks 1–3 are done (`f1b5718`, `a7f7144`, `e342648`);
-Task 4 (port the Local activity and Report sign-in panels) is next.** See
+now the active work: **Tasks 1–4 are done (`f1b5718`, `a7f7144`, `e342648`, and Task 4);
+Task 5 (replace bundle-string assertions with component-level tests) is next.** See
 "Current phase" above for the full 5-task order and why React was chosen
 over Next.js.
 Phase 6 (daily automation) and the cross-day "knowledge map" both wait
@@ -358,7 +414,7 @@ Phase 5 deliverable, but work Josh raised mid-phase:
 ### Decisions parked, waiting on Josh
 
 1. **What the UI shows.** Resolved: Josh explicitly abandoned the 3D star map /
-   particle constellation ("別做星圖了，幫我想一下類似的功能有沒有更好看的設計，更簡潔的").
+   particle constellation after asking for a cleaner, simpler, and more aesthetic design.
    Replaced with the Zen Daily Journal (`web/ZenJournal.tsx`) supporting 3 switchable
    layouts (Journal, Bento, Briefing) and Light/Dark themes.
 2. **Conversation order in the payload** follows the approved source scope rather
@@ -435,9 +491,9 @@ Open decisions for the remaining report-generation items:
   `localStorage` as `daily_proof_theme`. Verified in browser across all 3 layout views.
   `npm run check` passed (26 test files, 279 tests).
 - 3-Way Layout Switcher (2026-09-19, `11f01cd`): added top pill switcher for:
-  1. 📖 方案 A: 極簡手帳 (Linear / Raycast)
-  2. 🍱 方案 B: 焦點 Bento (Apple / Things 3)
-  3. 📝 方案 C: 晨昏簡報 (Notion / Axios)
+  1. 📖 Concept A: Minimal Journal (Linear / Raycast)
+  2. 🍱 Concept B: Focus Bento (Apple / Things 3)
+  3. 📝 Concept C: Executive Briefing (Notion / Axios)
   Persisted in `localStorage` as `daily_proof_view_mode`. Verified with real
   2026-09-09 data in browser. `npm run check` passed.
 - Zen Daily Journal UI pivot (2026-09-19, `04662b0`): replaced heavy 3D React Flow
@@ -557,19 +613,12 @@ this conversation, only this repo's files.
   build (`tsc` + `vite build`).
 - Merge verification rule (user rule): ALWAYS run `npm run lint` and verify
   before merging any branches into `main`.
-- Active frontend work:
-  - The heavy 3D constellation was rejected by Josh ("別做星圖了，幫我想一下類似的功能有沒有更好看的設計，更簡潔的").
-  - Replaced with **Zen Daily Journal (`web/ZenJournal.tsx`)**, featuring:
-    - 3-Way Layout Switcher (persisted in `localStorage` as `daily_proof_view_mode`):
-      1. 📖 **方案 A: 極簡手帳 (Linear / Raycast)**
-      2. 🍱 **方案 B: 焦點 Bento (Apple / Things 3)**
-      3. 📝 **方案 C: 晨昏簡報 (Notion / Axios)**
-    - Full **Light Theme (明亮主題)** and Dark Theme with ☀️/🌙 header toggle
-      (persisted in `localStorage` as `daily_proof_theme`).
-    - Inline expandable evidence drawer, date navigation, inline edit (`PATCH`),
-      and two-step delete (`DELETE`).
-  - Next task: **Task 4: port the Local activity and Report sign-in / settings panels into the Zen interface**
-    (so users can configure preferred CLI, view model lists, and adjust source permissions directly in the UI).
+- Completed features:
+  - **Google Antigravity History Collector**: Added `"antigravity"` to `LocalSource` and `ReportSource`. Parses `~/.gemini/antigravity/brain/**/transcript.jsonl`, unwraps `<USER_REQUEST>`, maps tool calls and tool results, excludes thinking steps and system messages.
+  - **Date Picker & Default to Yesterday**: Web UI (`web/ZenJournal.tsx`) initializes `selectedDate` to yesterday (`getYesterdayDate()`), with intuitive quick controls (`←`, `Yesterday`, `Today`, `→`, and date input), plus on-demand summary generation for any date.
+  - **Stdin Streaming for Large Payloads**: Passed prompts to `agy` via `stdin` piping rather than CLI argument to permanently resolve OS `ARG_MAX` limitation on busy days with hundreds of messages.
+  - **Full Settings Modal & Unified Language**: Modal in ZenJournal with model select for `agy`, `claude-code`, and `codex`, Effort picker, readiness test, unified language toggle (`zh-TW` / `en`), and summary regeneration.
+  - **Real End-to-End Report Generation (2026-09-18)**: Successfully generated a complete daily report for 2026-09-18 using `agy` (Gemini 3.8 Flash), identifying 5 key achievements with "Complete local login flow and live verification" designated as the primary milestone (`isPrimary: true`).
 - Summarizer & Prompt:
   - Universal concise prompt in `src/report/summary-prompt.ts`: strictly 3-5 punchy
     items (<40 chars), 1-2 outcome sentences, negative decision credit, no audit jargon.
@@ -577,11 +626,10 @@ this conversation, only this repo's files.
     `claude-code`, and `codex`.
 - Local state that already reflects real use, not synthetic data:
   `data/local-sources.json`, `data/summary-permission.json`, and
-  `data/reports/2026-09-09.json` / `latest.json` (real generated report with 3 achievements
-  generated by Gemini 3.8 Flash).
+  `data/reports/2026-09-09.json`, `data/reports/2026-09-18.json`, and `data/reports/2026-09-19.json`.
 - Key documents for the current work:
-  `web/ZenJournal.tsx` (primary UI), `web/styles.css` (themes and layout styles),
-  `src/report/summary-prompt.ts` (summarization guidelines), `src/summarizer/summary-run.ts`
+  `web/ZenJournal.tsx` (primary UI), `web/SettingsModal.tsx` (settings), `web/styles.css` (themes and layout styles),
+  `src/collector/local-collector.ts` (source collection), `src/summarizer/summary-run.ts`
   (multi-provider execution runner).
 - Working agreement observed with Josh:
   - follow `AGENTS.md` (canonical);

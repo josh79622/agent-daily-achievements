@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 
 import type { LocalSource } from "../collector/local-collector.js";
+import { isSupportedSummaryLanguage } from "../report/languages.js";
 
 export type SummaryProvider = "claude-code" | "codex" | "agy";
 
@@ -10,11 +11,13 @@ export interface SummaryPermission {
   sourceScope: LocalSource[];
   preferredCli?: SummaryProvider;
   recipients: readonly SummaryProvider[];
+  summaryLanguage?: string;
 }
 
 export interface SummaryPermissionInput {
   sourceScope: LocalSource[];
   preferredCli?: SummaryProvider;
+  summaryLanguage?: string;
 }
 
 export function validSummaryPermissionInput(
@@ -25,21 +28,29 @@ export function validSummaryPermissionInput(
   const sourceScope = permission.sourceScope;
   if (
     !Array.isArray(sourceScope) ||
-    sourceScope.length > 2 ||
+    sourceScope.length > 3 ||
     new Set(sourceScope).size !== sourceScope.length ||
     !sourceScope.every(
-      (source) => source === "claude-code" || source === "codex",
+      (source) =>
+        source === "claude-code" ||
+        source === "codex" ||
+        source === "antigravity",
     )
   )
     return false;
   return (
     Object.keys(permission).every(
-      (key) => key === "sourceScope" || key === "preferredCli",
+      (key) =>
+        key === "sourceScope" ||
+        key === "preferredCli" ||
+        key === "summaryLanguage",
     ) &&
     (permission.preferredCli === undefined ||
       permission.preferredCli === "claude-code" ||
       permission.preferredCli === "codex" ||
-      permission.preferredCli === "agy")
+      permission.preferredCli === "agy") &&
+    (permission.summaryLanguage === undefined ||
+      isSupportedSummaryLanguage(permission.summaryLanguage))
   );
 }
 

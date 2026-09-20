@@ -6,9 +6,14 @@ import type { LocalSource } from "../collector/local-collector.js";
 export function validSources(value: unknown): value is LocalSource[] {
   return (
     Array.isArray(value) &&
-    value.length <= 2 &&
+    value.length <= 3 &&
     new Set(value).size === value.length &&
-    value.every((source) => source === "claude-code" || source === "codex")
+    value.every(
+      (source) =>
+        source === "claude-code" ||
+        source === "codex" ||
+        source === "antigravity",
+    )
   );
 }
 

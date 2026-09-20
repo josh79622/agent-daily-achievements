@@ -35,6 +35,7 @@ const collector = createLocalCollector({
     join(homedir(), ".codex/sessions"),
     join(homedir(), ".codex/archived_sessions"),
   ],
+  antigravityDirectories: [join(homedir(), ".gemini/antigravity/brain")],
 });
 // Model lists are fetched once at startup (decision M2); the approved
 // zero-conversation readiness probe runs only when the user requests it from

@@ -78,7 +78,7 @@ export function createSummaryRunner({
         provider === "claude-code"
           ? claudeArgs(model, effort, promptText)
           : provider === "agy"
-            ? agyArgs(model, effort, promptText)
+            ? agyArgs(model, effort)
             : codexArgs(model, effort, directory, replyFile, promptText);
       let result: ProbeRunResult;
       try {
@@ -89,6 +89,7 @@ export function createSummaryRunner({
           captureStdout: provider === "claude-code" || provider === "agy",
           timeoutMs: summaryAttemptTimeoutMs,
           maxStdoutBytes: summaryMaxReplyBytes,
+          stdin: provider === "agy" ? promptText : undefined,
         });
       } catch {
         return { kind: "no-reply" };
@@ -116,7 +117,10 @@ export function createSummaryRunner({
         throw new Error(`${provider} is not available.`);
       }
       const settings = await models.effectiveSettings(provider);
-      const promptText = buildSummaryRequestText(request.payload.payloadJson);
+      const promptText = buildSummaryRequestText(
+        request.payload.payloadJson,
+        request.language ? { language: request.language } : undefined,
+      );
 
       for (let attempt = 1; attempt <= maxSummaryAttempts; attempt++) {
         const outcome = await runAttempt(

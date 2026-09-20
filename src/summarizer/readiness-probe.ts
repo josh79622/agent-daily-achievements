@@ -69,6 +69,7 @@ export interface ProbeRunRequest {
   captureStdout: boolean;
   timeoutMs: number;
   maxStdoutBytes: number;
+  stdin?: string;
 }
 
 export type ProbeRunResult =
@@ -267,15 +268,14 @@ function claudeReply(
 export function agyArgs(
   model: string | undefined,
   effort: string | undefined,
-  prompt: string,
+  prompt?: string,
 ): string[] {
   return [
     "--output-format",
     "json",
     ...(model === undefined ? [] : ["--model", model]),
     ...(effort === undefined ? [] : ["--effort", effort]),
-    "-p",
-    prompt,
+    ...(prompt === undefined ? [] : ["-p", prompt]),
   ];
 }
 
@@ -302,6 +302,10 @@ function agyReply(
 }
 
 interface ChildLike extends EventEmitter {
+  stdin?: {
+    end(data?: string, encoding?: BufferEncoding): void;
+    on?(event: string, listener: (...args: unknown[]) => void): void;
+  } | null;
   stdout: EventEmitter | null;
   kill(signal: NodeJS.Signals): boolean;
 }
@@ -312,7 +316,7 @@ export type ProbeSpawn = (
   options: {
     cwd: string;
     shell: false;
-    stdio: ["ignore", "pipe" | "ignore", "ignore"];
+    stdio: ["pipe" | "ignore", "pipe" | "ignore", "ignore"];
   },
 ) => ChildLike;
 
@@ -332,7 +336,7 @@ export function createProcessRunner({
           cwd: request.cwd,
           shell: false,
           stdio: [
-            "ignore",
+            request.stdin !== undefined ? "pipe" : "ignore",
             request.captureStdout ? "pipe" : "ignore",
             "ignore",
           ],
@@ -340,6 +344,11 @@ export function createProcessRunner({
       } catch {
         resolve({ kind: "could-not-start" });
         return;
+      }
+
+      if (request.stdin !== undefined && child.stdin) {
+        child.stdin.on?.("error", () => {});
+        child.stdin.end(request.stdin, "utf8");
       }
 
       let settled = false;

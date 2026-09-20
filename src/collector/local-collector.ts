@@ -1,7 +1,8 @@
 import { readdir, readFile, stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import { basename, join } from "node:path";
 
-export type LocalSource = "claude-code" | "codex";
+export type LocalSource = "claude-code" | "codex" | "antigravity";
 
 /**
  * Non-text conversation content becomes a visible placeholder part rather than
@@ -72,6 +73,7 @@ export interface LocalCollector {
 interface LocalCollectorOptions {
   claudeDirectories: string[];
   codexDirectories: string[];
+  antigravityDirectories?: string[];
   timeZone?: string;
 }
 
@@ -84,20 +86,27 @@ export function createLocalCollector(
       const sources: SourceCoverage[] = [];
       const sessions: CollectedSession[] = [];
       for (const source of allowedSources) {
-        const result = await collectSource(
-          source,
-          source === "claude-code"
-            ? options.claudeDirectories
-            : options.codexDirectories,
-          date,
-          timeZone,
-        );
+        const paths = pathsForSource(source, options);
+        const result = await collectSource(source, paths, date, timeZone);
         sources.push(sourceCoverage(source, result));
         sessions.push(...result.sessions);
       }
       return { date, timeZone, sources, sessions };
     },
   };
+}
+
+function pathsForSource(
+  source: LocalSource,
+  options: LocalCollectorOptions,
+): string[] {
+  if (source === "claude-code") return options.claudeDirectories;
+  if (source === "codex") return options.codexDirectories;
+  return (
+    options.antigravityDirectories ?? [
+      join(homedir(), ".gemini/antigravity/brain"),
+    ]
+  );
 }
 
 async function collectSource(
@@ -114,7 +123,9 @@ async function collectSource(
   supported: boolean;
   unreadablePaths: number;
 }> {
-  const locations = await Promise.all(paths.map(jsonlFilesAt));
+  const locations = await Promise.all(
+    paths.map((path) => jsonlFilesAt(path, source)),
+  );
   const files = locations.flatMap((location) => location.files);
   let issues = 0;
   const fragments: ParsedFile[] = [];
@@ -191,7 +202,10 @@ function sourceCoverage(
   };
 }
 
-async function jsonlFilesAt(path: string): Promise<{
+async function jsonlFilesAt(
+  path: string,
+  source?: LocalSource,
+): Promise<{
   files: string[];
   missingPaths: number;
   unreadablePaths: number;
@@ -208,7 +222,18 @@ async function jsonlFilesAt(path: string): Promise<{
       const entries = await readdir(path, { recursive: true });
       return {
         files: entries
-          .filter((entry) => entry.endsWith(".jsonl"))
+          .filter((entry) => {
+            if (!entry.endsWith(".jsonl")) return false;
+            if (source === "antigravity") {
+              if (entry.includes("/chunks/") || entry.startsWith("chunks/"))
+                return false;
+              if (entry.endsWith("transcript_full.jsonl")) return false;
+              if (entry.includes(".system_generated")) {
+                return basename(entry) === "transcript.jsonl";
+              }
+            }
+            return true;
+          })
           .map((entry) => join(path, entry)),
         missingPaths: 0,
         unreadablePaths: 0,
@@ -223,11 +248,21 @@ async function jsonlFilesAt(path: string): Promise<{
   }
 }
 
+function sessionIdFromFile(source: LocalSource, file: string): string {
+  if (source === "antigravity") {
+    const match =
+      file.match(/\/brain\/([^/]+)\//) ??
+      file.match(/\/([^/]+)\/\.system_generated\//);
+    if (match?.[1]) return match[1];
+  }
+  return basename(file, ".jsonl");
+}
+
 async function parseFile(
   source: LocalSource,
   file: string,
 ): Promise<ParsedFile> {
-  const fallbackSessionId = basename(file, ".jsonl");
+  const fallbackSessionId = sessionIdFromFile(source, file);
   let contents: string;
   try {
     contents = await readFile(file, "utf8");
@@ -256,11 +291,11 @@ async function parseFile(
       continue;
     }
     supported ||= supportedRecord(source, record);
-    if (isExcludedClaudeSidechain(source, record)) continue;
+    if (isExcludedRecord(source, record)) continue;
     sessionId = sessionIdFrom(source, record) ?? sessionId;
     if (
       hasConversationRole(source, record) &&
-      !validTimestamp(record.timestamp)
+      !validTimestamp(recordTimestamp(source, record))
     ) {
       issues += 1;
       continue;
@@ -374,6 +409,17 @@ function supportedRecord(
   source: LocalSource,
   record: Record<string, unknown>,
 ): boolean {
+  if (source === "antigravity") {
+    return Boolean(
+      (stringAt(record.created_at) || typeof record.step_index === "number") &&
+      (record.source === "MODEL" ||
+        record.source === "USER_EXPLICIT" ||
+        record.source === "USER" ||
+        record.type === "USER_INPUT" ||
+        record.type === "PLANNER_RESPONSE" ||
+        record.type === "GENERIC"),
+    );
+  }
   if (source === "claude-code")
     return Boolean(
       stringAt(record.sessionId) || hasConversationRole(source, record),
@@ -386,20 +432,37 @@ function sessionIdFrom(
   source: LocalSource,
   record: Record<string, unknown>,
 ): string | undefined {
+  if (source === "antigravity") return undefined;
   if (source === "claude-code") return stringAt(record.sessionId);
   const payload = objectAt(record.payload);
   return stringAt(payload?.id);
 }
 
-function isExcludedClaudeSidechain(
+function recordTimestamp(
+  source: LocalSource,
+  record: Record<string, unknown>,
+): string | undefined {
+  if (source === "antigravity") return stringAt(record.created_at);
+  return stringAt(record.timestamp);
+}
+
+function isExcludedRecord(
   source: LocalSource,
   record: Record<string, unknown>,
 ): boolean {
-  return (
-    source === "claude-code" &&
-    !stringAt(record.sessionId) &&
-    Boolean(stringAt(record.parentSessionId))
-  );
+  if (source === "claude-code") {
+    return (
+      !stringAt(record.sessionId) && Boolean(stringAt(record.parentSessionId))
+    );
+  }
+  if (source === "antigravity") {
+    return (
+      record.source === "SYSTEM" ||
+      record.type === "CHECKPOINT" ||
+      record.type === "SYSTEM_MESSAGE"
+    );
+  }
+  return false;
 }
 
 function messageFrom(
@@ -407,6 +470,9 @@ function messageFrom(
   record: Record<string, unknown>,
   fallbackId: string,
 ): CollectedMessage | undefined {
+  if (source === "antigravity") {
+    return messageFromAntigravity(record, fallbackId);
+  }
   const timestamp = stringAt(record.timestamp);
   if (!timestamp) return undefined;
   const holder = objectAt(
@@ -423,6 +489,92 @@ function messageFrom(
   return { id, role, text: joinParts(parts), timestamp, parts };
 }
 
+function messageFromAntigravity(
+  record: Record<string, unknown>,
+  fallbackId: string,
+): CollectedMessage | undefined {
+  const timestamp = stringAt(record.created_at);
+  if (!timestamp) return undefined;
+
+  const id =
+    typeof record.step_index === "number"
+      ? `step-${record.step_index}`
+      : fallbackId;
+
+  const source = stringAt(record.source);
+  const type = stringAt(record.type);
+
+  if (
+    source === "USER_EXPLICIT" ||
+    source === "USER" ||
+    type === "USER_INPUT"
+  ) {
+    let rawText = stringAt(record.content) ?? "";
+    const match = rawText.match(
+      /^<USER_REQUEST>\s*([\s\S]*?)\s*<\/USER_REQUEST>$/,
+    );
+    if (match?.[1]) rawText = match[1];
+    if (!rawText.trim()) return undefined;
+    return {
+      id,
+      role: "user",
+      text: rawText,
+      timestamp,
+      parts: [{ kind: "text", text: rawText }],
+    };
+  }
+
+  if (source === "MODEL") {
+    if (type === "PLANNER_RESPONSE") {
+      const parts: MessagePart[] = [];
+      if (Array.isArray(record.tool_calls)) {
+        for (const call of record.tool_calls) {
+          const callObj = objectAt(call);
+          if (!callObj) continue;
+          const name = stringAt(callObj.name) ?? "tool";
+          const input = objectAt(callObj.args);
+          parts.push({
+            kind: "tool_use",
+            text: input
+              ? `[tool_use ${name} ${JSON.stringify(input)}]`
+              : `[tool_use ${name}]`,
+          });
+        }
+      }
+      const content = stringAt(record.content);
+      if (content?.trim()) {
+        parts.push({ kind: "text", text: content });
+      }
+      if (parts.length === 0) return undefined;
+      return {
+        id,
+        role: "assistant",
+        text: joinParts(parts),
+        timestamp,
+        parts,
+      };
+    }
+
+    if (type === "GENERIC") {
+      const content = stringAt(record.content);
+      const status = stringAt(record.status);
+      const outcome = status === "ERROR" ? "error" : "ok";
+      const text = content?.trim()
+        ? `[tool_result ${outcome}]\n${content}`
+        : `[tool_result ${outcome}]`;
+      return {
+        id,
+        role: "assistant",
+        text,
+        timestamp,
+        parts: [{ kind: "tool_result", text }],
+      };
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * True when a conversation record yielded no message for a reason we cannot
  * explain, so the source must be reported incomplete rather than losing content
@@ -432,6 +584,29 @@ function unexplainedEmptyMessage(
   source: LocalSource,
   record: Record<string, unknown>,
 ): boolean {
+  if (source === "antigravity") {
+    if (
+      record.source === "SYSTEM" ||
+      record.type === "CHECKPOINT" ||
+      record.type === "SYSTEM_MESSAGE"
+    ) {
+      return false;
+    }
+    if (
+      record.type === "PLANNER_RESPONSE" &&
+      stringAt(record.thinking) &&
+      !record.content &&
+      (!Array.isArray(record.tool_calls) || record.tool_calls.length === 0)
+    ) {
+      return false;
+    }
+    return Boolean(
+      record.source === "MODEL" ||
+      record.source === "USER_EXPLICIT" ||
+      record.source === "USER" ||
+      record.type === "USER_INPUT",
+    );
+  }
   if (!hasConversationRole(source, record)) return false;
   const holder = objectAt(
     source === "claude-code" ? record.message : record.payload,
@@ -443,6 +618,14 @@ function hasConversationRole(
   source: LocalSource,
   record: Record<string, unknown>,
 ): boolean {
+  if (source === "antigravity") {
+    return (
+      record.source === "USER_EXPLICIT" ||
+      record.source === "USER" ||
+      record.type === "USER_INPUT" ||
+      record.source === "MODEL"
+    );
+  }
   if (source === "claude-code")
     return Boolean(roleAt(objectAt(record.message)?.role));
   return Boolean(roleAt(objectAt(record.payload)?.role));

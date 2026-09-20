@@ -29,6 +29,7 @@ import {
   type ReportDayPayload,
 } from "../report/report-day-payload.js";
 import { isValidAchievementEdit } from "../report/contract.js";
+import { isSupportedSummaryLanguage } from "../report/languages.js";
 import type { SummarizerModelsService } from "../summarizer/model-settings.js";
 import {
   type ProviderLoginService,
@@ -39,6 +40,7 @@ import {
 export interface SummaryRequest {
   scheduled: boolean;
   payload: ReportDayPayload;
+  language?: string;
 }
 
 export interface SummaryRunner {
@@ -49,6 +51,8 @@ export interface SummaryRequestFactory {
   create(input: {
     scheduled: boolean;
     sourceScope: LocalSource[];
+    language?: string;
+    date?: string;
   }): Promise<SummaryRequest>;
 }
 
@@ -78,12 +82,13 @@ export function createApp({
   summaryRunner,
   summaryRequestFactory = collector
     ? {
-        async create({ scheduled, sourceScope }) {
+        async create({ scheduled, sourceScope, language, date }) {
           return {
             scheduled,
+            language,
             payload: await buildReportDayPayload({
               collector,
-              date: reportDate(),
+              date: date ?? reportDate(),
               sourceScope,
             }),
           };
@@ -560,9 +565,13 @@ export function createApp({
           });
           return;
         }
+        const language =
+          generationRequest.language ?? permission.summaryLanguage;
         const summaryRequest = await summaryRequestFactory.create({
           scheduled: generationRequest.scheduled,
           sourceScope: permission.sourceScope,
+          language,
+          date: generationRequest.date,
         });
         if (
           summaryRequest.payload.manifest.some(
@@ -625,6 +634,51 @@ export function createApp({
             error: {
               code: "report_not_found",
               message: "No report has been generated yet.",
+            },
+          });
+          return;
+        }
+
+        sendJson(response, 200, { report: result.report });
+        return;
+      }
+
+      if (pathname === "/api/reports") {
+        if (request.method !== "GET") {
+          sendJson(response, 405, {
+            error: {
+              code: "method_not_allowed",
+              message: "Method not allowed.",
+            },
+          });
+          return;
+        }
+        const dates = await reportStore.listDates();
+        sendJson(response, 200, { dates });
+        return;
+      }
+
+      const reportDateMatch = pathname.match(
+        /^\/api\/reports\/(\d{4}-\d{2}-\d{2})$/,
+      );
+      if (reportDateMatch) {
+        if (request.method !== "GET") {
+          sendJson(response, 405, {
+            error: {
+              code: "method_not_allowed",
+              message: "Method not allowed.",
+            },
+          });
+          return;
+        }
+
+        const date = reportDateMatch[1]!;
+        const result = await reportStore.read(date);
+        if (!result.found) {
+          sendJson(response, 404, {
+            error: {
+              code: "report_not_found",
+              message: `No report found for ${date}.`,
             },
           });
           return;
@@ -704,9 +758,15 @@ export function createApp({
             });
             return;
           }
-          achievements = achievements.map((achievement, position) =>
-            position === index ? { ...achievement, ...edit } : achievement,
-          );
+          achievements = achievements.map((achievement, position) => {
+            if (position === index) {
+              return { ...achievement, ...edit };
+            }
+            if (edit.isPrimary === true) {
+              return { ...achievement, isPrimary: false };
+            }
+            return achievement;
+          });
         }
         const updated = { ...existing.report, achievements };
         await reportStore.save(updated);
@@ -785,7 +845,7 @@ function providerLoginUnavailable(response: ServerResponse): void {
 
 function summaryDisclosure() {
   return {
-    sourceScope: ["claude-code", "codex"],
+    sourceScope: ["claude-code", "codex", "antigravity"],
     conversationScope:
       "Complete conversations with report-day activity, including context through the end of that day.",
     possibleRecipients: ["codex", "claude-code", "agy"],
@@ -829,17 +889,37 @@ async function parseJsonBody(request: IncomingMessage): Promise<unknown> {
 
 async function parseGenerationRequest(
   request: IncomingMessage,
-): Promise<{ scheduled: boolean } | undefined> {
+): Promise<
+  { scheduled: boolean; language?: string; date?: string } | undefined
+> {
   try {
     const value = await parseJsonBody(request);
     if (!value || typeof value !== "object") return undefined;
-    const candidate = value as { scheduled?: unknown };
+    const candidate = value as {
+      scheduled?: unknown;
+      language?: unknown;
+      date?: unknown;
+    };
+    if (typeof candidate.scheduled !== "boolean") return undefined;
     if (
-      typeof candidate.scheduled !== "boolean" ||
-      Object.keys(candidate).length !== 1
+      candidate.language !== undefined &&
+      !isSupportedSummaryLanguage(candidate.language)
     )
       return undefined;
-    return { scheduled: candidate.scheduled };
+    if (
+      candidate.date !== undefined &&
+      (typeof candidate.date !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(candidate.date))
+    )
+      return undefined;
+    const validKeys = new Set(["scheduled", "language", "date"]);
+    if (Object.keys(candidate).some((key) => !validKeys.has(key)))
+      return undefined;
+    return {
+      scheduled: candidate.scheduled,
+      language: candidate.language,
+      date: candidate.date,
+    };
   } catch {
     return undefined;
   }

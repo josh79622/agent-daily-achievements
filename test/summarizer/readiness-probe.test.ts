@@ -369,6 +369,13 @@ describe("PR-8 / PR-9 process runner", () => {
 
   class FakeChild extends EventEmitter {
     stdout = new EventEmitter();
+    stdin = {
+      data: "",
+      end: vi.fn((chunk?: string) => {
+        if (chunk) this.stdin.data += chunk;
+      }),
+      on: vi.fn(),
+    };
     signals: string[] = [];
     constructor(private readonly exitOn: string | undefined) {
       super();
@@ -517,6 +524,24 @@ describe("PR-8 / PR-9 process runner", () => {
     expect(calls[1]?.options).toMatchObject({
       stdio: ["ignore", "ignore", "ignore"],
     });
+  });
+
+  test("runner pipes stdin to child when provided", async () => {
+    const calls: Array<{ options: unknown }> = [];
+    const child = new FakeChild(undefined);
+    const runner = createProcessRunner({
+      spawn: (file, args, options) => {
+        calls.push({ options });
+        return child;
+      },
+    });
+    const result = runner({ ...request, stdin: "hello from stdin" });
+    child.emit("close", 0, null);
+    await result;
+    expect(calls[0]?.options).toMatchObject({
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    expect(child.stdin.end).toHaveBeenCalledWith("hello from stdin", "utf8");
   });
 });
 

@@ -330,7 +330,7 @@ regression to fix mid-task.
 - [x] Refocus on core value & prompt overhaul (`95419c1`):
       Josh noted 3D stars/particles drifted from the core goal (daily cognitive relief).
       Prompt overhauled: 3-5 punchy conclusions (<40 chars), 1-2 clean outcome sentences,
-      zero conversational audit jargon ("使用者指出...", "經查 git log..."), first-class
+      zero conversational audit jargon ("the user pointed out...", "checked git log..."), first-class
       credit for negative decisions (`decision`), matching developer's primary language.
 - [x] Integrate Google Antigravity / Gemini CLI (`agy`) as full Summarizer Provider (`1d40a7a`):
       Added `agy` across permissions, model catalog discovery (14 models detected locally),
@@ -341,14 +341,59 @@ regression to fix mid-task.
       Retired heavy 3D React Flow constellation canvas (reduced bundle size from 414 kB to 233 kB).
       Created `web/ZenJournal.tsx`:
       - 3-way view switcher in header (preserved in `localStorage`):
-        1. 📖 方案 A: 極簡手帳 (Linear / Raycast)
-        2. 🍱 方案 B: 焦點 Bento (Apple / Things 3)
-        3. 📝 方案 C: 晨昏簡報 (Notion / Axios)
+        1. 📖 Concept A: Minimal Journal (Linear / Raycast)
+        2. 🍱 Concept B: Focus Bento (Apple / Things 3)
+        3. 📝 Concept C: Executive Briefing (Notion / Axios)
       - Inline expandable evidence drawer fetching traceable session messages on-demand.
       - Inline editing (`PATCH`) and safe two-step deletion (`DELETE`).
       - Date navigation (previous/next day, latest).
-      - Full Light Theme (明亮主題) support with ☀️/🌙 toggle in header.
-- [ ] Task 4: port the Local activity and Report sign-in / settings panels into the Zen interface.
+      - Full Light Theme support with ☀️/🌙 toggle in header.
+- [x] Summarizer Model Selection (with Gemini/agy), Unified Language, & Key Milestone (`isPrimary`):
+      - Restored summarizer settings modal in `web/SettingsModal.tsx` with full support for Gemini (`agy`), Claude Code, and Codex.
+      - Unified UI and summary generation language into a single setting (`zh-TW` / `en`), backed by `web/i18n.ts` and prompt rule 8.
+      - Added `isPrimary?: boolean` to `Achievement` contract, fail-closed validation, and prompt milestone rule.
+      - Highlighted key milestone with amber glow, `🌟 Key Milestone` badges across all 3 views, Bento hero card anchoring, and inline edit toggling.
+      - 282 unit tests passing, `npm run check` passed.
+- [x] Google Antigravity Agent History Collection:
+      - Integrated `antigravity` into `LocalSource` and `ReportSource`, reading `~/.gemini/antigravity/brain/**/transcript.jsonl`.
+      - Parsed `USER_INPUT`, `PLANNER_RESPONSE` (tool calls), `GENERIC` (tool results), while excluding thinking steps and checkpoints.
+      - Added 6 synthetic unit tests in `test/collector/antigravity-parser.test.ts`.
+- [x] Date Navigation & Default to Yesterday:
+      - Defaulted ZenJournal `selectedDate` to yesterday (`getYesterdayDate()`), with quick navigation (`←`, `Yesterday`, `Today`, `→`, and date input).
+      - Added empty date state with one-click on-demand summary generation.
+      - Supported Stdin streaming for CLI summarizers (`agy`), eliminating `ARG_MAX` limit for large day payloads.
+      - Generated real complete report for 2026-09-18 with `agy` (Gemini 3.8 Flash) covering 5 key achievements.
+      - 289 unit tests passing, `npm run check` passed.
+- [x] Fix Button Disabled States & In-flight Visual Feedback:
+      - Added universal `:disabled` and `:disabled:hover` rules in `web/styles.css` (lowered opacity, `cursor: not-allowed !important`, no shadows/transitions).
+      - Replaced interactive hover selectors with `:hover:not(:disabled)` across dark and light themes.
+      - Unified `isBusy` lock in `SettingsModal.tsx` covering all async operations (generating, testing, saving provider/language/model/effort).
+      - Added `isDeleting` state in `AchievementCard` and disabled header controls during active generation.
+      - Passed `npm run check` with all 289 tests passing and production build verified.
+- [x] Task 4: port the Local activity / raw collector inspection panel into the Zen interface.
+      - Approved design in `docs/plans/2026-09-20-task-4-local-activity-panel-design.md`.
+      - Built `web/LocalActivityModal.tsx` and helper `web/local-activity-view.ts` implementing test cases LA-1 through LA-8.
+      - Integrated `📂 Local Activity` button in `ZenJournal.tsx` header with unified `isBusy` disabling.
+      - Consent scope management for Claude Code, Codex, and Antigravity via `PUT /api/collector/consent`.
+      - Source coverage status cards with localized labels, session counts, and issue warnings.
+      - Discovered sessions list with expandable on-demand local message preview drawer.
+      - 295 unit tests passing; passed `npm run check`.
+- [x] Extract Language Switcher from Settings to Header Navigation:
+      - Removed language section from `web/SettingsModal.tsx`.
+      - Added quick-toggle language button (`🌐 English` / `🌐 繁體中文`) to `web/ZenJournal.tsx` header.
+      - Synced language selection with `localStorage` and backend `PUT /api/summarizer/permission`.
+      - 295 unit tests passing; passed `npm run check`.
+      - *Follow-up Polish*: Stabilize header button layout widths with min-width or icon-primary style to prevent flexbox jitter during language toggling.
+- [x] Task L1: language packs as plain strings, built-in zh-TW / en / es, searchable
+      language dropdown fed by a fixed 41-language catalog (`src/report/languages.ts`).
+      - LC-1 to LC-9 approved by Josh; 319 tests pass; `npm run check` passes.
+      - The prompt and the permission/generate routes accept only `auto` or a catalog code.
+      - Verified in the browser against the real server (search, switch to Spanish, saved
+        permission followed and was restored).
+- [ ] Task L2: generate a language pack on demand for a catalog language that is not built in
+      (through the chosen provider), validate keys and placeholders, cache in `data/locales/`,
+      show English meanwhile. Test cases still to be written and approved. Right-to-left
+      layout needs its own decision.
 - [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
       component-level tests (e.g. `@testing-library/react`); nothing chosen
       yet.

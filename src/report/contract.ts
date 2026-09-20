@@ -5,7 +5,12 @@ export type AchievementCategory =
   "progress" | "decision" | "clarification" | "learning";
 
 export type ReportSource =
-  "codex" | "claude-code" | "claude-web" | "chatgpt-web" | "gemini-web";
+  | "codex"
+  | "claude-code"
+  | "claude-web"
+  | "chatgpt-web"
+  | "gemini-web"
+  | "antigravity";
 
 export interface EvidenceRef {
   source: ReportSource;
@@ -19,6 +24,7 @@ export interface Achievement {
   title: string;
   detail: string;
   evidence: EvidenceRef[];
+  isPrimary?: boolean;
 }
 
 export type CoverageState =
@@ -66,7 +72,14 @@ const categories: readonly string[] = [
   "clarification",
   "learning",
 ];
-const achievementKeys = ["category", "detail", "evidence", "id", "title"];
+const requiredAchievementKeys = [
+  "category",
+  "detail",
+  "evidence",
+  "id",
+  "title",
+];
+const allowedAchievementKeys = [...requiredAchievementKeys, "isPrimary"];
 const limits = { id: 64, title: 120, detail: 500 } as const;
 
 class Invalid extends Error {
@@ -123,7 +136,13 @@ function checkCandidate(
   for (const achievement of achievements) {
     if (
       !isPlainObject(achievement) ||
-      !hasExactKeys(achievement, achievementKeys)
+      !hasOnlyKeys(achievement, allowedAchievementKeys) ||
+      !requiredAchievementKeys.every((key) => key in achievement)
+    )
+      throw new Invalid("invalid-achievement");
+    if (
+      "isPrimary" in achievement &&
+      typeof achievement.isPrimary !== "boolean"
     )
       throw new Invalid("invalid-achievement");
     if (
@@ -152,6 +171,11 @@ function checkCandidate(
     if (evidenceSets.has(evidenceSet)) throw new Invalid("duplicate-evidence");
     evidenceSets.add(evidenceSet);
   }
+  const primaryCount = achievements.filter(
+    (achievement) =>
+      isPlainObject(achievement) && achievement.isPrimary === true,
+  ).length;
+  if (primaryCount > 1) throw new Invalid("invalid-achievement");
   return achievements as Achievement[];
 }
 
@@ -308,7 +332,9 @@ export function assembleReport({
   };
 }
 
-export type AchievementEdit = Partial<Pick<Achievement, "title" | "detail">>;
+export type AchievementEdit = Partial<
+  Pick<Achievement, "title" | "detail" | "isPrimary">
+>;
 
 /**
  * Josh's own correction to an achievement in an already-saved report
@@ -324,7 +350,7 @@ export function isValidAchievementEdit(
   if (!isPlainObject(value)) return false;
   if (
     Object.keys(value).length === 0 ||
-    !hasOnlyKeys(value, ["title", "detail"])
+    !hasOnlyKeys(value, ["title", "detail", "isPrimary"])
   )
     return false;
   for (const field of ["title", "detail"] as const) {
@@ -336,6 +362,9 @@ export function isValidAchievementEdit(
       text.length > limits[field]
     )
       return false;
+  }
+  if ("isPrimary" in value && typeof value.isPrimary !== "boolean") {
+    return false;
   }
   return true;
 }

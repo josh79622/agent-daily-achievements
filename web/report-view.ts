@@ -71,6 +71,7 @@ export function mapAchievementsToNodes(
 const sourceLabels: Record<ReportSource, string> = {
   "claude-code": "Claude Code",
   codex: "Codex",
+  antigravity: "Google Antigravity",
   "claude-web": "Claude (web)",
   "chatgpt-web": "ChatGPT (web)",
   "gemini-web": "Gemini (web)",
@@ -105,8 +106,10 @@ export { sourceLabel };
  */
 export function isLocallyTraceable(
   source: ReportSource,
-): source is "claude-code" | "codex" {
-  return source === "claude-code" || source === "codex";
+): source is "claude-code" | "codex" | "antigravity" {
+  return (
+    source === "claude-code" || source === "codex" || source === "antigravity"
+  );
 }
 
 export interface EvidenceMessage {

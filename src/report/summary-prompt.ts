@@ -5,8 +5,26 @@
 // case's expectations, which are never placed in a prompt.
 
 import { maxAchievements } from "./contract.js";
+import { findLanguage } from "./languages.js";
 
-export const summaryPrompt = `You are given one day of a developer's own records from their AI coding tools. Write what they actually achieved that day.
+function getLanguageInstruction(language?: string): string {
+  if (!language || language === "auto") {
+    return "Write the title and detail in the primary language used by the developer in the input records (e.g., Traditional Chinese if records are in Traditional Chinese, English if in English). No praise, no encouragement, no restating the rules.";
+  }
+  // Only a code from the fixed catalog may reach the prompt; anything else
+  // could carry instructions of its own.
+  const info = findLanguage(language);
+  if (!info) throw new Error(`Unsupported summary language: ${language}`);
+  const name =
+    info.english === info.native
+      ? info.english
+      : `${info.english} (${info.native})`;
+  return `Write the title and detail strictly in ${name}. No praise, no encouragement, no restating the rules.`;
+}
+
+export function buildPromptText(language?: string): string {
+  const languageInstruction = getLanguageInstruction(language);
+  return `You are given one day of a developer's own records from their AI coding tools. Write what they actually achieved that day.
 
 An achievement is one of four kinds:
 - progress: something moved forward, with evidence that it ran or was committed
@@ -26,17 +44,27 @@ Rules:
 5. A conversation with no evidence that something ran, changed, or was sent cannot establish that a task was completed. Discussion alone is not progress, though it may be a decision, a clarification, or learning. This governs whether an achievement exists, not which records it cites: a record too weak to stand alone is still cited when it refers to an activity established elsewhere.
 6. If later evidence contradicts earlier evidence, do not claim completion. When you cite a record that a later record contradicts, you must cite that later record in the same achievement.
 7. Work in two steps. First group the input records by activity: two records are one activity when they concern the same piece of work, even in different sources, at different times, or with very different detail. Then write at most one achievement per group and list that whole group in its evidence. A group can produce no achievement, but it can never produce two, and no record of a group that produces an achievement is left out of it.
-8. Language: Write the title and detail in the primary language used by the developer in the input records (e.g., Traditional Chinese if records are in Traditional Chinese, English if in English). No praise, no encouragement, no restating the rules.
+8. Language: ${languageInstruction}
+9. Key Milestone: Pick the single most significant or impactful achievement of the day and set "isPrimary": true. All other achievements must have "isPrimary": false. If there are no achievements, output empty array.
 
 Output strictly this JSON and nothing else. No prose, no explanation, no markdown fences:
 
-{"achievements":[{"id":"short-kebab-id","category":"progress|decision|clarification|learning","title":"short punchy title","detail":"1-2 clean sentences","evidence":[{"source":"<source from the input>","recordId":"<recordId from the input>","messageIds":["<ids from that record>"]}] <- one entry per record about this activity, in every source; a record that only mentions or confirms it belongs here too}]}
+{"achievements":[{"id":"short-kebab-id","category":"progress|decision|clarification|learning","title":"short punchy title","detail":"1-2 clean sentences","isPrimary":true,"evidence":[{"source":"<source from the input>","recordId":"<recordId from the input>","messageIds":["<ids from that record>"]}] <- one entry per record about this activity, in every source; a record that only mentions or confirms it belongs here too}]}
 
 If nothing qualifies, output {"achievements":[]}.
 
 Last step before you output: take each achievement and read every input record again. If a record refers to that same work in any way, and it is not already in that achievement's evidence, add it. Then output the JSON.`;
+}
+
+export const summaryPrompt = buildPromptText();
 
 /** The full text handed to a summarizer CLI: rules, then the day's records. */
-export function buildSummaryRequestText(payloadJson: string): string {
-  return `${summaryPrompt}\n\nDay records:\n${payloadJson}`;
+export function buildSummaryRequestText(
+  payloadJson: string,
+  options?: { language?: string },
+): string {
+  const prompt = options?.language
+    ? buildPromptText(options.language)
+    : summaryPrompt;
+  return `${prompt}\n\nDay records:\n${payloadJson}`;
 }

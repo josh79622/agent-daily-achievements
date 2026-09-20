@@ -95,9 +95,10 @@ test("RV-3: describeIncomplete produces one friendly line per reason", () => {
   ]);
 });
 
-test("RV-4: isLocallyTraceable is true only for the two local collector sources", () => {
+test("RV-4: isLocallyTraceable is true only for the three local collector sources", () => {
   expect(isLocallyTraceable("claude-code")).toBe(true);
   expect(isLocallyTraceable("codex")).toBe(true);
+  expect(isLocallyTraceable("antigravity")).toBe(true);
   expect(isLocallyTraceable("claude-web")).toBe(false);
   expect(isLocallyTraceable("chatgpt-web")).toBe(false);
   expect(isLocallyTraceable("gemini-web")).toBe(false);

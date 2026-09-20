@@ -127,7 +127,7 @@ test("permission: disclosure identifies scope, complete day conversations, and b
   expect(await response.json()).toEqual({
     permission: null,
     disclosure: {
-      sourceScope: ["claude-code", "codex"],
+      sourceScope: ["claude-code", "codex", "antigravity"],
       conversationScope:
         "Complete conversations with report-day activity, including context through the end of that day.",
       possibleRecipients: ["codex", "claude-code", "agy"],

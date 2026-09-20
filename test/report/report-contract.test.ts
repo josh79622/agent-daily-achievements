@@ -87,6 +87,44 @@ describe("RC-1 valid candidate", () => {
     ];
     expect(validate({ achievements })).toEqual({ ok: true, achievements });
   });
+
+  test("RC-1: isPrimary boolean is accepted, and at most one true is allowed", () => {
+    const valid = [
+      item({
+        id: "a1",
+        isPrimary: true,
+        evidence: [{ source: "codex", recordId: "codex-201" }],
+      }),
+      item({
+        id: "a2",
+        isPrimary: false,
+        evidence: [{ source: "codex", recordId: "codex-202" }],
+      }),
+    ];
+    expect(validate({ achievements: valid })).toEqual({
+      ok: true,
+      achievements: valid,
+    });
+
+    const twoPrimary = [
+      item({
+        id: "a1",
+        isPrimary: true,
+        evidence: [{ source: "codex", recordId: "codex-201" }],
+      }),
+      item({
+        id: "a2",
+        isPrimary: true,
+        evidence: [{ source: "codex", recordId: "codex-202" }],
+      }),
+    ];
+    expectIssue({ achievements: twoPrimary }, "invalid-achievement");
+
+    const nonBooleanPrimary = [
+      item({ id: "a1", isPrimary: "yes" as unknown as boolean }),
+    ];
+    expectIssue({ achievements: nonBooleanPrimary }, "invalid-achievement");
+  });
 });
 
 test("RC-2: non-object input, missing achievements array, or extra top-level keys are invalid-shape", () => {
@@ -473,5 +511,13 @@ describe("RE isValidAchievementEdit", () => {
     expect(isValidAchievementEdit(null)).toBe(false);
     expect(isValidAchievementEdit("title")).toBe(false);
     expect(isValidAchievementEdit([])).toBe(false);
+  });
+
+  test("RE-e: isPrimary boolean edit is valid, non-boolean is rejected", () => {
+    expect(isValidAchievementEdit({ isPrimary: true })).toBe(true);
+    expect(isValidAchievementEdit({ isPrimary: false })).toBe(true);
+    expect(isValidAchievementEdit({ title: "ok", isPrimary: true })).toBe(true);
+    expect(isValidAchievementEdit({ isPrimary: "yes" })).toBe(false);
+    expect(isValidAchievementEdit({ isPrimary: 1 })).toBe(false);
   });
 });

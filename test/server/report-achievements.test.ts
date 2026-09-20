@@ -240,3 +240,32 @@ test("RE-11: a PATCH or DELETE with no Origin header at all is refused, and noth
   const stored = await reportStore.read("2026-09-09");
   expect(stored.found && stored.report.achievements).toHaveLength(2);
 });
+
+test("RE-12: PATCH with isPrimary: true marks target achievement as primary and clears it on others", async () => {
+  const { patch, reportStore } = await setup();
+
+  const res1 = await patch("item-1", { isPrimary: true });
+  const body1 = (await res1.json()) as { report: AchievementReportV1 };
+  expect(
+    body1.report.achievements.find((a) => a.id === "item-1")?.isPrimary,
+  ).toBe(true);
+
+  const res2 = await patch("item-2", { isPrimary: true });
+  const body2 = (await res2.json()) as { report: AchievementReportV1 };
+  expect(
+    body2.report.achievements.find((a) => a.id === "item-2")?.isPrimary,
+  ).toBe(true);
+  expect(
+    body2.report.achievements.find((a) => a.id === "item-1")?.isPrimary,
+  ).toBe(false);
+
+  const stored = await reportStore.read("2026-09-09");
+  expect(
+    stored.found &&
+      stored.report.achievements.find((a) => a.id === "item-2")?.isPrimary,
+  ).toBe(true);
+  expect(
+    stored.found &&
+      stored.report.achievements.find((a) => a.id === "item-1")?.isPrimary,
+  ).toBe(false);
+});

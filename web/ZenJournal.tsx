@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   Achievement,
   AchievementReportV1,
@@ -11,15 +11,28 @@ import {
   sourceLabel,
   type EvidenceMessage,
 } from "./report-view.js";
+import {
+  format,
+  getTranslations,
+  type Language,
+  type Translations,
+} from "./i18n.js";
+import { loadSavedLanguage, saveLanguageChoice } from "./language-store.js";
+import { LanguageSelector } from "./LanguageSelector.js";
+import { SettingsModal } from "./SettingsModal.js";
+import { LocalActivityModal } from "./LocalActivityModal.js";
+import { DateSelector } from "./DateSelector.js";
+import { getYesterdayDate } from "./date-utils.js";
 
 type ViewMode = "journal" | "bento" | "briefing";
 
 interface EvidenceDrawerProps {
   refData: EvidenceRef;
   reportDate?: string;
+  t: Translations;
 }
 
-function EvidenceDrawer({ refData, reportDate }: EvidenceDrawerProps) {
+function EvidenceDrawer({ refData, reportDate, t }: EvidenceDrawerProps) {
   const [messages, setMessages] = useState<EvidenceMessage[]>([]);
   const [missingIds, setMissingIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,8 +92,8 @@ function EvidenceDrawer({ refData, reportDate }: EvidenceDrawerProps) {
     return (
       <div className="evidence-drawer">
         <p className="evidence-text-faint">
-          來源來自 {sourceLabel(refData.source)}
-          （線上歷史紀錄暫不支援本機直接預覽）。
+          {sourceLabel(refData.source)} (Online history is not directly
+          previewable locally).
         </p>
       </div>
     );
@@ -95,13 +108,13 @@ function EvidenceDrawer({ refData, reportDate }: EvidenceDrawerProps) {
         <span className="evidence-drawer-id">{refData.recordId}</span>
       </div>
       {loading ? (
-        <p className="evidence-text-faint">正在載入對話工作階段…</p>
+        <p className="evidence-text-faint">{t.states.loading}</p>
       ) : error ? (
         <p className="evidence-error">{error}</p>
       ) : (
         <div className="evidence-messages-list">
           {messages.length === 0 && missingIds.length === 0 ? (
-            <p className="evidence-text-faint">此工作階段無訊息。</p>
+            <p className="evidence-text-faint">No messages in this session.</p>
           ) : null}
           {messages.map((m) => (
             <div key={m.id} className="evidence-msg-item">
@@ -111,7 +124,7 @@ function EvidenceDrawer({ refData, reportDate }: EvidenceDrawerProps) {
           ))}
           {missingIds.map((id) => (
             <p key={id} className="evidence-stale-id">
-              訊息 {id} 已不存在於此工作階段（可能已被修剪或歸檔）。
+              Message {id} is no longer present in this session.
             </p>
           ))}
         </div>
@@ -126,6 +139,7 @@ interface AchievementCardProps {
   onReportUpdated: (report: AchievementReportV1) => void;
   onError: (message: string) => void;
   isHero?: boolean;
+  t: Translations;
 }
 
 function AchievementCard({
@@ -134,19 +148,25 @@ function AchievementCard({
   onReportUpdated,
   onError,
   isHero = false,
+  t,
 }: AchievementCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [editTitle, setEditTitle] = useState(achievement.title);
   const [editDetail, setEditDetail] = useState(achievement.detail);
+  const [editIsPrimary, setEditIsPrimary] = useState(
+    achievement.isPrimary ?? false,
+  );
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editError, setEditError] = useState<string | undefined>(undefined);
   const [expandedEvidence, setExpandedEvidence] = useState<number | null>(null);
 
   useEffect(() => {
     setEditTitle(achievement.title);
     setEditDetail(achievement.detail);
-  }, [achievement.title, achievement.detail]);
+    setEditIsPrimary(achievement.isPrimary ?? false);
+  }, [achievement.title, achievement.detail, achievement.isPrimary]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -161,6 +181,7 @@ function AchievementCard({
           body: JSON.stringify({
             title: editTitle,
             detail: editDetail,
+            isPrimary: editIsPrimary,
           }),
         },
       );
@@ -168,18 +189,21 @@ function AchievementCard({
         | { report?: AchievementReportV1; error?: { message?: string } }
         | undefined;
       if (!response.ok || !body?.report) {
-        throw new Error(body?.error?.message ?? "無法儲存變更。");
+        throw new Error(body?.error?.message ?? "Failed to save changes.");
       }
       setIsEditing(false);
       onReportUpdated(body.report);
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "無法儲存變更。");
+      setEditError(
+        err instanceof Error ? err.message : "Failed to save changes.",
+      );
     } finally {
       setIsSaving(false);
     }
   }
 
   async function handleConfirmRemove() {
+    setIsDeleting(true);
     try {
       const response = await fetch(
         `/api/reports/${encodeURIComponent(reportDate)}/achievements/${encodeURIComponent(achievement.id)}`,
@@ -189,32 +213,41 @@ function AchievementCard({
         | { report?: AchievementReportV1; error?: { message?: string } }
         | undefined;
       if (!response.ok || !body?.report) {
-        throw new Error(body?.error?.message ?? "無法刪除此成就。");
+        throw new Error(
+          body?.error?.message ?? "Failed to delete achievement.",
+        );
       }
       setIsRemoving(false);
       onReportUpdated(body.report);
     } catch (err) {
       setIsRemoving(false);
-      onError(err instanceof Error ? err.message : "無法刪除此成就。");
+      onError(
+        err instanceof Error ? err.message : "Failed to delete achievement.",
+      );
+    } finally {
+      setIsDeleting(false);
     }
   }
 
+  const isPrimary = achievement.isPrimary === true;
   const category = achievement.category || "progress";
-  const cardClassName = `journal-card category-${category} ${isHero ? "hero-card" : ""}`;
+  const cardClassName = `journal-card category-${category} ${isHero ? "hero-card" : ""} ${isPrimary ? "is-primary-card" : ""}`;
 
   return (
     <article className={cardClassName}>
-      {isHero ? (
-        <div className="hero-badge-tag">
-          <span>🌟</span> 今日核心里程碑
+      {isPrimary ? (
+        <div className="hero-badge-tag primary-badge-tag">
+          {t.badges.primary}
         </div>
+      ) : isHero ? (
+        <div className="hero-badge-tag">{t.badges.primary}</div>
       ) : null}
 
       {isEditing ? (
         <form className="journal-edit-form" onSubmit={handleSave}>
           <div className="form-group">
             <label htmlFor={`edit-title-${achievement.id}`}>
-              成就標題（簡短精煉）
+              {t.card.editTitlePlaceholder}
             </label>
             <input
               id={`edit-title-${achievement.id}`}
@@ -228,7 +261,7 @@ function AchievementCard({
           </div>
           <div className="form-group">
             <label htmlFor={`edit-detail-${achievement.id}`}>
-              詳細成果（1-2句具體結論）
+              {t.card.editDetailPlaceholder}
             </label>
             <textarea
               id={`edit-detail-${achievement.id}`}
@@ -240,6 +273,17 @@ function AchievementCard({
               required
             />
           </div>
+          <div className="form-group checkbox-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={editIsPrimary}
+                onChange={(e) => setEditIsPrimary(e.target.checked)}
+                disabled={isSaving}
+              />
+              <span>{t.card.setAsPrimary}</span>
+            </label>
+          </div>
           {editError ? <p className="form-error">{editError}</p> : null}
           <div className="form-actions">
             <button
@@ -247,7 +291,7 @@ function AchievementCard({
               className="btn btn-primary"
               disabled={isSaving}
             >
-              {isSaving ? "儲存中…" : "儲存"}
+              {isSaving ? t.card.saving : t.card.save}
             </button>
             <button
               type="button"
@@ -258,9 +302,10 @@ function AchievementCard({
                 setEditError(undefined);
                 setEditTitle(achievement.title);
                 setEditDetail(achievement.detail);
+                setEditIsPrimary(achievement.isPrimary ?? false);
               }}
             >
-              取消
+              {t.card.cancel}
             </button>
           </div>
         </form>
@@ -274,20 +319,22 @@ function AchievementCard({
             <div className="card-actions">
               {isRemoving ? (
                 <div className="remove-confirm-group">
-                  <span className="remove-prompt">確定刪除？</span>
+                  <span className="remove-prompt">{t.card.confirmDelete}</span>
                   <button
                     type="button"
                     className="action-btn action-danger"
+                    disabled={isDeleting}
                     onClick={handleConfirmRemove}
                   >
-                    確定
+                    {isDeleting ? t.card.deleting : t.card.delete}
                   </button>
                   <button
                     type="button"
                     className="action-btn"
+                    disabled={isDeleting}
                     onClick={() => setIsRemoving(false)}
                   >
-                    取消
+                    {t.card.cancel}
                   </button>
                 </div>
               ) : (
@@ -295,18 +342,20 @@ function AchievementCard({
                   <button
                     type="button"
                     className="action-btn"
+                    disabled={isSaving || isDeleting}
                     onClick={() => setIsEditing(true)}
-                    title="編輯成就內容"
+                    title={t.card.edit}
                   >
-                    編輯
+                    {t.card.edit}
                   </button>
                   <button
                     type="button"
                     className="action-btn"
+                    disabled={isSaving || isDeleting}
                     onClick={() => setIsRemoving(true)}
-                    title="刪除成就"
+                    title={t.card.delete}
                   >
-                    刪除
+                    {t.card.delete}
                   </button>
                 </>
               )}
@@ -332,7 +381,8 @@ function AchievementCard({
                     >
                       <span>📎</span>
                       <span>
-                        {sourceLabel(ref.source)} · {count} 條紀錄佐證
+                        {sourceLabel(ref.source)} ·{" "}
+                        {format(t.card.evidenceCount, { n: count })}
                       </span>
                       <span className="pill-arrow">
                         {isExpanded ? "▴" : "▾"}
@@ -347,6 +397,7 @@ function AchievementCard({
                 <EvidenceDrawer
                   refData={achievement.evidence[expandedEvidence]!}
                   reportDate={reportDate}
+                  t={t}
                 />
               ) : null}
             </div>
@@ -363,6 +414,33 @@ export function ZenJournal() {
   const [report, setReport] = useState<AchievementReportV1 | null>(null);
   const [status, setStatus] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isActivityOpen, setIsActivityOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(getYesterdayDate);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generateMessage, setGenerateMessage] = useState<string | undefined>(
+    undefined,
+  );
+
+  const [language, setLanguage] = useState<Language>(() =>
+    loadSavedLanguage(localStorage),
+  );
+
+  const t = useMemo(() => getTranslations(language), [language]);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
+  const handleLanguageChange = async (lang: Language) => {
+    setLanguage(lang);
+    await saveLanguageChoice(lang, {
+      storage: localStorage,
+      fetchFn: fetch,
+      origin: window.location.origin,
+    });
+  };
+
   const [theme, setTheme] = useState<Theme>(() => {
     try {
       const saved = localStorage.getItem("daily_proof_theme");
@@ -411,55 +489,91 @@ export function ZenJournal() {
     }
   };
 
-  const loadReport = useCallback(async (date?: string) => {
-    setLoading(true);
-    try {
-      const url = date
-        ? `/api/reports/${encodeURIComponent(date)}`
-        : "/api/reports/latest";
-      const response = await fetch(url);
-      if (response.status === 404) {
-        setReport(null);
-        setStatus("No report has been generated yet.");
-        return;
-      }
-      if (!response.ok) {
+  const loadReport = useCallback(
+    async (date?: string) => {
+      setLoading(true);
+      setGenerateMessage(undefined);
+      try {
+        const url = date
+          ? `/api/reports/${encodeURIComponent(date)}`
+          : "/api/reports/latest";
+        const response = await fetch(url);
+        if (response.status === 404) {
+          setReport(null);
+          setStatus("No report has been generated yet.");
+          return;
+        }
+        if (!response.ok) {
+          setReport(null);
+          setStatus("The report could not be loaded.");
+          return;
+        }
+        const body = (await response.json()) as { report: AchievementReportV1 };
+        setReport(body.report);
+
+        const incomplete = describeIncomplete(body.report.incomplete);
+        if (incomplete.length) {
+          setStatus(incomplete.join(" "));
+        } else if (body.report.achievements.length === 0) {
+          setStatus(t.states.emptyDesc);
+        } else {
+          setStatus(undefined);
+        }
+      } catch {
         setReport(null);
         setStatus("The report could not be loaded.");
-        return;
+      } finally {
+        setLoading(false);
       }
-      const body = (await response.json()) as { report: AchievementReportV1 };
-      setReport(body.report);
-
-      const incomplete = describeIncomplete(body.report.incomplete);
-      if (incomplete.length) {
-        setStatus(incomplete.join(" "));
-      } else if (body.report.achievements.length === 0) {
-        setStatus("今日對話中未發現符合標準的具體成就。");
-      } else {
-        setStatus(undefined);
-      }
-    } catch {
-      setReport(null);
-      setStatus("The report could not be loaded.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [t.states.emptyDesc],
+  );
 
   useEffect(() => {
-    void loadReport();
-  }, [loadReport]);
+    void loadReport(selectedDate);
+  }, [selectedDate, loadReport]);
 
-  function shiftDate(offsetDays: number) {
-    if (!report?.date) return;
-    const [y, m, d] = report.date.split("-").map(Number);
-    if (!y || !m || !d) return;
-    const current = new Date(Date.UTC(y, m - 1, d));
-    current.setUTCDate(current.getUTCDate() + offsetDays);
-    const nextDate = current.toISOString().slice(0, 10);
-    void loadReport(nextDate);
+  async function handleGenerateForSelectedDate() {
+    setIsGenerating(true);
+    setGenerateMessage(undefined);
+    try {
+      const res = await fetch("/api/reports/generate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: window.location.origin,
+        },
+        body: JSON.stringify({
+          scheduled: false,
+          language,
+          date: selectedDate,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        provider?: string;
+        report?: { reason?: string };
+        error?: { message?: string };
+      };
+      if (!res.ok) {
+        throw new Error(
+          data.report?.reason ?? data.error?.message ?? "Generation failed.",
+        );
+      }
+      await loadReport(selectedDate);
+    } catch (err) {
+      setGenerateMessage(
+        err instanceof Error ? err.message : "Generation failed.",
+      );
+    } finally {
+      setIsGenerating(false);
+    }
   }
+
+  // Bento separation: Hero is the primary milestone or first achievement
+  const heroAchievement =
+    report?.achievements.find((a) => a.isPrimary) ?? report?.achievements[0];
+  const secondaryAchievements =
+    report?.achievements.filter((a) => a.id !== heroAchievement?.id) ?? [];
 
   // Briefing Categorization
   const deliverables =
@@ -472,103 +586,109 @@ export function ZenJournal() {
       <header className="zen-header">
         <div className="brand-badge">Daily Proof</div>
         <div className="zen-nav-group">
-          {report ? (
-            <div className="date-display">
-              <span className="date-string">{report.date}</span>
-              <span className="status-tag verified">已驗證</span>
-            </div>
-          ) : (
-            <span className="date-string">每日成就檢視</span>
-          )}
-          <div className="nav-btn-group">
-            <button
-              type="button"
-              className="zen-nav-btn"
-              onClick={() => shiftDate(-1)}
-              title="前一天"
-              disabled={loading || !report}
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              className="zen-nav-btn"
-              onClick={() => void loadReport()}
-              title="回到最新報告"
-              disabled={loading}
-            >
-              最新
-            </button>
-            <button
-              type="button"
-              className="zen-nav-btn"
-              onClick={() => shiftDate(1)}
-              title="後一天"
-              disabled={loading || !report}
-            >
-              →
-            </button>
+          <div className="date-picker-wrap">
+            <DateSelector
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+              disabled={loading || isGenerating}
+              t={t}
+            />
           </div>
+
+          <button
+            type="button"
+            className="zen-theme-btn"
+            onClick={() => setIsActivityOpen(true)}
+            disabled={isGenerating}
+            title={t.header.activity}
+            aria-label={t.header.activity}
+          >
+            <span>📂</span>
+            <span className="theme-btn-text">{t.header.activity}</span>
+          </button>
+
+          <button
+            type="button"
+            className="zen-theme-btn"
+            onClick={() => setIsSettingsOpen(true)}
+            disabled={isGenerating}
+            title={t.header.settings}
+            aria-label={t.header.settings}
+          >
+            <span>⚙️</span>
+            <span className="theme-btn-text">{t.header.settings}</span>
+          </button>
+
+          <LanguageSelector
+            language={language}
+            onLanguageChange={(code) => void handleLanguageChange(code)}
+            disabled={isGenerating}
+            t={t}
+          />
+
           <button
             type="button"
             className="zen-theme-btn"
             onClick={toggleTheme}
-            title={
-              theme === "dark"
-                ? "切換至淺色模式 (Light)"
-                : "切換至深色模式 (Dark)"
-            }
-            aria-label="切換主題"
+            disabled={isGenerating}
+            title={t.header.themeToggle}
+            aria-label={t.header.themeToggle}
           >
             <span>{theme === "dark" ? "☀️" : "🌙"}</span>
             <span className="theme-btn-text">
-              {theme === "dark" ? "淺色" : "深色"}
+              {theme === "dark" ? t.header.themeLight : t.header.themeDark}
             </span>
           </button>
         </div>
       </header>
 
       {/* 3 Design Directions Switcher Bar */}
-      <nav className="concept-switcher-bar" aria-label="設計風格切換">
+      <nav
+        className="concept-switcher-bar"
+        aria-label={t.header.viewSwitcherLabel}
+      >
         <button
           type="button"
           className={`concept-btn ${viewMode === "journal" ? "active" : ""}`}
           onClick={() => changeViewMode("journal")}
+          disabled={loading || isGenerating}
         >
-          <span>📖</span> 方案 A：極簡手帳 (Linear)
+          {t.header.views.journal}
         </button>
         <button
           type="button"
           className={`concept-btn ${viewMode === "bento" ? "active" : ""}`}
           onClick={() => changeViewMode("bento")}
+          disabled={loading || isGenerating}
         >
-          <span>🍱</span> 方案 B：焦點 Bento (Apple)
+          {t.header.views.bento}
         </button>
         <button
           type="button"
           className={`concept-btn ${viewMode === "briefing" ? "active" : ""}`}
           onClick={() => changeViewMode("briefing")}
+          disabled={loading || isGenerating}
         >
-          <span>📝</span> 方案 C：晨昏簡報 (Notion)
+          {t.header.views.briefing}
         </button>
       </nav>
 
       <main className="zen-main-container">
         {loading ? (
           <div className="zen-state-card">
-            <p className="zen-state-text">正在載入成就報告…</p>
+            <p className="zen-state-text">{t.states.loading}</p>
           </div>
         ) : report ? (
           <>
             <section className="zen-meta-bar">
               <div className="meta-left">
                 <span className="meta-count">
-                  🎯 <strong>{report.achievements.length}</strong> 項具體成果
+                  {format(t.meta.count, { n: report.achievements.length })}
                 </span>
                 <span className="meta-divider">•</span>
                 <span className="meta-source">
-                  來源：
-                  {report.coverage.map((c) => sourceLabel(c.source)).join("、")}
+                  {t.meta.sources}
+                  {report.coverage.map((c) => sourceLabel(c.source)).join(", ")}
                 </span>
               </div>
             </section>
@@ -590,6 +710,7 @@ export function ZenJournal() {
                     reportDate={report.date}
                     onReportUpdated={(updated) => setReport(updated)}
                     onError={(err) => setStatus(err)}
+                    t={t}
                   />
                 ))}
               </section>
@@ -598,26 +719,28 @@ export function ZenJournal() {
             {/* View 2: Bento Grid (Hero card + 2-col subcards) */}
             {viewMode === "bento" && (
               <section className="bento-layout-container">
-                {report.achievements[0] ? (
+                {heroAchievement ? (
                   <AchievementCard
-                    key={report.achievements[0].id}
-                    achievement={report.achievements[0]}
+                    key={heroAchievement.id}
+                    achievement={heroAchievement}
                     reportDate={report.date}
                     onReportUpdated={(updated) => setReport(updated)}
                     onError={(err) => setStatus(err)}
                     isHero={true}
+                    t={t}
                   />
                 ) : null}
 
-                {report.achievements.length > 1 ? (
+                {secondaryAchievements.length > 0 ? (
                   <div className="bento-sub-grid">
-                    {report.achievements.slice(1).map((ach) => (
+                    {secondaryAchievements.map((ach) => (
                       <AchievementCard
                         key={ach.id}
                         achievement={ach}
                         reportDate={report.date}
                         onReportUpdated={(updated) => setReport(updated)}
                         onError={(err) => setStatus(err)}
+                        t={t}
                       />
                     ))}
                   </div>
@@ -630,7 +753,7 @@ export function ZenJournal() {
               <section className="briefing-paper-view">
                 <div className="briefing-inner-paper">
                   <div className="briefing-section-header">
-                    <span className="sec-icon">🚀</span> 關鍵成果 (Deliverables)
+                    {t.states.briefingDeliverables}
                   </div>
                   <div className="briefing-items-group">
                     {deliverables.map((ach) => (
@@ -640,10 +763,13 @@ export function ZenJournal() {
                         reportDate={report.date}
                         onReportUpdated={(updated) => setReport(updated)}
                         onError={(err) => setStatus(err)}
+                        t={t}
                       />
                     ))}
                     {deliverables.length === 0 ? (
-                      <p className="evidence-text-faint">本日無進展類成果。</p>
+                      <p className="evidence-text-faint">
+                        {t.states.noDeliverables}
+                      </p>
                     ) : null}
                   </div>
 
@@ -653,8 +779,7 @@ export function ZenJournal() {
                         className="briefing-section-header"
                         style={{ color: "#c084fc", marginTop: "2rem" }}
                       >
-                        <span className="sec-icon">🧭</span> 關鍵決策與止損
-                        (Decisions)
+                        {t.states.briefingDecisions}
                       </div>
                       <div className="briefing-items-group">
                         {decisions.map((ach) => (
@@ -664,6 +789,7 @@ export function ZenJournal() {
                             reportDate={report.date}
                             onReportUpdated={(updated) => setReport(updated)}
                             onError={(err) => setStatus(err)}
+                            t={t}
                           />
                         ))}
                       </div>
@@ -671,8 +797,7 @@ export function ZenJournal() {
                   ) : null}
 
                   <div className="briefing-conclusion-callout">
-                    <span>✨</span>{" "}
-                    今日評估：關鍵目標全數落地，及時排除無效雜訊，時間利用率高。
+                    {t.states.briefingConclusion}
                   </div>
                 </div>
               </section>
@@ -680,25 +805,68 @@ export function ZenJournal() {
           </>
         ) : (
           <div className="zen-state-card">
-            <h2 className="zen-empty-title">尚無報告</h2>
+            <h2 className="zen-empty-title">
+              {format(t.states.emptyDateTitle, { date: selectedDate })}
+            </h2>
             <p className="zen-state-text">
-              {status || "No report has been generated yet."}
+              {status || format(t.states.emptyDateDesc, { date: selectedDate })}
             </p>
-            <button
-              type="button"
-              className="btn btn-primary"
-              style={{ marginTop: "16px" }}
-              onClick={() => void loadReport()}
+            {generateMessage ? (
+              <p className="action-message error">{generateMessage}</p>
+            ) : null}
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "center",
+                marginTop: "16px",
+              }}
             >
-              重新整理
-            </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleGenerateForSelectedDate}
+                disabled={isGenerating || loading}
+              >
+                {isGenerating
+                  ? format(t.states.generatingForDate, { date: selectedDate })
+                  : format(t.states.generateForDate, { date: selectedDate })}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => void loadReport(selectedDate)}
+                disabled={isGenerating || loading}
+              >
+                {t.states.refresh}
+              </button>
+            </div>
           </div>
         )}
       </main>
 
       <footer className="zen-footer">
-        <p>所有對話紀錄均於本機 macOS 本地解析與儲存 · 遵循零隱私洩漏原則</p>
+        <p>{t.states.footerText}</p>
       </footer>
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        language={language}
+        t={t}
+        selectedDate={selectedDate}
+        isGenerating={isGenerating}
+        onReportGenerated={() => void loadReport(selectedDate)}
+      />
+
+      <LocalActivityModal
+        isOpen={isActivityOpen}
+        onClose={() => setIsActivityOpen(false)}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        t={t}
+        isGenerating={isGenerating}
+      />
     </div>
   );
 }

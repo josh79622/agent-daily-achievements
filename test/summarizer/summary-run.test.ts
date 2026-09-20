@@ -12,6 +12,7 @@ import type {
   ProbeRunResult,
   ReplyFileResult,
 } from "../../src/summarizer/readiness-probe.js";
+import { buildSummaryRequestText } from "../../src/report/summary-prompt.js";
 
 // Test cases SR-1 to SR-11 from docs/plans/2026-09-18-summary-run-design.md.
 // Every process, temp-dir, reply-file, and store dependency is a fake; no
@@ -319,16 +320,20 @@ test("summaryMaxReplyBytes is exported for the process runner's stdout cap", () 
   expect(summaryMaxReplyBytes).toBeGreaterThan(0);
 });
 
-test("SR: agy invokes agy CLI with -p and saves the candidate report", async () => {
+test("SR: agy invokes agy CLI without -p and pipes prompt to stdin", async () => {
   const { runner, state } = harness({
     provider: "agy",
     runnerScript: [agyExit(candidate(3))],
   });
-  await runner.run("agy", request());
+  const req = request();
+  await runner.run("agy", req);
   expect(state.runs).toHaveLength(1);
   expect(state.runs[0]?.captureStdout).toBe(true);
-  expect(state.runs[0]?.args).toContain("-p");
+  expect(state.runs[0]?.args).not.toContain("-p");
   expect(state.runs[0]?.args).toContain("--output-format");
+  expect(state.runs[0]?.stdin).toBe(
+    buildSummaryRequestText(req.payload.payloadJson),
+  );
   expect(state.saved).toHaveLength(1);
   expect(state.saved[0]?.status).toBe("complete");
   expect(state.saved[0]?.achievements).toHaveLength(3);
