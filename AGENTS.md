@@ -27,6 +27,7 @@
 - Derive important test cases from the intended behavior before looking to implementation for expected results; have Josh confirm cases that set product behavior. Use focused checks appropriate to the risk, and read their actual output before calling work complete.
 - Once `PROGRESS.md` and `TODO.md` exist, update them at task or session boundaries so the next session can resume from files. Do not invent status files merely to claim progress.
 - AI-written code is not automatically reviewed or verified by Josh. Explain new concepts in an overview first, then discuss one section at a time when Josh is learning or taking over a slice.
+- Josh discusses with the main session; implementation is delegated. Sessions here run long, so every file read and diff printed in the main transcript is re-sent on each later turn. Send code writing and editing to a subagent running Sonnet, with the context it needs stated in the prompt, and have it report back a short summary: files touched, what changed, and the result of the checks it ran. Do not have it paste full diffs into the main session. Keep inline only one-line fixes and edits to the documents under active discussion. The main session reviews the resulting diff and runs the verification itself; a subagent's report is not proof that a check passed.
 
 ## Git history and completion
 
