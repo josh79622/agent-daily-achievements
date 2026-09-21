@@ -445,6 +445,11 @@ regression to fix mid-task.
 
 ### Phase 7 — Release readiness
 
+- [ ] One-command install: fold build, timezone and the launchd job into a single `npm run setup`,
+      and detect the Node path instead of hard-coding it. Discussed with Josh 2026-09-22; test
+      cases not written yet. `npx` publishing is a later follow-up; a `.pkg` is out of scope.
+- [ ] `scripts/install-launchd.mjs` hard-codes `/opt/homebrew/opt/node@24/bin/node`. On any other
+      Mac the scheduled job would point at a missing file and never run. Fix with the item above.
 - [ ] Document GitHub-source setup and failure guidance.
 - [ ] Verify setup on a fresh macOS user environment.
 - [ ] Design the optional Chrome add-on separately.
