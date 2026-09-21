@@ -61,9 +61,13 @@ test("TZ-1: uses the computer's current timezone when none is configured", async
   expect(result.sessions).toHaveLength(1);
 });
 
-test("TZ-2: includes prior context across midnight in the selected timezone", async () => {
+test("TZ-2: includes prior context across the 07:00 report boundary in the selected timezone", async () => {
+  // Updated for Task S1 (docs/decisions/2026-09-21-seven-am-report-window.md):
+  // the report boundary moved from local midnight to local 07:00, so this
+  // now straddles 06:59:59/07:00:00 America/Los_Angeles (13:59:59Z/14:00:00Z
+  // in September, PDT) rather than midnight.
   const collector = await collectorWithClaudeMessages(
-    ["2026-09-16T06:59:59Z", "2026-09-16T07:00:00Z"],
+    ["2026-09-16T13:59:59Z", "2026-09-16T14:00:00Z"],
     "America/Los_Angeles",
   );
 
@@ -73,7 +77,7 @@ test("TZ-2: includes prior context across midnight in the selected timezone", as
   expect(result.sessions[0]?.messageCount).toBe(2);
   expect(
     result.sessions[0]?.messages.map(({ timestamp }) => timestamp),
-  ).toEqual(["2026-09-16T06:59:59Z", "2026-09-16T07:00:00Z"]);
+  ).toEqual(["2026-09-16T13:59:59Z", "2026-09-16T14:00:00Z"]);
 });
 
 test("TZ-3: classifies a UTC timestamp by a non-Sydney timezone", async () => {

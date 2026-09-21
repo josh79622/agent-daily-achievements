@@ -281,6 +281,34 @@ regression to fix mid-task.
   - New dev dependencies: `@testing-library/react`, `@testing-library/jest-dom`, `jsdom`.
   - 410 tests pass (15 new) and `npm run check` passes — run in the main session. The suite went
     from 2.78s to about 3.9s; the cost is jsdom setup for those two files.
+- **Task S1 done: the 07:00 report window and the daily schedule.** Decisions:
+  `docs/decisions/2026-09-21-seven-am-report-window.md` (supersedes the midnight boundary in the
+  2026-09-17 cross-day decision). Test cases S1-1 to S1-18, approved by Josh:
+  `docs/plans/2026-09-21-task-s1-seven-am-window-and-schedule-test-cases.md`.
+  - Josh's decisions, 2026-09-21: schedule lives in launchd; run at 07:00; a report covers
+    `[D 07:00, D+1 07:00)` and is filed under the starting day `D`; after several missed days only
+    the most recent finished window is generated.
+  - `reportDateFor` in `src/collector/local-collector.ts` is now the single place a record's day is
+    decided. It shifts the *zoned wall clock* back seven hours, not the UTC instant, so a daylight
+    saving change never skips or doubles a day.
+  - New `src/schedule/`: `report-window.ts` (which day to generate), `run-scheduled-report.ts`
+    (timezone → already generated? → permission → build → run), `entry.ts` (the job's Node entry
+    point, wired like `server/index.ts` without the HTTP server), `launchd-plist.ts` and
+    `launchd-install.ts`. `scripts/install-launchd.mjs` plus `npm run schedule:install` /
+    `schedule:run`. Nothing ran `launchctl`.
+  - A failed attempt writes no report: the runner is handed a capturing store, and the real store
+    is written only after a provider actually succeeds (S1-15). Note the consequence — when every
+    provider fails, the scheduled run leaves the day empty rather than saving the "unavailable"
+    report the manual route keeps.
+  - One existing test changed: `TZ-2` straddled local midnight, which is no longer a boundary; it
+    now straddles 06:59:59 / 07:00:00 America/Los_Angeles.
+  - 434 tests pass (24 new) and `npm run check` passes — run in the main session.
+  - **Blocking gap, nothing verified end to end yet**: the job reads the stored report timezone
+    from `data/report-timezone.json`, and nothing in the repository writes that file. Until it
+    exists the job always declines with `no-timezone`. The 2026-09-17 timezone decision puts
+    capturing it in the installer, which does not exist yet. That is the next piece of work.
+  - Also still open: `web/date-utils.ts`'s `getYesterdayDate()` still assumes midnight, so the
+    page's default date can disagree with the 07:00 window between midnight and 07:00.
 - **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
 - **Not started**: Task 5.
 

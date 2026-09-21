@@ -429,7 +429,14 @@ regression to fix mid-task.
 
 ### Phase 6 — Daily automation
 
-- [ ] Schedule exactly one daily report with idempotent catch-up after sleep/wake.
+- [x] Task S1: schedule exactly one daily report, 07:00 window, launchd job, no re-generation.
+      - Decisions: `docs/decisions/2026-09-21-seven-am-report-window.md`. Cases S1-1 to S1-18
+        approved by Josh. 434 tests pass; `npm run check` passes.
+      - Not yet verified end to end, and not installed on Josh's Mac.
+- [ ] Write `data/report-timezone.json` at setup; the scheduled job declines without it, and
+      nothing writes it today. Blocks the schedule from doing anything.
+- [ ] `getYesterdayDate()` in `web/date-utils.ts` still assumes a midnight boundary; align the
+      page's default date with the 07:00 window.
 - [ ] Mark incomplete reports visibly.
 - [ ] Add a clickable macOS notification.
 

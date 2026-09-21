@@ -367,11 +367,11 @@ function mergeSessions(
       continue;
     }
     const messages = [...records.values()]
-      .filter((message) => localDate(message.timestamp, timeZone) <= date)
+      .filter((message) => reportDateFor(message.timestamp, timeZone) <= date)
       .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     if (
       !messages.some(
-        (message) => localDate(message.timestamp, timeZone) === date,
+        (message) => reportDateFor(message.timestamp, timeZone) === date,
       )
     )
       continue;
@@ -757,11 +757,59 @@ function localTimeZone(configuredTimeZone: string | undefined): string {
   }
 }
 
-function localDate(timestamp: string, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
+/**
+ * The single place that decides what report day a record belongs to
+ * (decision: docs/decisions/2026-09-21-seven-am-report-window.md). A report
+ * covers `[D 07:00, D+1 07:00)` in `timeZone`, filed under `D`: shift the
+ * timestamp back seven wall-clock hours in that zone, then take the
+ * resulting calendar date.
+ *
+ * The subtraction happens on the zone's wall-clock components, not on the
+ * UTC instant, so a daylight-saving change never skips or doubles a day
+ * (S1-6): the window always starts at local 07:00 regardless of how many
+ * real hours elapsed since midnight that day.
+ */
+export function reportDateFor(timestamp: string, timeZone: string): string {
+  const instant = new Date(timestamp);
+  if (Number.isNaN(instant.getTime()))
+    throw new Error(`Invalid timestamp: ${timestamp}`);
+  const wallClock = zonedWallClockAsUtc(instant, timeZone);
+  const shifted = new Date(wallClock - sevenHoursMs);
+  const year = shifted.getUTCFullYear();
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(shifted.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+const sevenHoursMs = 7 * 60 * 60 * 1000;
+
+/**
+ * The instant's wall-clock date and time in `timeZone`, re-expressed as a
+ * UTC instant carrying the same numbers. Arithmetic on the result is pure
+ * calendar/clock arithmetic, unaffected by the zone's real UTC offset or any
+ * daylight-saving change on the day in question.
+ */
+function zonedWallClockAsUtc(instant: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
+    hour12: false,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date(timestamp));
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(instant);
+  const get = (type: string): number =>
+    Number(parts.find((part) => part.type === type)?.value ?? "0");
+  // Some locales format local midnight as hour "24" rather than "00".
+  const hour = get("hour") % 24;
+  return Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    hour,
+    get("minute"),
+    get("second"),
+  );
 }

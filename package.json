@@ -13,6 +13,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
+    "schedule:install": "tsx scripts/install-launchd.mjs",
+    "schedule:run": "node dist/src/schedule/entry.js",
     "start": "node dist/src/server/index.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.web.json --noEmit"
