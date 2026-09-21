@@ -208,8 +208,13 @@ regression to fix mid-task.
     shared).
   - Checked in the browser against the real server on port 4317: built-ins first, `Add` on every
     addable language, and `ar`/`he`/`fa`/`ur` still shown as not available with no `Add`.
-  - **Known gap**: no real Add has been run against a live provider CLI. The preparing, success
-    and failure row states and an actual translated pack are unit-tested only. Do that next.
+  - **Real end-to-end run done 2026-09-21 (after the `10f79ff` commit)**: pressed Add on Japanese in
+    the real app with `agy` (Gemini) as the chosen provider. The row showed `準備中…`, the pack
+    passed validation and was cached as `data/locales/ja.json` (5,248 bytes, all seven top-level
+    sections), the row then became selectable with no Add button, choosing it switched the whole
+    page to Japanese, and a reload came back in Japanese from the cached pack (L2-23). The saved
+    summary permission followed to `ja` and was restored to `zh-TW` afterwards, as was the UI
+    language. The failure row state is still unit-tested only — no real provider failure was forced.
   - Right-to-left layout remains a separate, still-open decision.
 - **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
 - **Not started**: Task 5.

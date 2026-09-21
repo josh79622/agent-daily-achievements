@@ -400,8 +400,9 @@ regression to fix mid-task.
       - 365 tests pass; `npm run check` passes (run in the main session, not only by the subagent).
       - Verified in the browser against the real server: built-ins first, `Add` on every addable
         language, right-to-left languages still shown as not available with no `Add`.
-      - *Not verified*: a real Add against a live provider CLI has not been run yet, so the
-        preparing / success / failure row states and a real translated pack are still unproven.
+      - Real end-to-end run done with `agy` (Gemini): Add on Japanese produced a validated
+        `data/locales/ja.json`, the page switched to Japanese and survived a reload. The failure
+        row state is still unit-tested only.
       - Right-to-left layout (`ar`, `he`, `fa`, `ur`) remains its own, still-open decision.
 - [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
       component-level tests (e.g. `@testing-library/react`); nothing chosen
