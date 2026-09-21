@@ -15,6 +15,7 @@
     "lint": "eslint .",
     "schedule:install": "tsx scripts/install-launchd.mjs",
     "schedule:run": "node dist/src/schedule/entry.js",
+    "setup": "tsx scripts/setup.mjs",
     "start": "node dist/src/server/index.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.web.json --noEmit"

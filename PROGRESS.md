@@ -309,6 +309,21 @@ regression to fix mid-task.
     capturing it in the installer, which does not exist yet. That is the next piece of work.
   - Also still open: `web/date-utils.ts`'s `getYesterdayDate()` still assumes midnight, so the
     page's default date can disagree with the 07:00 window between midnight and 07:00.
+- **Task S2 done: the setup command.** Test cases S2-1 to S2-10, approved by Josh:
+  `docs/plans/2026-09-21-task-s2-setup-command-test-cases.md`. Josh chose a setup command over
+  the server or the settings page.
+  - `setupReportTimeZone` sits beside `readReportTimeZone` in `src/storage/report-timezone.ts`, so
+    the writer and the reader agree on the file's shape (S2-7 checks exactly that).
+  - `npm run setup` (thin wrapper `scripts/setup.mjs`) stores the system timezone, keeps an
+    existing file rather than overwriting it, replaces a corrupt one, and refuses to guess when
+    the system timezone is missing or invalid — `--force <zone>` is the deliberate way to change it.
+  - 444 tests pass (10 new) and `npm run check` passes — run in the main session.
+  - Ran for real on this Mac: it wrote `Australia/Sydney`, and a second run kept it. That unblocks
+    the scheduled job, which no longer declines with `no-timezone`.
+  - **Open question for Josh**: the Mac's system timezone is `Australia/Sydney`. If the reports
+    should follow Taipei time instead, the fix is `npm run setup -- --force Asia/Taipei`. The
+    stored zone decides every 07:00 boundary, so this is worth getting right before the schedule
+    is installed.
 - **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
 - **Not started**: Task 5.
 

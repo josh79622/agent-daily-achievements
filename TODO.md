@@ -433,8 +433,10 @@ regression to fix mid-task.
       - Decisions: `docs/decisions/2026-09-21-seven-am-report-window.md`. Cases S1-1 to S1-18
         approved by Josh. 434 tests pass; `npm run check` passes.
       - Not yet verified end to end, and not installed on Josh's Mac.
-- [ ] Write `data/report-timezone.json` at setup; the scheduled job declines without it, and
-      nothing writes it today. Blocks the schedule from doing anything.
+- [x] Task S2: `npm run setup` writes `data/report-timezone.json`.
+      - Cases S2-1 to S2-10 approved by Josh. 444 tests pass; `npm run check` passes.
+      - Run for real: stored `Australia/Sydney`, the machine's own zone. Confirm with Josh whether
+        that is the intended report timezone.
 - [ ] `getYesterdayDate()` in `web/date-utils.ts` still assumes a midnight boundary; align the
       page's default date with the 07:00 window.
 - [ ] Mark incomplete reports visibly.
