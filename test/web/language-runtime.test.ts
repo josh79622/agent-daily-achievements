@@ -1,0 +1,165 @@
+import { afterEach, describe, expect, test } from "vitest";
+import {
+  buildLanguagePack,
+  loadLanguagePack,
+  resolveRuntimeLanguage,
+} from "../../web/language-runtime.js";
+import {
+  forgetLanguagePack,
+  getTranslations,
+  hasLanguagePack,
+} from "../../web/i18n.js";
+
+const origin = "http://127.0.0.1:4317";
+
+afterEach(() => {
+  forgetLanguagePack("ja");
+  forgetLanguagePack("ko");
+});
+
+function jsonResponse(status: number, body: unknown) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  } as Response;
+}
+
+describe("Building a language pack (L2-20 to L2-22)", () => {
+  test("L2-20: while a build is in flight, the pack is not yet registered (row would stay 'preparing')", async () => {
+    let resolveFetch!: (value: Response) => void;
+    const fetchFn = (() =>
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve;
+      })) as unknown as typeof fetch;
+
+    const promise = buildLanguagePack("ja", { fetchFn, origin });
+    // Still unresolved: nothing has registered a pack, and nothing about the
+    // current language selection changes just from calling build.
+    expect(hasLanguagePack("ja")).toBe(false);
+
+    resolveFetch(
+      jsonResponse(200, { pack: { header: { title: "こんにちは" } } }),
+    );
+    await promise;
+  });
+
+  test("L2-21: on success the pack is registered and the language becomes selectable", async () => {
+    const fetchFn = (async () =>
+      jsonResponse(200, {
+        pack: { header: { title: "こんにちは" } },
+      })) as unknown as typeof fetch;
+
+    const outcome = await buildLanguagePack("ja", { fetchFn, origin });
+
+    expect(outcome).toEqual({ ok: true });
+    expect(hasLanguagePack("ja")).toBe(true);
+    // A missing key still shows English (existing withEnglishFallback, L2-25).
+    expect(getTranslations("ja").header.settings).toBe("Settings");
+    expect(getTranslations("ja").header.title).toBe("こんにちは");
+  });
+
+  test("L2-22: on failure, a short reason is returned and nothing is registered; Add can be pressed again", async () => {
+    const fetchFn = (async () =>
+      jsonResponse(502, {
+        error: { message: "Missing key: header.title" },
+      })) as unknown as typeof fetch;
+
+    const outcome = await buildLanguagePack("ja", { fetchFn, origin });
+
+    expect(outcome).toEqual({ ok: false, reason: "Missing key: header.title" });
+    expect(hasLanguagePack("ja")).toBe(false);
+
+    // Pressing Add again is just another call; nothing about it is blocked.
+    const retry = await buildLanguagePack("ja", {
+      fetchFn: (async () =>
+        jsonResponse(200, {
+          pack: { header: { title: "こんにちは" } },
+        })) as unknown as typeof fetch,
+      origin,
+    });
+    expect(retry).toEqual({ ok: true });
+  });
+
+  test("L2-22: a network failure also returns a short reason without throwing", async () => {
+    const fetchFn = (async () => {
+      throw new Error("offline");
+    }) as unknown as typeof fetch;
+
+    await expect(buildLanguagePack("ja", { fetchFn, origin })).resolves.toEqual(
+      { ok: false, reason: expect.any(String) },
+    );
+  });
+});
+
+describe("Loading a saved language at startup (L2-23, L2-24)", () => {
+  test("L2-23: a saved added language loads its cached pack and the page opens in it", async () => {
+    const fetchFn = (async (url: string) => {
+      expect(url).toBe("/api/locales/ko");
+      return jsonResponse(200, { pack: { header: { title: "안녕" } } });
+    }) as unknown as typeof fetch;
+
+    const resolved = await resolveRuntimeLanguage("ko", { fetchFn });
+
+    expect(resolved).toEqual({ language: "ko", available: true });
+    expect(getTranslations("ko").header.title).toBe("안녕");
+  });
+
+  test("L2-24: a saved language whose cached file has been deleted opens in English and stays addable", async () => {
+    const fetchFn = (async () =>
+      jsonResponse(200, { pack: null })) as unknown as typeof fetch;
+
+    const resolved = await resolveRuntimeLanguage("ko", { fetchFn });
+
+    expect(resolved).toEqual({ language: "en", available: false });
+    expect(hasLanguagePack("ko")).toBe(false);
+  });
+
+  test("L2-24: a 404 or network failure while loading also falls back to English", async () => {
+    const notFound = (async () =>
+      jsonResponse(404, {})) as unknown as typeof fetch;
+    expect(await resolveRuntimeLanguage("ko", { fetchFn: notFound })).toEqual({
+      language: "en",
+      available: false,
+    });
+
+    const offline = (async () => {
+      throw new Error("offline");
+    }) as unknown as typeof fetch;
+    expect(await resolveRuntimeLanguage("ko", { fetchFn: offline })).toEqual({
+      language: "en",
+      available: false,
+    });
+  });
+
+  test("a built-in saved language never fetches anything", async () => {
+    let called = false;
+    const fetchFn = (async () => {
+      called = true;
+      return jsonResponse(200, { pack: {} });
+    }) as unknown as typeof fetch;
+
+    const resolved = await resolveRuntimeLanguage("es", { fetchFn });
+
+    expect(resolved).toEqual({ language: "es", available: true });
+    expect(called).toBe(false);
+  });
+});
+
+describe("loadLanguagePack", () => {
+  test("registers the pack and returns true when the server has one", async () => {
+    const fetchFn = (async () =>
+      jsonResponse(200, {
+        pack: { header: { title: "こんにちは" } },
+      })) as unknown as typeof fetch;
+    expect(await loadLanguagePack("ja", { fetchFn })).toBe(true);
+    expect(hasLanguagePack("ja")).toBe(true);
+  });
+
+  test("returns false and registers nothing when absent", async () => {
+    const fetchFn = (async () =>
+      jsonResponse(200, { pack: null })) as unknown as typeof fetch;
+    expect(await loadLanguagePack("ja", { fetchFn })).toBe(false);
+    expect(hasLanguagePack("ja")).toBe(false);
+  });
+});

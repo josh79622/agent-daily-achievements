@@ -20,6 +20,8 @@ import {
   readReplyFileFromDisk,
 } from "../summarizer/readiness-probe.js";
 import { createSummaryRunner } from "../summarizer/summary-run.js";
+import { createLanguagePackBuilder } from "../summarizer/language-pack-run.js";
+import { createLanguagePackStore } from "../storage/language-pack-store.js";
 import {
   createTrackedTempDirs,
   installShutdownCleanup,
@@ -96,10 +98,22 @@ const summaryRunner = summarizerModels
       reportStore,
     })
   : undefined;
+const languagePackBuilder = summarizerModels
+  ? createLanguagePackBuilder({
+      locate: (provider) => executor.locate(executableName(provider)),
+      models: summarizerModels,
+      runner: createProcessRunner(),
+      tempDirs,
+      readReplyFile: readReplyFileFromDisk,
+      store: createLanguagePackStore(resolve("data/locales")),
+      availableSummaryProviders,
+    })
+  : undefined;
 const server = createApp({
   availableSummaryProviders,
   collector,
   consentPath: resolve("data/local-sources.json"),
+  languagePackBuilder,
   providerLoginService,
   reportStore,
   summarizerModels,

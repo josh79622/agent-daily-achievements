@@ -181,6 +181,36 @@ regression to fix mid-task.
   fails; right-to-left languages (ar, he, fa, ur) need their own layout decision before being offered.
   L2's test cases are not written yet and need Josh's approval before code (AGENTS.md). Then frontend
   Task 5.
+- **Task L2 done (uncommitted work committed this session): on-demand language packs.**
+  Design and the 25 approved test cases:
+  `docs/plans/2026-09-21-task-l2-on-demand-language-packs-test-cases.md`.
+  - Josh's decision 2026-09-21: **prepare first, offer later**. A non-built-in language is not
+    selectable; it carries an `Add` button and becomes selectable only once a validated pack
+    exists. The other four assumptions in the doc were approved as written.
+  - Server: `src/report/language-pack.ts` (whole-pack validation — a missing key, a wrong value
+    type or a lost `{placeholder}` rejects everything; an invented extra key is dropped),
+    `src/report/language-pack-prompt.ts` (sends only the English pack plus the catalog's English
+    name — no conversation content), `src/storage/language-pack-store.ts` (atomic cache at
+    `data/locales/<code>.json`), `src/summarizer/language-pack-run.ts` (refusals before any
+    provider runs, provider fallback, one shared run for concurrent requests).
+    `src/summarizer/provider-order.ts` now holds `orderedProviders`/`providerName`, shared with
+    `app.ts`. Routes: `GET /api/locales/:code`, `POST /api/locales/:code/build` (origin-checked;
+    400 for a refusal, 502 for a build failure).
+  - Web: `web/language-runtime.ts` (runtime load/build), a runtime pack registry in `web/i18n.ts`,
+    a `status` field (`built-in`/`added`/`addable`/`unavailable`) in `web/language-options.ts`,
+    the `Add` button with preparing/failed states in `web/LanguageSelector.tsx`, and a startup
+    effect in `web/ZenJournal.tsx` that reloads a saved on-demand language's cached pack.
+  - Building a pack deliberately does **not** require the summarizer permission: only the English
+    UI strings leave the machine. It does use the provider already chosen in settings.
+  - 365 tests pass and `npm run check` passes — run in the main session, not only by the subagent.
+    Two review findings were fixed before the commit: the `Add` control had no CSS at all, and the
+    provider reply-parsing helpers had been copy-pasted out of `summary-run.ts` (now exported and
+    shared).
+  - Checked in the browser against the real server on port 4317: built-ins first, `Add` on every
+    addable language, and `ar`/`he`/`fa`/`ur` still shown as not available with no `Add`.
+  - **Known gap**: no real Add has been run against a live provider CLI. The preparing, success
+    and failure row states and an actual translated pack are unit-tested only. Do that next.
+  - Right-to-left layout remains a separate, still-open decision.
 - **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
 - **Not started**: Task 5.
 

@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vitest";
 import {
+  forgetLanguagePack,
   format,
   getTranslations,
   placeholdersOf,
+  registerLanguagePack,
   resolveSavedLanguage,
   translations,
   withEnglishFallback,
@@ -113,5 +115,20 @@ describe("Language packs (LC-1 to LC-5)", () => {
     expect(resolveSavedLanguage("en")).toBe("en");
     expect(resolveSavedLanguage(null)).toBe("zh-TW");
     expect(getTranslations("es").header.dateToday).toBe("Hoy");
+  });
+
+  test("L2-25: an on-demand pack missing a key at display time still renders, with English for that key", () => {
+    try {
+      registerLanguagePack("ja", { header: { title: "こんにちは" } });
+      const shown = getTranslations("ja");
+      expect(shown.header.title).toBe("こんにちは");
+      // Every other key falls back to English, same rule as a built-in pack.
+      expect(shown.header.settings).toBe(translations.en.header.settings);
+      expect(shown.activity.sessionsCount).toBe(
+        translations.en.activity.sessionsCount,
+      );
+    } finally {
+      forgetLanguagePack("ja");
+    }
   });
 });

@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 import { languageCatalog } from "../../src/report/languages.js";
-import { translations } from "../../web/i18n.js";
+import {
+  forgetLanguagePack,
+  registerLanguagePack,
+  translations,
+} from "../../web/i18n.js";
 import { searchLanguageOptions } from "../../web/language-options.js";
 
 describe("Language dropdown options (LC-6, LC-7)", () => {
@@ -61,5 +65,45 @@ describe("Language dropdown options (LC-6, LC-7)", () => {
 
   test("LC-7: a search with no match returns nothing", () => {
     expect(searchLanguageOptions("klingon")).toEqual([]);
+  });
+});
+
+describe("Task L2 dropdown grouping (L2-19)", () => {
+  test("L2-19: built-in, then added, then the rest (addable or unavailable), each in catalog order", () => {
+    try {
+      registerLanguagePack("ko", { header: { title: "다시" } });
+
+      const options = searchLanguageOptions("");
+      const builtInCount = Object.keys(translations).length;
+
+      expect(
+        options.slice(0, builtInCount).every((o) => o.status === "built-in"),
+      ).toBe(true);
+      expect(options[builtInCount]!.code).toBe("ko");
+      expect(options[builtInCount]!.status).toBe("added");
+
+      const rest = options.slice(builtInCount + 1);
+      expect(
+        rest.every((o) => o.status === "addable" || o.status === "unavailable"),
+      ).toBe(true);
+      // Catalog order is preserved within the "rest" group.
+      const restCodes = rest.map((o) => o.code);
+      const catalogOrderMinusHandled = languageCatalog
+        .map((l) => l.code)
+        .filter(
+          (code) => !Object.keys(translations).includes(code) && code !== "ko",
+        );
+      expect(restCodes).toEqual(catalogOrderMinusHandled);
+    } finally {
+      forgetLanguagePack("ko");
+    }
+  });
+
+  test("L2-19: a right-to-left language is 'unavailable', not 'addable'", () => {
+    const options = searchLanguageOptions("");
+    const arabic = options.find((o) => o.code === "ar")!;
+    expect(arabic.status).toBe("unavailable");
+    const japanese = options.find((o) => o.code === "ja")!;
+    expect(japanese.status).toBe("addable");
   });
 });

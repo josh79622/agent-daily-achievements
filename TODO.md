@@ -390,10 +390,19 @@ regression to fix mid-task.
       - The prompt and the permission/generate routes accept only `auto` or a catalog code.
       - Verified in the browser against the real server (search, switch to Spanish, saved
         permission followed and was restored).
-- [ ] Task L2: generate a language pack on demand for a catalog language that is not built in
-      (through the chosen provider), validate keys and placeholders, cache in `data/locales/`,
-      show English meanwhile. The agreed design is in `PROGRESS.md` under the L1 entry. Test cases still to be written and approved. Right-to-left
-      layout needs its own decision.
+- [x] Task L2: generate a language pack on demand for a catalog language that is not built in.
+      - Design and test cases L2-1 to L2-25 approved by Josh:
+        `docs/plans/2026-09-21-task-l2-on-demand-language-packs-test-cases.md`.
+      - Josh chose "prepare first, offer later": a non-built-in language is not selectable and
+        shows an `Add` button; it becomes selectable only after a validated pack exists.
+      - Building a pack does not require the summarizer permission (only the English UI strings
+        are sent, no conversation records); it does use the provider already chosen in settings.
+      - 365 tests pass; `npm run check` passes (run in the main session, not only by the subagent).
+      - Verified in the browser against the real server: built-ins first, `Add` on every addable
+        language, right-to-left languages still shown as not available with no `Add`.
+      - *Not verified*: a real Add against a live provider CLI has not been run yet, so the
+        preparing / success / failure row states and a real translated pack are still unproven.
+      - Right-to-left layout (`ar`, `he`, `fa`, `ur`) remains its own, still-open decision.
 - [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
       component-level tests (e.g. `@testing-library/react`); nothing chosen
       yet.

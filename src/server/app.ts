@@ -36,6 +36,11 @@ import {
   type ProviderLoginStatus,
   isSummaryProvider,
 } from "../summarizer/provider-login.js";
+import {
+  orderedProviders,
+  providerName,
+} from "../summarizer/provider-order.js";
+import type { LanguagePackBuilder } from "../summarizer/language-pack-run.js";
 
 export interface SummaryRequest {
   scheduled: boolean;
@@ -69,6 +74,7 @@ interface AppOptions {
   availableSummaryProviders?: SummaryProvider[];
   providerLoginService?: ProviderLoginService;
   summarizerModels?: SummarizerModelsService;
+  languagePackBuilder?: LanguagePackBuilder;
 }
 
 export function createApp({
@@ -98,6 +104,7 @@ export function createApp({
   availableSummaryProviders = [],
   providerLoginService,
   summarizerModels,
+  languagePackBuilder,
 }: AppOptions): Server {
   let generation = 0;
   let activeCollections = 0;
@@ -774,6 +781,83 @@ export function createApp({
         return;
       }
 
+      if (pathname.startsWith("/api/locales/")) {
+        const origin = localOrigin(request);
+        if (
+          !origin ||
+          (request.headers.origin && request.headers.origin !== origin) ||
+          request.headers["sec-fetch-site"] === "cross-site"
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Use the local app to manage language packs." },
+          });
+          return;
+        }
+        if (!languagePackBuilder) {
+          sendJson(response, 503, {
+            error: {
+              code: "language_packs_unavailable",
+              message: "Language packs are unavailable on this machine.",
+            },
+          });
+          return;
+        }
+        const buildMatch = pathname.match(/^\/api\/locales\/([^/]+)\/build$/);
+        if (buildMatch) {
+          if (request.method !== "POST") {
+            sendJson(response, 405, {
+              error: { message: "Method not allowed." },
+            });
+            return;
+          }
+          if (request.headers.origin !== origin) {
+            sendJson(response, 403, {
+              error: { message: "Build language packs from the local app." },
+            });
+            return;
+          }
+          const code = decodeURIComponent(buildMatch[1] ?? "");
+          const permission = await readSummaryPermission(summaryPermissionPath);
+          const result = await languagePackBuilder.build(code, {
+            preferredCli: permission?.preferredCli,
+          });
+          if (result.kind === "refused") {
+            sendJson(response, 400, {
+              error: { code: "language_not_addable", message: result.reason },
+            });
+            return;
+          }
+          if (result.kind === "failed") {
+            sendJson(response, 502, {
+              error: {
+                code: "language_pack_build_failed",
+                message: result.reason,
+              },
+            });
+            return;
+          }
+          sendJson(response, 200, { pack: result.pack });
+          return;
+        }
+        const getMatch = pathname.match(/^\/api\/locales\/([^/]+)$/);
+        if (getMatch) {
+          if (request.method !== "GET") {
+            sendJson(response, 405, {
+              error: { message: "Method not allowed." },
+            });
+            return;
+          }
+          const code = decodeURIComponent(getMatch[1] ?? "");
+          const pack = await languagePackBuilder.get(code);
+          sendJson(response, 200, { pack: pack ?? null });
+          return;
+        }
+        sendJson(response, 404, {
+          error: { code: "not_found", message: "Route not found." },
+        });
+        return;
+      }
+
       if (request.method === "GET" && staticDirectory) {
         const staticFile = resolveStaticFile(staticDirectory, pathname);
         if (staticFile) {
@@ -850,28 +934,6 @@ function summaryDisclosure() {
       "Complete conversations with report-day activity, including context through the end of that day.",
     possibleRecipients: ["codex", "claude-code", "agy"],
   };
-}
-
-function orderedProviders(
-  available: SummaryProvider[],
-  preferredCli: SummaryProvider | undefined,
-): SummaryProvider[] {
-  const unique = [...new Set(available)];
-  const preferred = preferredCli ?? "codex";
-  return [
-    preferred,
-    ...unique.filter((provider) => provider !== preferred),
-  ].filter(
-    (provider, index, providers) =>
-      unique.includes(provider) && providers.indexOf(provider) === index,
-  );
-}
-
-function providerName(provider: SummaryProvider): string {
-  if (provider === "codex") return "Codex";
-  if (provider === "claude-code") return "Claude Code";
-  if (provider === "agy") return "Gemini (agy)";
-  return provider;
 }
 
 function errorMessage(error: unknown): string {

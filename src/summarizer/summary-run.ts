@@ -177,7 +177,7 @@ export function createSummaryRunner({
   }
 }
 
-function claudeReplyText(
+export function claudeReplyText(
   result: Extract<ProbeRunResult, { kind: "exited" }>,
 ): string | undefined {
   if (result.stdoutTooLarge) return undefined;
@@ -201,7 +201,7 @@ function claudeReplyText(
   return typeof reply === "string" && reply.trim() ? reply : undefined;
 }
 
-function agyReplyText(
+export function agyReplyText(
   result: Extract<ProbeRunResult, { kind: "exited" }>,
 ): string | undefined {
   if (result.stdoutTooLarge) return undefined;
@@ -222,7 +222,7 @@ function agyReplyText(
   return typeof reply === "string" && reply.trim() ? reply : undefined;
 }
 
-async function codexReplyText(
+export async function codexReplyText(
   readReplyFile: ReplyFileReader,
   replyFile: string,
 ): Promise<string | undefined> {

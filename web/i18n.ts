@@ -3,6 +3,7 @@ import { es } from "./locales/es.js";
 import { zhTW } from "./locales/zh-TW.js";
 
 export type { Translations };
+export { en };
 
 /** A language code from `src/report/languages.ts`, e.g. "zh-TW". */
 export type Language = string;
@@ -61,9 +62,37 @@ export function withEnglishFallback(pack: unknown): Translations {
   return mergeOverEnglish(en, pack) as Translations;
 }
 
-/** The pack for a language code; an unknown code shows English. */
+// Task L2: packs for languages built on demand are not known at compile
+// time, so they live in this runtime registry instead of `translations`.
+// A page reload starts empty; the caller (web/language-runtime.ts) reloads a
+// saved language's cached pack from the server at startup.
+const runtimePacks = new Map<string, Translations>();
+
+/** Registers a validated pack for a non-built-in code; a missing key still
+ * shows English (`withEnglishFallback`), matching a built-in pack's rule. */
+export function registerLanguagePack(
+  code: Language,
+  pack: unknown,
+): Translations {
+  const full = withEnglishFallback(pack);
+  runtimePacks.set(code, full);
+  return full;
+}
+
+/** Whether a code's pack is ready to display: built in, or already loaded. */
+export function hasLanguagePack(code: Language): boolean {
+  return isBuiltInLanguage(code) || runtimePacks.has(code);
+}
+
+/** Forgets a runtime pack, e.g. after its cache file turns out to be gone. */
+export function forgetLanguagePack(code: Language): void {
+  runtimePacks.delete(code);
+}
+
+/** The pack for a language code; an unknown or not-yet-loaded code shows English. */
 export function getTranslations(code: Language): Translations {
-  return isBuiltInLanguage(code) ? withEnglishFallback(translations[code]) : en;
+  if (isBuiltInLanguage(code)) return withEnglishFallback(translations[code]);
+  return runtimePacks.get(code) ?? en;
 }
 
 /**

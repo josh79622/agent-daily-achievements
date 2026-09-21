@@ -2836,8 +2836,16 @@ body[data-theme="light"] {
   overflow-y: auto;
 }
 
+.language-list > li {
+  display: flex;
+  align-items: center;
+  min-height: 2.1rem;
+}
+
 .language-option {
   width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2872,6 +2880,48 @@ body[data-theme="light"] {
   padding: 0.6rem;
 }
 
+.language-option-add {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  min-width: 4rem;
+  padding: 0 0.6rem 0 0;
+}
+
+.language-option-add .language-option-note {
+  white-space: nowrap;
+}
+
+.language-option-failed {
+  color: #f59e0b;
+}
+
+.language-add-btn {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.6rem;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 999px;
+  color: #7dd3fc;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.language-add-btn:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.24);
+  color: #e0f2fe;
+}
+
+.language-add-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 [data-theme="light"] .language-menu {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.12);
@@ -2901,4 +2951,19 @@ body[data-theme="light"] {
 [data-theme="light"] .language-option-note,
 [data-theme="light"] .language-empty {
   color: #64748b;
+}
+
+[data-theme="light"] .language-option-failed {
+  color: #b45309;
+}
+
+[data-theme="light"] .language-add-btn {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #047857;
+}
+
+[data-theme="light"] .language-add-btn:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.2);
+  color: #065f46;
 }

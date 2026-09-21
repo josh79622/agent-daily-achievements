@@ -14,10 +14,16 @@ import {
 import {
   format,
   getTranslations,
+  isBuiltInLanguage,
   type Language,
   type Translations,
 } from "./i18n.js";
-import { loadSavedLanguage, saveLanguageChoice } from "./language-store.js";
+import {
+  loadSavedLanguage,
+  saveLanguageChoice,
+  languageStorageKey,
+} from "./language-store.js";
+import { resolveRuntimeLanguage } from "./language-runtime.js";
 import { LanguageSelector } from "./LanguageSelector.js";
 import { SettingsModal } from "./SettingsModal.js";
 import { LocalActivityModal } from "./LocalActivityModal.js";
@@ -425,12 +431,38 @@ export function ZenJournal() {
   const [language, setLanguage] = useState<Language>(() =>
     loadSavedLanguage(localStorage),
   );
+  // Bumped after a runtime pack loads, so `t` recomputes even though
+  // `language` itself may already hold that saved code (see below).
+  const [packRevision, setPackRevision] = useState(0);
 
-  const t = useMemo(() => getTranslations(language), [language]);
+  const t = useMemo(() => getTranslations(language), [language, packRevision]);
 
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
+
+  // Task L2 (test L2-23, L2-24): a saved non-built-in language starts this
+  // page in English (loadSavedLanguage's existing fallback) while its cached
+  // pack loads; if it loads, switch into it, otherwise stay in English and
+  // leave that language addable again.
+  useEffect(() => {
+    let cancelled = false;
+    let saved: string | null;
+    try {
+      saved = localStorage.getItem(languageStorageKey);
+    } catch {
+      saved = null;
+    }
+    if (!saved || isBuiltInLanguage(saved)) return;
+    resolveRuntimeLanguage(saved, { fetchFn: fetch }).then((resolved) => {
+      if (cancelled || !resolved.available) return;
+      setLanguage(resolved.language);
+      setPackRevision((revision) => revision + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleLanguageChange = async (lang: Language) => {
     setLanguage(lang);

@@ -62,6 +62,20 @@ export function findLanguage(code: string): LanguageInfo | undefined {
   return languageCatalog.find((language) => language.code === code);
 }
 
+// Task L2, assumption 4: right-to-left languages are still not offered — no
+// Add button, and a build request for one is refused before any provider
+// runs. Layout support is a separate, later decision.
+export const rtlLanguageCodes: ReadonlySet<string> = new Set([
+  "ar",
+  "he",
+  "fa",
+  "ur",
+]);
+
+export function isRtlLanguage(code: string): boolean {
+  return rtlLanguageCodes.has(code);
+}
+
 /** "English name (native name)", the label shown wherever a language is named. */
 export function formatLanguageLabel(language: LanguageInfo): string {
   return `${language.english} (${language.native})`;
