@@ -320,10 +320,20 @@ regression to fix mid-task.
   - 444 tests pass (10 new) and `npm run check` passes — run in the main session.
   - Ran for real on this Mac: it wrote `Australia/Sydney`, and a second run kept it. That unblocks
     the scheduled job, which no longer declines with `no-timezone`.
-  - **Open question for Josh**: the Mac's system timezone is `Australia/Sydney`. If the reports
-    should follow Taipei time instead, the fix is `npm run setup -- --force Asia/Taipei`. The
-    stored zone decides every 07:00 boundary, so this is worth getting right before the schedule
-    is installed.
+  - Timezone settled 2026-09-22 (Josh delegated the call to me): **keep `Australia/Sydney`**. The
+    two existing reports were already generated under it, and the session timestamps cluster at
+    22:00-23:00 UTC, which is 08:00-09:00 in Sydney and 06:00-07:00 in Taipei — the latter sits on
+    the very boundary being set. The rule is to take the system timezone, and the machine says
+    Sydney.
+  - **Schedule verified end to end, 2026-09-22 00:09 AEST** (one real `agy` call, Josh delegated
+    the decision to spend it): `npm run schedule:run` picked 2026-09-20 and generated it. That is
+    the correct window — at 00:09 on the 22nd the open window is 21 Sep (it began 21 Sep 07:00),
+    so the most recently finished one is 20 Sep. The report is real: status `complete`, four
+    achievements with one key milestone, every item carrying antigravity evidence ids, coverage
+    showing `claude-code` and `codex` as no-activity for that window (this session's Claude Code
+    work happened after 21 Sep 07:00, so it belongs to the 21 Sep window). A second run printed
+    "already has a report; nothing to do" and called no provider, so the idempotency holds in
+    real use, not only in tests.
 - **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
 - **Not started**: Task 5.
 
