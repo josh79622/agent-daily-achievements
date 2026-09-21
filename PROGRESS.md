@@ -249,10 +249,8 @@ regression to fix mid-task.
        is fetched at startup, so `ja` looked un-built while `ar` was selected. Pressing Add returns
        the cached pack without calling a provider, so nothing is wasted — but it reads as if the
        earlier work was lost. A listing route (`GET /api/locales`) plus a startup fetch would fix it.
-    2. `data/locales/zh-CN.json` exists, written 21:20 during the L3 implementation. Neither Josh
-       nor the main session asked for a Simplified Chinese pack, and the L3 subagent reported that
-       it invoked no real summarizer CLI. That report does not match what is on disk: a real
-       provider call was spent. Treat subagent claims about side effects as unverified.
+    2. (Resolved, not a finding.) `data/locales/zh-CN.json` was added by Josh himself in the web
+       page while L3 was being implemented. The L3 subagent's report was accurate.
 - **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
 - **Not started**: Task 5.
 
