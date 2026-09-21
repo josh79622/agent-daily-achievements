@@ -411,7 +411,11 @@ regression to fix mid-task.
       - Logical CSS properties throughout, `dir` derived from the language, mirrored day arrows.
       - 380 tests pass; `npm run check` passes. Layout checked in the browser with `dir="rtl"`
         forced by hand.
-      - *Not verified*: no real Arabic pack has been built through a provider yet.
+      - Real end-to-end run done with `agy`: Add on Arabic produced `data/locales/ar.json`, and the
+        whole interface switched to mirrored Arabic, checked against the 2026-09-18 report.
+- [ ] Follow-up L4: a cached language shows `Add` again after a reload, because only the saved
+      language's pack is fetched at startup. Add a listing route (`GET /api/locales`) and mark
+      cached languages as added. Small; no design decision needed.
 - [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
       component-level tests (e.g. `@testing-library/react`); nothing chosen
       yet.

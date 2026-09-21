@@ -236,9 +236,23 @@ regression to fix mid-task.
   - Checked in the browser against the real server with `dir="rtl"` forced by hand (no provider
     call): header, view switcher, the Journal and Bento views and the report cards for 2026-09-18
     all mirror cleanly, with the key-milestone card intact.
-  - **Known gap**: no real right-to-left language has been added through a provider yet, so the
-    genuine Arabic text path (a real pack, real Arabic glyphs, the dropdown's Add for `ar`) is
-    unproven. One CLI call, waiting on Josh.
+  - **Real end-to-end run done 2026-09-21 (after the `002e4d9` commit)**: pressed Add on Arabic in
+    the real app with `agy`. The pack was built and cached as `data/locales/ar.json` (5,714 bytes),
+    the row became selectable, and choosing it set `lang="ar"` with `dir="rtl"` and put the whole
+    interface into Arabic (`الإنجازات اليومية`, `الإعدادات`, `اليوم السابق`, the three view tabs).
+    The 2026-09-18 report was checked in that state: cards, the key-milestone badge
+    (`محطة رئيسية`), the source line and the evidence chips all mirror correctly. The report's own
+    text stays Chinese, as it should — the report is data, generated in its own language.
+    Afterwards the UI was returned to `zh-TW` and the saved permission was restored to `zh-TW`.
+  - **Two findings from that run, both still open:**
+    1. A cached language shows `Add` again after a page reload. Only the *saved* language's pack
+       is fetched at startup, so `ja` looked un-built while `ar` was selected. Pressing Add returns
+       the cached pack without calling a provider, so nothing is wasted — but it reads as if the
+       earlier work was lost. A listing route (`GET /api/locales`) plus a startup fetch would fix it.
+    2. `data/locales/zh-CN.json` exists, written 21:20 during the L3 implementation. Neither Josh
+       nor the main session asked for a Simplified Chinese pack, and the L3 subagent reported that
+       it invoked no real summarizer CLI. That report does not match what is on disk: a real
+       provider call was spent. Treat subagent claims about side effects as unverified.
 - **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
 - **Not started**: Task 5.
 
