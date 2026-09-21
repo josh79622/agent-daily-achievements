@@ -245,12 +245,28 @@ regression to fix mid-task.
     text stays Chinese, as it should — the report is data, generated in its own language.
     Afterwards the UI was returned to `zh-TW` and the saved permission was restored to `zh-TW`.
   - **Two findings from that run, both still open:**
-    1. A cached language shows `Add` again after a page reload. Only the *saved* language's pack
-       is fetched at startup, so `ja` looked un-built while `ar` was selected. Pressing Add returns
-       the cached pack without calling a provider, so nothing is wasted — but it reads as if the
-       earlier work was lost. A listing route (`GET /api/locales`) plus a startup fetch would fix it.
+    1. (Fixed by Task L4, below.) A cached language showed `Add` again after a page reload,
+       because only the saved language's pack was fetched at startup.
     2. (Resolved, not a finding.) `data/locales/zh-CN.json` was added by Josh himself in the web
        page while L3 was being implemented. The L3 subagent's report was accurate.
+- **Task L4 done: cached languages stay added.** Design and the 8 approved test cases (written in
+  Given/When/Then, Josh's new house style for these docs):
+  `docs/plans/2026-09-21-task-l4-cached-languages-stay-added-test-cases.md`.
+  - `GET /api/locales` returns the codes with a pack on disk; `LanguagePackStore.list()` reads the
+    cache directory, skipping anything that is not a parseable `.json` pack and treating a missing
+    directory as an empty list. It never calls a provider.
+  - The web app fetches that list once at startup. "Cached" (on disk) and "loaded" (in memory) are
+    now two separate questions: `web/language-options.ts` asks the first, `getTranslations` the
+    second. They are kept in two registries in `web/i18n.ts` on purpose.
+  - Choosing a cached-but-unloaded language fetches its pack first and only then switches
+    (`ensureLanguageLoaded`), so the page can never show English under another language's label.
+  - 395 tests pass (15 new) and `npm run check` passes — run in the main session.
+  - Checked in the browser against the real server: after a reload in `zh-TW`, all three cached
+    languages (`zh-CN`, `ja`, `ar`) are listed straight after the built-ins as selectable with no
+    `Add`; switching into Japanese showed real Japanese, then back to `zh-TW`. No provider call.
+  - Small gap left open: choosing a language whose cache file has been deleted behind the app's
+    back does nothing visible until the next listing. Within the approved L4-7 behavior, but a
+    dead click.
 - **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
 - **Not started**: Task 5.
 

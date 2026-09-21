@@ -413,9 +413,12 @@ regression to fix mid-task.
         forced by hand.
       - Real end-to-end run done with `agy`: Add on Arabic produced `data/locales/ar.json`, and the
         whole interface switched to mirrored Arabic, checked against the 2026-09-18 report.
-- [ ] Follow-up L4: a cached language shows `Add` again after a reload, because only the saved
-      language's pack is fetched at startup. Add a listing route (`GET /api/locales`) and mark
-      cached languages as added. Small; no design decision needed.
+- [x] Task L4: cached languages stay added after a reload.
+      - Design and test cases L4-1 to L4-8 approved by Josh:
+        `docs/plans/2026-09-21-task-l4-cached-languages-stay-added-test-cases.md`.
+      - `GET /api/locales` lists the packs on disk; the page fetches it at startup.
+      - 395 tests pass; `npm run check` passes. Verified in the browser with the three real
+        cached packs, no provider call.
 - [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
       component-level tests (e.g. `@testing-library/react`); nothing chosen
       yet.

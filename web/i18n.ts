@@ -89,6 +89,29 @@ export function forgetLanguagePack(code: Language): void {
   runtimePacks.delete(code);
 }
 
+// Task L4: codes the server has a pack file for on disk, from GET
+// /api/locales at startup, kept up to date after a successful Add. This is
+// deliberately a separate question from `runtimePacks` above: "cached" (on
+// disk) is what web/language-options.ts asks; "loaded" (in memory) is what
+// `getTranslations` keeps asking. Do not merge the two.
+const cachedLanguageCodes = new Set<string>();
+
+/** Replaces the full set of cached codes, e.g. from a GET /api/locales reply. */
+export function setCachedLanguages(codes: Iterable<Language>): void {
+  cachedLanguageCodes.clear();
+  for (const code of codes) cachedLanguageCodes.add(code);
+}
+
+/** Marks one more code cached, e.g. right after it is built. */
+export function markLanguageCached(code: Language): void {
+  cachedLanguageCodes.add(code);
+}
+
+/** Whether a code has a pack on disk (Task L4); independent of `hasLanguagePack`. */
+export function hasCachedLanguagePack(code: Language): boolean {
+  return cachedLanguageCodes.has(code);
+}
+
 /** The pack for a language code; an unknown or not-yet-loaded code shows English. */
 export function getTranslations(code: Language): Translations {
   if (isBuiltInLanguage(code)) return withEnglishFallback(translations[code]);

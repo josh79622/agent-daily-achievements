@@ -23,7 +23,11 @@ import {
   saveLanguageChoice,
   languageStorageKey,
 } from "./language-store.js";
-import { resolveRuntimeLanguage } from "./language-runtime.js";
+import {
+  ensureLanguageLoaded,
+  loadCachedLanguageList,
+  resolveRuntimeLanguage,
+} from "./language-runtime.js";
 import { directionFor } from "../src/report/languages.js";
 import { LanguageSelector } from "./LanguageSelector.js";
 import { SettingsModal } from "./SettingsModal.js";
@@ -472,9 +476,31 @@ export function ZenJournal() {
     };
   }, []);
 
+  // Task L4: every language with a pack already on disk should stay
+  // selectable after a reload, not only the saved one — the bug was that
+  // only the saved language's pack was fetched at startup. This only
+  // fetches the list of cached codes, never a pack itself; a pack is still
+  // downloaded only when its language is actually chosen.
+  useEffect(() => {
+    let cancelled = false;
+    loadCachedLanguageList({ fetchFn: fetch }).then(() => {
+      if (!cancelled) setPackRevision((revision) => revision + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Task L4 (test L4-6): a cached-but-unloaded language must have its pack
+  // fetched before the page switches, so it never renders a language whose
+  // pack isn't in memory yet. `direction` is derived from `language` via
+  // useMemo above, so it always switches together with it.
   const handleLanguageChange = async (lang: Language) => {
-    setLanguage(lang);
-    await saveLanguageChoice(lang, {
+    const outcome = await ensureLanguageLoaded(lang, { fetchFn: fetch });
+    if (!outcome.ok) return;
+    setLanguage(outcome.language);
+    setPackRevision((revision) => revision + 1);
+    await saveLanguageChoice(outcome.language, {
       storage: localStorage,
       fetchFn: fetch,
       origin: window.location.origin,

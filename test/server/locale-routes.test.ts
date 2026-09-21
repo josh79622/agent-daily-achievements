@@ -26,6 +26,9 @@ function fakeBuilder(overrides: Partial<LanguagePackBuilder> = {}) {
     async get(code) {
       return store.get(code);
     },
+    async list() {
+      return [...store.keys()].sort();
+    },
     async build(code) {
       calls.push(code);
       if (code === "xx-not-real") {
@@ -148,6 +151,36 @@ test("L3-16: a build request for a right-to-left code (ar) is no longer refused"
   expect(response.status).toBe(200);
   expect((await response.json()).pack).toBeDefined();
   expect(calls).toEqual(["ar"]);
+});
+
+// Task L4 (docs/plans/2026-09-21-task-l4-cached-languages-stay-added-test-cases.md):
+// the new listing route.
+
+test("L4-1: GET /api/locales with nothing cached returns an empty list", async () => {
+  const { builder } = fakeBuilder();
+  const baseUrl = await startTestApp(builder);
+
+  const response = await fetch(`${baseUrl}/api/locales`, {
+    headers: { origin: baseUrl },
+  });
+
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ codes: [] });
+});
+
+test("L4-2: GET /api/locales lists exactly the cached codes and calls no provider", async () => {
+  const { builder, calls, store } = fakeBuilder();
+  store.set("ar", en);
+  store.set("ja", en);
+  const baseUrl = await startTestApp(builder);
+
+  const response = await fetch(`${baseUrl}/api/locales`, {
+    headers: { origin: baseUrl },
+  });
+
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ codes: ["ar", "ja"] });
+  expect(calls).toHaveLength(0);
 });
 
 test("a request from another origin is refused before the builder is called", async () => {

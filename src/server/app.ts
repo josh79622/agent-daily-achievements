@@ -781,6 +781,38 @@ export function createApp({
         return;
       }
 
+      if (pathname === "/api/locales") {
+        const origin = localOrigin(request);
+        if (
+          !origin ||
+          (request.headers.origin && request.headers.origin !== origin) ||
+          request.headers["sec-fetch-site"] === "cross-site"
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Use the local app to manage language packs." },
+          });
+          return;
+        }
+        if (request.method !== "GET") {
+          sendJson(response, 405, {
+            error: { message: "Method not allowed." },
+          });
+          return;
+        }
+        if (!languagePackBuilder) {
+          sendJson(response, 503, {
+            error: {
+              code: "language_packs_unavailable",
+              message: "Language packs are unavailable on this machine.",
+            },
+          });
+          return;
+        }
+        const codes = await languagePackBuilder.list();
+        sendJson(response, 200, { codes });
+        return;
+      }
+
       if (pathname.startsWith("/api/locales/")) {
         const origin = localOrigin(request);
         if (

@@ -1,13 +1,17 @@
 import { afterEach, describe, expect, test } from "vitest";
 import {
   buildLanguagePack,
+  ensureLanguageLoaded,
+  loadCachedLanguageList,
   loadLanguagePack,
   resolveRuntimeLanguage,
 } from "../../web/language-runtime.js";
 import {
   forgetLanguagePack,
   getTranslations,
+  hasCachedLanguagePack,
   hasLanguagePack,
+  setCachedLanguages,
 } from "../../web/i18n.js";
 import { directionFor } from "../../src/report/languages.js";
 
@@ -16,6 +20,8 @@ const origin = "http://127.0.0.1:4317";
 afterEach(() => {
   forgetLanguagePack("ja");
   forgetLanguagePack("ko");
+  forgetLanguagePack("ar");
+  setCachedLanguages([]);
 });
 
 function jsonResponse(status: number, body: unknown) {
@@ -203,5 +209,101 @@ describe("loadLanguagePack", () => {
       jsonResponse(200, { pack: null })) as unknown as typeof fetch;
     expect(await loadLanguagePack("ja", { fetchFn })).toBe(false);
     expect(hasLanguagePack("ja")).toBe(false);
+  });
+});
+
+// Task L4 (docs/plans/2026-09-21-task-l4-cached-languages-stay-added-test-cases.md).
+describe("Switching into a cached-but-unloaded language (L4-6)", () => {
+  test("L4-6: choosing a cached-but-unloaded language fetches its pack first, and only resolves once it has arrived", async () => {
+    let resolveFetch!: (value: Response) => void;
+    const fetchFn = (() =>
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve;
+      })) as unknown as typeof fetch;
+
+    const promise = ensureLanguageLoaded("ja", { fetchFn });
+    // The pack has not arrived yet: the page must not switch into ja
+    // while it is still English underneath.
+    expect(hasLanguagePack("ja")).toBe(false);
+
+    resolveFetch(
+      jsonResponse(200, { pack: { header: { title: "こんにちは" } } }),
+    );
+    const outcome = await promise;
+
+    expect(outcome).toEqual({ ok: true, language: "ja" });
+    expect(hasLanguagePack("ja")).toBe(true);
+  });
+
+  test("L4-6: an already-loaded or built-in language resolves immediately without fetching", async () => {
+    let called = false;
+    const fetchFn = (async () => {
+      called = true;
+      return jsonResponse(200, { pack: {} });
+    }) as unknown as typeof fetch;
+
+    expect(await ensureLanguageLoaded("es", { fetchFn })).toEqual({
+      ok: true,
+      language: "es",
+    });
+    expect(called).toBe(false);
+
+    await buildLanguagePack("ja", {
+      fetchFn: (async () =>
+        jsonResponse(200, {
+          pack: { header: { title: "こんにちは" } },
+        })) as unknown as typeof fetch,
+      origin,
+    });
+    called = false;
+    expect(await ensureLanguageLoaded("ja", { fetchFn })).toEqual({
+      ok: true,
+      language: "ja",
+    });
+    expect(called).toBe(false);
+  });
+
+  test("L4-6: a cached code whose file turns out to be gone abandons the switch", async () => {
+    const fetchFn = (async () =>
+      jsonResponse(200, { pack: null })) as unknown as typeof fetch;
+
+    expect(await ensureLanguageLoaded("ja", { fetchFn })).toEqual({
+      ok: false,
+    });
+    expect(hasLanguagePack("ja")).toBe(false);
+  });
+});
+
+describe("Loading the cached-language list at startup (L4-5, L4-8)", () => {
+  test("L4-5: a successful list marks every returned code cached", async () => {
+    const fetchFn = (async (url: string) => {
+      expect(url).toBe("/api/locales");
+      return jsonResponse(200, { codes: ["ar", "ja"] });
+    }) as unknown as typeof fetch;
+
+    await loadCachedLanguageList({ fetchFn });
+
+    expect(hasCachedLanguagePack("ar")).toBe(true);
+    expect(hasCachedLanguagePack("ja")).toBe(true);
+    // Still not loaded into memory just from listing (L4-5 vs getTranslations).
+    expect(hasLanguagePack("ar")).toBe(false);
+  });
+
+  test("L4-8: a failed list request leaves the cached set untouched and raises nothing", async () => {
+    setCachedLanguages(["ja"]);
+    const fetchFn = (async () =>
+      jsonResponse(503, {})) as unknown as typeof fetch;
+
+    await expect(loadCachedLanguageList({ fetchFn })).resolves.toBeUndefined();
+    expect(hasCachedLanguagePack("ja")).toBe(true);
+  });
+
+  test("L4-8: a network failure while listing also resolves quietly", async () => {
+    const fetchFn = (async () => {
+      throw new Error("offline");
+    }) as unknown as typeof fetch;
+
+    await expect(loadCachedLanguageList({ fetchFn })).resolves.toBeUndefined();
+    expect(hasCachedLanguagePack("ja")).toBe(false);
   });
 });

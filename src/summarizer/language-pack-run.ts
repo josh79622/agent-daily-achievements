@@ -41,6 +41,8 @@ export type LanguagePackBuildResult =
 export interface LanguagePackBuilder {
   /** The cached pack for a code, or undefined when none has been built. */
   get(code: string): Promise<Translations | undefined>;
+  /** Every code with a pack cached on disk (Task L4). Never calls a provider. */
+  list(): Promise<string[]>;
   /**
    * Builds (or reuses) the pack for a code. Concurrent calls for the same
    * code share one provider run (test L2-17).
@@ -180,6 +182,9 @@ export function createLanguagePackBuilder({
   return {
     async get(code) {
       return store.read(code);
+    },
+    async list() {
+      return store.list();
     },
     build(code, options) {
       const refusal = refusalReason(code);

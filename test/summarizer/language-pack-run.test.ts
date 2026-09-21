@@ -95,6 +95,9 @@ function harness({
         store[code] = pack;
         state.written.push({ code, pack });
       },
+      async list() {
+        return Object.keys(store).sort();
+      },
     },
     availableSummaryProviders: [...availableSummaryProviders],
   });

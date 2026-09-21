@@ -2,13 +2,14 @@ import {
   formatLanguageLabel,
   languageCatalog,
 } from "../src/report/languages.js";
-import { hasLanguagePack, isBuiltInLanguage } from "./i18n.js";
+import { hasCachedLanguagePack, isBuiltInLanguage } from "./i18n.js";
 
 /**
- * "built-in": ships with the app. "added": a validated on-demand pack is
- * already loaded and the language is selectable. "addable": not yet built;
- * the dropdown offers an Add button. Task L3 dropped "unavailable": the
- * four right-to-left codes are "addable" like any other catalog code.
+ * "built-in": ships with the app. "added": a pack is cached on disk (Task
+ * L4 — this no longer requires the pack to be loaded in memory yet) and the
+ * language is selectable. "addable": not yet built; the dropdown offers an
+ * Add button. Task L3 dropped "unavailable": the four right-to-left codes
+ * are "addable" like any other catalog code.
  */
 export type LanguageOptionStatus = "built-in" | "added" | "addable";
 
@@ -23,7 +24,7 @@ export interface LanguageOption {
 
 function statusFor(code: string): LanguageOptionStatus {
   if (isBuiltInLanguage(code)) return "built-in";
-  if (hasLanguagePack(code)) return "added";
+  if (hasCachedLanguagePack(code)) return "added";
   return "addable";
 }
 
