@@ -419,9 +419,13 @@ regression to fix mid-task.
       - `GET /api/locales` lists the packs on disk; the page fetches it at startup.
       - 395 tests pass; `npm run check` passes. Verified in the browser with the three real
         cached packs, no provider call.
-- [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
-      component-level tests (e.g. `@testing-library/react`); nothing chosen
-      yet.
+- [ ] End-to-end layer in a real browser, for CSS and layout faults that jsdom cannot see
+      (Josh, 2026-09-21: deferred out of Task 5, to be considered on its own). Nothing chosen yet.
+- [x] Task 5: component-level tests replace the bundle-string assertions.
+      - Design and test cases T5-1 to T5-16 approved by Josh:
+        `docs/plans/2026-09-21-task-5-component-tests-test-cases.md`.
+      - `@testing-library/react` with `jsdom`, chosen by Josh; jsdom is opted into per file.
+      - 410 tests pass; `npm run check` passes. Suite time 2.78s → ~3.9s.
 
 ### Phase 6 — Daily automation
 

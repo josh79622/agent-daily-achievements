@@ -8,5 +8,10 @@
     "types": ["vite/client"],
     "noEmit": true
   },
-  "include": ["web/**/*.ts", "web/**/*.tsx"]
+  "include": [
+    "web/**/*.ts",
+    "web/**/*.tsx",
+    "test/web/*.test.tsx",
+    "test/setup/*.ts"
+  ]
 }

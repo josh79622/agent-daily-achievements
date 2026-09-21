@@ -2,12 +2,12 @@ import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { expect, test } from "vitest";
 
-// React + Vite migration (framework decision, 2026-09-18): this replaces the
-// old assertions against the vanilla-DOM bundle, which no longer exists.
-// Real component-level tests are their own task (Task 5); until then this
-// only checks that each migration task's build still produces a working
-// page, updated task by task as web/App.tsx changes.
-test("the Vite build produces a working React shell", async () => {
+// Task 5 (docs/plans/2026-09-21-task-5-component-tests-test-cases.md),
+// case T5-16. Real behavior is now exercised by rendering the components
+// themselves (test/web/LanguageSelector.test.tsx, test/web/DateSelector.test.tsx);
+// this only checks that the production build still produces a working page
+// shell, without asserting on any string inside the bundle.
+test("T5-16: the production build produces an HTML page with a root element and a script", async () => {
   const build = spawnSync(
     process.execPath,
     ["node_modules/vite/bin/vite.js", "build"],
@@ -22,14 +22,4 @@ test("the Vite build produces a working React shell", async () => {
   expect(html).toMatch(/<div id="root">/);
   const scriptMatch = html.match(/<script[^>]*src="(\/assets\/[^"]+\.js)"/);
   expect(scriptMatch, html).not.toBeNull();
-  const scriptPath = `dist/web${scriptMatch![1]}`;
-  const script = await readFile(scriptPath, "utf8");
-
-  // Task 2: the constellation fetches the real report instead of showing
-  // fixed scaffold text.
-  expect(script).toMatch(/Daily Proof/);
-  expect(script).toMatch(/api\/reports\/latest/);
-  expect(script).toMatch(/No report has been generated yet\./);
-  // The old vanilla entry point is gone; nothing should still reference it.
-  expect(html).not.toMatch(/app\.js/);
 });

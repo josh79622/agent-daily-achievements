@@ -267,6 +267,20 @@ regression to fix mid-task.
   - Small gap left open: choosing a language whose cache file has been deleted behind the app's
     back does nothing visible until the next listing. Within the approved L4-7 behavior, but a
     dead click.
+- **Task 5 done: component tests.** Design and the 16 approved test cases:
+  `docs/plans/2026-09-21-task-5-component-tests-test-cases.md`.
+  - Josh chose `@testing-library/react` with `jsdom` over a real-browser runner, and decided
+    that CSS and layout coverage waits for a separate end-to-end layer (now its own TODO line).
+  - `test/web/LanguageSelector.test.tsx` (T5-1..T5-10) and `test/web/DateSelector.test.tsx`
+    (T5-11..T5-15) render the components and click them. `test/web/build-output.test.ts` is down
+    to one check (T5-16): the build produces a page with a root element and a script. Every
+    bundle-string assertion is gone.
+  - The default Vitest environment stays `node`; the two component files opt into jsdom with a
+    `// @vitest-environment jsdom` docblock, because a global jsdom broke two existing tests that
+    read files through `new URL(..., import.meta.url)`.
+  - New dev dependencies: `@testing-library/react`, `@testing-library/jest-dom`, `jsdom`.
+  - 410 tests pass (15 new) and `npm run check` passes — run in the main session. The suite went
+    from 2.78s to about 3.9s; the cost is jsdom setup for those two files.
 - **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
 - **Not started**: Task 5.
 
