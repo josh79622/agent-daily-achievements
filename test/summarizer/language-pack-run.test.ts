@@ -177,11 +177,16 @@ test("L2-15: a built-in code is refused; a built-in is never generated", async (
   expect(state.runs).toHaveLength(0);
 });
 
-test("L2-16: a right-to-left code is refused with 'not supported yet' as the reason", async () => {
-  const { builder, state } = harness({ runnerScript: [] });
+// Task L3 (docs/plans/2026-09-21-task-l3-rtl-layout-test-cases.md): replaces
+// the old L2-16 "a right-to-left code is refused" case.
+test("L3-16: a build request for ar is no longer refused; it reaches the provider like any other addable language", async () => {
+  const { builder, state } = harness({
+    runnerScript: [claudeExit(JSON.stringify(translate(en)))],
+  });
   const result = await builder.build("ar");
-  expect(result).toEqual({ kind: "refused", reason: "not supported yet" });
-  expect(state.runs).toHaveLength(0);
+  expect(result.kind).toBe("built");
+  expect(state.runs).toHaveLength(1);
+  expect(state.locateCalls).toEqual(["claude-code"]);
 });
 
 test("L2-17: two build requests for ja at once share one provider run", async () => {

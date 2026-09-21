@@ -121,11 +121,6 @@ export function LanguageSelector({
                         {t.header.languageBuiltIn}
                       </span>
                     )}
-                    {option.status === "unavailable" && (
-                      <span className="language-option-note">
-                        {t.header.languageNotAvailable}
-                      </span>
-                    )}
                   </button>
                   {option.status === "addable" && (
                     <span className="language-option-add">

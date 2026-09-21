@@ -1,6 +1,5 @@
 import {
   formatLanguageLabel,
-  isRtlLanguage,
   languageCatalog,
 } from "../src/report/languages.js";
 import { hasLanguagePack, isBuiltInLanguage } from "./i18n.js";
@@ -8,11 +7,10 @@ import { hasLanguagePack, isBuiltInLanguage } from "./i18n.js";
 /**
  * "built-in": ships with the app. "added": a validated on-demand pack is
  * already loaded and the language is selectable. "addable": not yet built;
- * the dropdown offers an Add button. "unavailable": right-to-left, still not
- * offered at all (Task L2, assumption 4).
+ * the dropdown offers an Add button. Task L3 dropped "unavailable": the
+ * four right-to-left codes are "addable" like any other catalog code.
  */
-export type LanguageOptionStatus =
-  "built-in" | "added" | "addable" | "unavailable";
+export type LanguageOptionStatus = "built-in" | "added" | "addable";
 
 export interface LanguageOption {
   code: string;
@@ -26,7 +24,6 @@ export interface LanguageOption {
 function statusFor(code: string): LanguageOptionStatus {
   if (isBuiltInLanguage(code)) return "built-in";
   if (hasLanguagePack(code)) return "added";
-  if (isRtlLanguage(code)) return "unavailable";
   return "addable";
 }
 
@@ -34,7 +31,6 @@ const statusRank: Record<LanguageOptionStatus, number> = {
   "built-in": 0,
   added: 1,
   addable: 2,
-  unavailable: 2,
 };
 
 /** Lower-case, accent-free text, so "espanol" finds "Español". */

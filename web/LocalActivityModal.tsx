@@ -11,6 +11,7 @@ import {
 } from "./local-activity-view.js";
 import { sourceLabel } from "./report-view.js";
 import { DateSelector } from "./DateSelector.js";
+import type { Direction } from "../src/report/languages.js";
 
 interface EvidenceMessage {
   id: string;
@@ -26,6 +27,7 @@ export interface LocalActivityModalProps {
   onDateChange: (date: string) => void;
   t: Translations;
   isGenerating?: boolean;
+  direction?: Direction;
 }
 
 export function LocalActivityModal({
@@ -35,6 +37,7 @@ export function LocalActivityModal({
   onDateChange,
   t,
   isGenerating = false,
+  direction = "ltr",
 }: LocalActivityModalProps) {
   const [savedSources, setSavedSources] = useState<LocalSource[]>([]);
   const [draftSources, setDraftSources] = useState<LocalSource[]>([]);
@@ -282,6 +285,7 @@ export function LocalActivityModal({
               onDateChange={setModalDate}
               disabled={isBusy}
               t={t}
+              direction={direction}
             />
             <button
               type="button"

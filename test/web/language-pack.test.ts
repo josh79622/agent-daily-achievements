@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import {
   forgetLanguagePack,
@@ -130,5 +131,21 @@ describe("Language packs (LC-1 to LC-5)", () => {
     } finally {
       forgetLanguagePack("ja");
     }
+  });
+
+  // Task L3 (docs/plans/2026-09-21-task-l3-rtl-layout-test-cases.md):
+  // languageNotAvailable backed the removed "unavailable" dropdown status
+  // (L3-15) and nothing renders it any more.
+  test("L3-17: languageNotAvailable is gone from every built-in pack, and nothing in the language dropdown references it", () => {
+    for (const pack of Object.values(translations)) {
+      expect(
+        (pack.header as Record<string, unknown>).languageNotAvailable,
+      ).toBeUndefined();
+    }
+    const selectorSource = readFileSync(
+      new URL("../../web/LanguageSelector.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(selectorSource).not.toMatch(/languageNotAvailable/);
   });
 });

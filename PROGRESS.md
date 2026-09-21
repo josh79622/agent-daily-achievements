@@ -216,6 +216,29 @@ regression to fix mid-task.
     summary permission followed to `ja` and was restored to `zh-TW` afterwards, as was the UI
     language. The failure row state is still unit-tested only — no real provider failure was forced.
   - Right-to-left layout remains a separate, still-open decision.
+- **Task L3 done: right-to-left layout.** Design and the 17 approved test cases:
+  `docs/plans/2026-09-21-task-l3-rtl-layout-test-cases.md`.
+  - Josh chose this over leaving `ar`/`he`/`fa`/`ur` locked (my recommendation was to leave them
+    locked; he decided otherwise and the four languages are now addable like any other).
+  - `directionFor` in `src/report/languages.ts` is the single source of direction; `ZenJournal.tsx`
+    sets `document.documentElement.dir` in the same effect as `lang`, so direction is always
+    derived from the language and can never outlive it.
+  - `web/styles.css`: 20 physical declarations became logical (`inset-inline-*`,
+    `margin/padding/border-inline-*`, `text-align: start`). The two Constellation canvas
+    coordinates (`left: var(--x)`, `left: 50%`) stay physical on purpose, with a comment and a
+    test (L3-13) recording the exemption.
+  - Day arrows swap glyph, not meaning: `dayArrowGlyphs` in `web/date-utils.ts`; the accessible
+    labels are unchanged. `LocalActivityModal`'s own `DateSelector` gets the same direction, so
+    the two steppers cannot disagree.
+  - `unavailable` is gone from `web/language-options.ts` and `languageNotAvailable` from the three
+    built-in packs; `refusalReason` no longer refuses RTL codes. Test L2-16 was rewritten as L3-16.
+  - 380 tests pass (15 new) and `npm run check` passes — run in the main session.
+  - Checked in the browser against the real server with `dir="rtl"` forced by hand (no provider
+    call): header, view switcher, the Journal and Bento views and the report cards for 2026-09-18
+    all mirror cleanly, with the key-milestone card intact.
+  - **Known gap**: no real right-to-left language has been added through a provider yet, so the
+    genuine Arabic text path (a real pack, real Arabic glyphs, the dropdown's Add for `ar`) is
+    unproven. One CLI call, waiting on Josh.
 - **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
 - **Not started**: Task 5.
 

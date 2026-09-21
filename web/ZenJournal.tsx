@@ -24,6 +24,7 @@ import {
   languageStorageKey,
 } from "./language-store.js";
 import { resolveRuntimeLanguage } from "./language-runtime.js";
+import { directionFor } from "../src/report/languages.js";
 import { LanguageSelector } from "./LanguageSelector.js";
 import { SettingsModal } from "./SettingsModal.js";
 import { LocalActivityModal } from "./LocalActivityModal.js";
@@ -437,9 +438,16 @@ export function ZenJournal() {
 
   const t = useMemo(() => getTranslations(language), [language, packRevision]);
 
+  const direction = useMemo(() => directionFor(language), [language]);
+
+  // Direction is always derived from `language`, never set on its own, so it
+  // can never outlive the language it belongs to (test L3-4 to L3-7) — a
+  // fallback to English from the startup effect below flips this right back
+  // to "ltr" in the same render that changes `language`.
   useEffect(() => {
     document.documentElement.lang = language;
-  }, [language]);
+    document.documentElement.dir = direction;
+  }, [language, direction]);
 
   // Task L2 (test L2-23, L2-24): a saved non-built-in language starts this
   // page in English (loadSavedLanguage's existing fallback) while its cached
@@ -624,6 +632,7 @@ export function ZenJournal() {
               onDateChange={setSelectedDate}
               disabled={loading || isGenerating}
               t={t}
+              direction={direction}
             />
           </div>
 
@@ -898,6 +907,7 @@ export function ZenJournal() {
         onDateChange={setSelectedDate}
         t={t}
         isGenerating={isGenerating}
+        direction={direction}
       />
     </div>
   );

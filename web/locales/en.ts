@@ -22,7 +22,6 @@ export const en = {
     languageSearchPlaceholder: "Search languages…",
     languageNoResults: "No matching language",
     languageBuiltIn: "Built-in",
-    languageNotAvailable: "Not available yet",
     languageAdd: "Add",
     languagePreparing: "Preparing…",
     languageAddFailed: "Could not add. Try again.",

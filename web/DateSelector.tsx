@@ -1,5 +1,6 @@
 import type { Translations } from "./i18n.js";
-import { getTodayDate, shiftDateString } from "./date-utils.js";
+import { dayArrowGlyphs, getTodayDate, shiftDateString } from "./date-utils.js";
+import type { Direction } from "../src/report/languages.js";
 
 export interface DateSelectorProps {
   selectedDate: string;
@@ -7,6 +8,8 @@ export interface DateSelectorProps {
   disabled?: boolean;
   t: Translations;
   className?: string;
+  /** The page's reading direction (test L3-8, L3-9); defaults to "ltr". */
+  direction?: Direction;
 }
 
 export function DateSelector({
@@ -15,9 +18,11 @@ export function DateSelector({
   disabled = false,
   t,
   className = "",
+  direction = "ltr",
 }: DateSelectorProps) {
   const today = getTodayDate();
   const isToday = selectedDate === today;
+  const { prev, next } = dayArrowGlyphs(direction);
 
   const handleShift = (offset: number) => {
     if (disabled) return;
@@ -36,7 +41,7 @@ export function DateSelector({
         title={t.header.datePrev}
         aria-label={t.header.datePrev}
       >
-        ←
+        {prev}
       </button>
 
       {/* 2. 日期 input */}
@@ -75,7 +80,7 @@ export function DateSelector({
         title={t.header.dateNext}
         aria-label={t.header.dateNext}
       >
-        →
+        {next}
       </button>
     </div>
   );

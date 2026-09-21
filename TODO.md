@@ -404,6 +404,14 @@ regression to fix mid-task.
         `data/locales/ja.json`, the page switched to Japanese and survived a reload. The failure
         row state is still unit-tested only.
       - Right-to-left layout (`ar`, `he`, `fa`, `ur`) remains its own, still-open decision.
+- [x] Task L3: right-to-left layout for `ar` / `he` / `fa` / `ur`, which are now addable like any
+      other catalog language.
+      - Design and test cases L3-1 to L3-17 approved by Josh:
+        `docs/plans/2026-09-21-task-l3-rtl-layout-test-cases.md`.
+      - Logical CSS properties throughout, `dir` derived from the language, mirrored day arrows.
+      - 380 tests pass; `npm run check` passes. Layout checked in the browser with `dir="rtl"`
+        forced by hand.
+      - *Not verified*: no real Arabic pack has been built through a provider yet.
 - [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
       component-level tests (e.g. `@testing-library/react`); nothing chosen
       yet.

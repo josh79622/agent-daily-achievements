@@ -1,3 +1,20 @@
+import type { Direction } from "../src/report/languages.js";
+
+/**
+ * The glyph each day-arrow button shows for a reading direction (Task L3,
+ * tests L3-8, L3-9). The buttons' meaning never changes — "previous" always
+ * moves to the earlier date — only the glyph, chosen so it points toward the
+ * start of the reading order.
+ */
+export function dayArrowGlyphs(direction: Direction): {
+  prev: string;
+  next: string;
+} {
+  return direction === "rtl"
+    ? { prev: "→", next: "←" }
+    : { prev: "←", next: "→" };
+}
+
 export function formatLocalDate(d: Date): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");

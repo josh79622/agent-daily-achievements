@@ -19,7 +19,6 @@ export const zhTW: Translations = {
     languageSearchPlaceholder: "搜尋語言…",
     languageNoResults: "找不到符合的語言",
     languageBuiltIn: "內建",
-    languageNotAvailable: "尚未提供",
     languageAdd: "新增",
     languagePreparing: "準備中…",
     languageAddFailed: "新增失敗，請再試一次。",

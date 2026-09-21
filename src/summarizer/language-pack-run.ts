@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { isBuiltInLanguage, type Translations } from "../../web/i18n.js";
 import { validateLanguagePack } from "../report/language-pack.js";
 import { buildLanguagePackPrompt } from "../report/language-pack-prompt.js";
-import { findLanguage, isRtlLanguage } from "../report/languages.js";
+import { findLanguage } from "../report/languages.js";
 import type { SummaryProvider } from "../storage/summary-permission.js";
 import type { LanguagePackStore } from "../storage/language-pack-store.js";
 import {
@@ -54,7 +54,8 @@ export interface LanguagePackBuilder {
 function refusalReason(code: string): string | undefined {
   if (!findLanguage(code)) return "That language is not in the catalog.";
   if (isBuiltInLanguage(code)) return "A built-in language is never generated.";
-  if (isRtlLanguage(code)) return "not supported yet";
+  // Task L3: right-to-left codes are no longer refused here; they reach the
+  // provider like any other addable language (test L3-16).
   return undefined;
 }
 

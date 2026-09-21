@@ -20,7 +20,6 @@ export const es: Translations = {
     languageSearchPlaceholder: "Buscar idiomas…",
     languageNoResults: "Ningún idioma coincide",
     languageBuiltIn: "Integrado",
-    languageNotAvailable: "Aún no disponible",
     languageAdd: "Añadir",
     languagePreparing: "Preparando…",
     languageAddFailed: "No se pudo añadir. Vuelve a intentarlo.",

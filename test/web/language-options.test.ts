@@ -69,7 +69,7 @@ describe("Language dropdown options (LC-6, LC-7)", () => {
 });
 
 describe("Task L2 dropdown grouping (L2-19)", () => {
-  test("L2-19: built-in, then added, then the rest (addable or unavailable), each in catalog order", () => {
+  test("L2-19: built-in, then added, then the rest (addable), each in catalog order", () => {
     try {
       registerLanguagePack("ko", { header: { title: "다시" } });
 
@@ -83,9 +83,7 @@ describe("Task L2 dropdown grouping (L2-19)", () => {
       expect(options[builtInCount]!.status).toBe("added");
 
       const rest = options.slice(builtInCount + 1);
-      expect(
-        rest.every((o) => o.status === "addable" || o.status === "unavailable"),
-      ).toBe(true);
+      expect(rest.every((o) => o.status === "addable")).toBe(true);
       // Catalog order is preserved within the "rest" group.
       const restCodes = rest.map((o) => o.code);
       const catalogOrderMinusHandled = languageCatalog
@@ -99,10 +97,15 @@ describe("Task L2 dropdown grouping (L2-19)", () => {
     }
   });
 
-  test("L2-19: a right-to-left language is 'unavailable', not 'addable'", () => {
+  // Task L3 (docs/plans/2026-09-21-task-l3-rtl-layout-test-cases.md):
+  // replaces the old L2-19 "a right-to-left language is 'unavailable'" case.
+  test("L3-15: ar, he, fa, ur report 'addable'; 'unavailable' no longer occurs for any catalog code", () => {
     const options = searchLanguageOptions("");
-    const arabic = options.find((o) => o.code === "ar")!;
-    expect(arabic.status).toBe("unavailable");
+    for (const code of ["ar", "he", "fa", "ur"]) {
+      expect(options.find((o) => o.code === code)!.status).toBe("addable");
+    }
+    const allowedStatuses = new Set(["built-in", "added", "addable"]);
+    expect(options.every((o) => allowedStatuses.has(o.status))).toBe(true);
     const japanese = options.find((o) => o.code === "ja")!;
     expect(japanese.status).toBe("addable");
   });

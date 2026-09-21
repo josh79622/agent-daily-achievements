@@ -9,6 +9,7 @@ import {
   getTranslations,
   hasLanguagePack,
 } from "../../web/i18n.js";
+import { directionFor } from "../../src/report/languages.js";
 
 const origin = "http://127.0.0.1:4317";
 
@@ -143,6 +144,47 @@ describe("Loading a saved language at startup (L2-23, L2-24)", () => {
 
     expect(resolved).toEqual({ language: "es", available: true });
     expect(called).toBe(false);
+  });
+});
+
+// Task L3 (docs/plans/2026-09-21-task-l3-rtl-layout-test-cases.md): the
+// ZenJournal effect that sets `document.documentElement.lang`/`dir` derives
+// direction purely from the resolved language with `directionFor`, so
+// exercising the same pair proves the two can never fall out of step —
+// there is no separate direction state to drift.
+describe("Direction stays in step with the resolved language (L3-4 to L3-7)", () => {
+  test("L3-4: choosing ar resolves to dir 'rtl' while keeping lang 'ar'", () => {
+    expect({ language: "ar", direction: directionFor("ar") }).toEqual({
+      language: "ar",
+      direction: "rtl",
+    });
+  });
+
+  test("L3-5: switching from ar back to zh-TW resolves to dir 'ltr'", () => {
+    expect(directionFor("ar")).toBe("rtl");
+    expect(directionFor("zh-TW")).toBe("ltr");
+  });
+
+  test("L3-6: a page load with ar saved and its pack cached resolves to dir 'rtl'", async () => {
+    const fetchFn = (async () =>
+      jsonResponse(200, {
+        pack: { header: { title: "مرحبا" } },
+      })) as unknown as typeof fetch;
+
+    const resolved = await resolveRuntimeLanguage("ar", { fetchFn });
+
+    expect(resolved).toEqual({ language: "ar", available: true });
+    expect(directionFor(resolved.language)).toBe("rtl");
+  });
+
+  test("L3-7: a page load with ar saved but its cached pack gone falls back to English and to dir 'ltr'", async () => {
+    const fetchFn = (async () =>
+      jsonResponse(200, { pack: null })) as unknown as typeof fetch;
+
+    const resolved = await resolveRuntimeLanguage("ar", { fetchFn });
+
+    expect(resolved).toEqual({ language: "en", available: false });
+    expect(directionFor(resolved.language)).toBe("ltr");
   });
 });
 

@@ -62,9 +62,9 @@ export function findLanguage(code: string): LanguageInfo | undefined {
   return languageCatalog.find((language) => language.code === code);
 }
 
-// Task L2, assumption 4: right-to-left languages are still not offered — no
-// Add button, and a build request for one is refused before any provider
-// runs. Layout support is a separate, later decision.
+// Right-to-left catalog codes. Task L2 kept these locked out entirely; Task
+// L3 (docs/plans/2026-09-21-task-l3-rtl-layout-test-cases.md) makes them
+// addable like any other language and flips the interface for them.
 export const rtlLanguageCodes: ReadonlySet<string> = new Set([
   "ar",
   "he",
@@ -74,6 +74,18 @@ export const rtlLanguageCodes: ReadonlySet<string> = new Set([
 
 export function isRtlLanguage(code: string): boolean {
   return rtlLanguageCodes.has(code);
+}
+
+/** The reading direction the page and its stylesheet should use. */
+export type Direction = "ltr" | "rtl";
+
+/**
+ * `"rtl"` for the four right-to-left catalog codes, `"ltr"` for every other
+ * catalog code and for any unrecognised code (test L3-1, L3-2, L3-3) — a bad
+ * saved value can never flip the page.
+ */
+export function directionFor(code: string): Direction {
+  return isRtlLanguage(code) ? "rtl" : "ltr";
 }
 
 /** "English name (native name)", the label shown wherever a language is named. */

@@ -11,7 +11,7 @@ import { en } from "../../web/i18n.js";
 // HTTP wiring for /api/locales/*; the build/validate/cache logic itself is
 // covered directly against createLanguagePackBuilder in
 // test/summarizer/language-pack-run.test.ts. Cases: L2-9, L2-10, L2-12,
-// L2-14, L2-15, L2-16.
+// L2-14, L2-15, L3-16 (replaces L2-16).
 
 const cleanups: Array<() => Promise<void>> = [];
 
@@ -39,9 +39,6 @@ function fakeBuilder(overrides: Partial<LanguagePackBuilder> = {}) {
           kind: "refused",
           reason: "A built-in language is never generated.",
         };
-      }
-      if (code === "ar") {
-        return { kind: "refused", reason: "not supported yet" };
       }
       if (code === "broken") {
         return { kind: "failed", reason: "Missing key: header.title" };
@@ -137,8 +134,10 @@ test("L2-15: a built-in code is refused", async () => {
   expect(response.status).toBe(400);
 });
 
-test("L2-16: a right-to-left code is refused with 'not supported yet'", async () => {
-  const { builder } = fakeBuilder();
+// Task L3 (docs/plans/2026-09-21-task-l3-rtl-layout-test-cases.md): replaces
+// the old L2-16 "a right-to-left code is refused" case.
+test("L3-16: a build request for a right-to-left code (ar) is no longer refused", async () => {
+  const { builder, calls } = fakeBuilder();
   const baseUrl = await startTestApp(builder);
 
   const response = await fetch(`${baseUrl}/api/locales/ar/build`, {
@@ -146,8 +145,9 @@ test("L2-16: a right-to-left code is refused with 'not supported yet'", async ()
     headers: { origin: baseUrl },
   });
 
-  expect(response.status).toBe(400);
-  expect((await response.json()).error.message).toBe("not supported yet");
+  expect(response.status).toBe(200);
+  expect((await response.json()).pack).toBeDefined();
+  expect(calls).toEqual(["ar"]);
 });
 
 test("a request from another origin is refused before the builder is called", async () => {
