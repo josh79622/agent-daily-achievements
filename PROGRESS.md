@@ -146,7 +146,7 @@ regression to fix mid-task.
   - Added dedicated language toggle button (`🌐 English` / `🌐 繁體中文`) in `web/ZenJournal.tsx` header.
   - Persisted in `localStorage` and synchronized with `PUT /api/summarizer/permission` for AI summary output language.
   - *Known UI Polish*: Switching language currently causes slight header layout shifting due to variable string lengths in flex buttons without fixed min-widths. To be polished in upcoming styling pass.
-- **Task L1 done: language packs as plain strings, built-in zh-TW / en / es, searchable language dropdown**
+- **Task L1 done (`be95d91`, also carries all earlier uncommitted work — Task 4, Settings modal, Antigravity collector, date navigation — which shared its files): language packs as plain strings, built-in zh-TW / en / es, searchable language dropdown**
   (design agreed with Josh 2026-09-21; test cases LC-1 to LC-9 approved by him):
   - `web/locales/{en,zh-TW,es}.ts` hold string-only packs (`{n}`/`{date}` placeholders instead of functions);
     `web/i18n.ts` adds `format`, `withEnglishFallback` (a missing key shows English) and
@@ -170,9 +170,17 @@ regression to fix mid-task.
   - Known gaps: the "No report has been generated yet." status line comes from the server and is
     not translated; right-to-left languages (Arabic, Hebrew, Persian, Urdu) are listed but need layout
     work before they can be offered in Task L2.
-- **Next**: Task L2 (generate a pack for a non-built-in language on demand through the chosen summarizer
-  provider, validate it, cache it in `data/locales/`, show English while it generates). Its test cases
-  are not written yet. Then frontend Task 5.
+- **Next**: Task L2 — generate a pack for a non-built-in language on demand. Design decisions Josh
+  already made (do not re-ask): the user never types a language; they pick from the dropdown (built-in
+  plus the addable catalog languages, searchable, labelled "English name (native name)"); built-in
+  languages are only zh-TW, en, es; the agent translates the English pack and the result is served to
+  the frontend at runtime, with no rebuild and no server restart. Design points I proposed that Josh has
+  not yet confirmed: use the provider he already chose; validate that keys match English and that every
+  `{placeholder}` survives, and reject the pack otherwise; cache once in `data/locales/<code>.json`
+  (do not re-translate on every load); show English, with a status line, while generating or if it
+  fails; right-to-left languages (ar, he, fa, ur) need their own layout decision before being offered.
+  L2's test cases are not written yet and need Josh's approval before code (AGENTS.md). Then frontend
+  Task 5.
 - **Next frontend task**: Task 5 (replace bundle-string assertions in `test/web/*.test.ts` with component-level tests).
 - **Not started**: Task 5.
 
@@ -596,6 +604,15 @@ Open decisions for the remaining report-generation items:
 - The shell's default Node 25 fails to start because of a missing Homebrew library; use `/opt/homebrew/opt/node@24/bin` on `PATH` for the approved Node 24 runtime (verified v24.20.0).
 
 ## Handoff
+
+**Update 2026-09-21 (read this first):** HEAD is `be95d91`, working tree clean, `npm run check` passes
+with 319 tests. The dev server (`npm run dev`, port 4317) was left running and serves the current
+build. Testing the language dropdown changes `summaryLanguage` in `data/summary-permission.json`
+(it was restored to `zh-TW`). Next work is Task L2 (see "Next" under the L1 entry above), starting
+with writing its test cases for Josh's approval. Josh's working style, unchanged: decisions one at a
+time, plain explanations, approve test cases before code, short answers led by one next action, and
+replies in English first then Traditional Chinese.
+
 
 Written 2026-09-19 at a session boundary; Josh's next session may be with a
 different agent CLI (Codex or "Antigravity"), so this assumes no memory of

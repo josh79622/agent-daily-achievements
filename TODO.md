@@ -384,7 +384,7 @@ regression to fix mid-task.
       - Synced language selection with `localStorage` and backend `PUT /api/summarizer/permission`.
       - 295 unit tests passing; passed `npm run check`.
       - *Follow-up Polish*: Stabilize header button layout widths with min-width or icon-primary style to prevent flexbox jitter during language toggling.
-- [x] Task L1: language packs as plain strings, built-in zh-TW / en / es, searchable
+- [x] Task L1 (`be95d91`): language packs as plain strings, built-in zh-TW / en / es, searchable
       language dropdown fed by a fixed 41-language catalog (`src/report/languages.ts`).
       - LC-1 to LC-9 approved by Josh; 319 tests pass; `npm run check` passes.
       - The prompt and the permission/generate routes accept only `auto` or a catalog code.
@@ -392,7 +392,7 @@ regression to fix mid-task.
         permission followed and was restored).
 - [ ] Task L2: generate a language pack on demand for a catalog language that is not built in
       (through the chosen provider), validate keys and placeholders, cache in `data/locales/`,
-      show English meanwhile. Test cases still to be written and approved. Right-to-left
+      show English meanwhile. The agreed design is in `PROGRESS.md` under the L1 entry. Test cases still to be written and approved. Right-to-left
       layout needs its own decision.
 - [ ] Task 5: replace `test/web/*.test.ts`'s bundle-string assertions with
       component-level tests (e.g. `@testing-library/react`); nothing chosen
