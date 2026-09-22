@@ -125,6 +125,116 @@ describe("RC-1 valid candidate", () => {
     ];
     expectIssue({ achievements: nonBooleanPrimary }, "invalid-achievement");
   });
+
+  test("RC-1: project field is validated or inherited from manifest", () => {
+    // 1. Explicit valid project
+    const withProject = [
+      item({
+        id: "a1",
+        project: "my-project",
+        evidence: [{ source: "codex", recordId: "codex-201" }],
+      }),
+    ];
+    const res1 = validate({ achievements: withProject });
+    expect(res1).toEqual({
+      ok: true,
+      achievements: [
+        {
+          ...item({
+            id: "a1",
+            project: "my-project",
+            evidence: [{ source: "codex", recordId: "codex-201" }],
+          }),
+        },
+      ],
+    });
+
+    // 2. Inherited from manifest when absent in achievement
+    const manifestWithProject: EvidenceManifest = [
+      {
+        source: "codex",
+        recordId: "codex-proj-1",
+        project: "inferred-project",
+        messageIds: ["m1"],
+      },
+    ];
+    const withoutProject = [
+      item({
+        id: "a2",
+        evidence: [{ source: "codex", recordId: "codex-proj-1" }],
+      }),
+    ];
+    const res2 = validateSummaryCandidate(
+      { achievements: withoutProject },
+      { manifest: manifestWithProject, coverage: allIncluded },
+    );
+    expect(res2).toEqual({
+      ok: true,
+      achievements: [
+        {
+          ...item({
+            id: "a2",
+            evidence: [{ source: "codex", recordId: "codex-proj-1" }],
+          }),
+          project: "inferred-project",
+        },
+      ],
+    });
+
+    // 3. Invalid project: empty string, whitespace, overlong, non-string
+    expectIssue(
+      { achievements: [item({ project: "" })] },
+      "invalid-achievement",
+    );
+    expectIssue(
+      { achievements: [item({ project: "   " })] },
+      "invalid-achievement",
+    );
+    expectIssue(
+      { achievements: [item({ project: "x".repeat(101) })] },
+      "invalid-achievement",
+    );
+    expectIssue(
+      { achievements: [item({ project: 123 as unknown as string })] },
+      "invalid-achievement",
+    );
+  });
+
+  test("RC-1: checkCandidate overrides hallucinated candidate project with authoritative entry.project from manifest", () => {
+    const manifestWithProject: EvidenceManifest = [
+      {
+        source: "codex",
+        recordId: "codex-proj-1",
+        project: "agent-daily-achievements",
+        messageIds: ["m1"],
+      },
+    ];
+    const candidate = {
+      achievements: [
+        item({
+          id: "a1",
+          project: "xreview",
+          evidence: [{ source: "codex", recordId: "codex-proj-1" }],
+        }),
+      ],
+    };
+    const result = validateSummaryCandidate(candidate, {
+      manifest: manifestWithProject,
+      coverage: allIncluded,
+    });
+    expect(result).toEqual({
+      ok: true,
+      achievements: [
+        {
+          ...item({
+            id: "a1",
+            evidence: [{ source: "codex", recordId: "codex-proj-1" }],
+          }),
+          project: "agent-daily-achievements",
+        },
+      ],
+    });
+  });
 });
 
 test("RC-2: non-object input, missing achievements array, or extra top-level keys are invalid-shape", () => {
@@ -519,5 +629,18 @@ describe("RE isValidAchievementEdit", () => {
     expect(isValidAchievementEdit({ title: "ok", isPrimary: true })).toBe(true);
     expect(isValidAchievementEdit({ isPrimary: "yes" })).toBe(false);
     expect(isValidAchievementEdit({ isPrimary: 1 })).toBe(false);
+  });
+
+  test("RE-f: project string edit is valid, overlong or non-string is rejected", () => {
+    expect(isValidAchievementEdit({ project: "my-project" })).toBe(true);
+    expect(isValidAchievementEdit({ project: "" })).toBe(true);
+    expect(isValidAchievementEdit({ project: "x".repeat(100) })).toBe(true);
+    expect(isValidAchievementEdit({ project: "x".repeat(101) })).toBe(false);
+    expect(isValidAchievementEdit({ project: 123 as unknown as string })).toBe(
+      false,
+    );
+    expect(isValidAchievementEdit({ title: "ok", project: "my-project" })).toBe(
+      true,
+    );
   });
 });

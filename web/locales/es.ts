@@ -52,6 +52,8 @@ export const es: Translations = {
     saving: "Guardando…",
     evidenceCount: "{n} registros de respaldo",
     setAsPrimary: "🌟 Marcar como hito clave",
+    editProjectLabel: "Proyecto",
+    project: "Proyecto",
     editTitlePlaceholder: "Título (menos de 40 caracteres, claro y directo)",
     editDetailPlaceholder: "Explica el resultado concreto o el motivo…",
   },

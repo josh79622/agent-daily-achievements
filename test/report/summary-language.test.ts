@@ -57,3 +57,55 @@ describe("Summary language (LC-9)", () => {
     ).toBe(false);
   });
 });
+
+describe("Multi-project prompt specifications", () => {
+  test("cross-project rule requires evidence project match and per-project achievement", () => {
+    const multiProjectPrompt = buildPromptText(undefined, {
+      projects: ["alpha", "beta"],
+    });
+    expect(multiProjectPrompt).toContain(
+      "The cited evidence for each achievement MUST come from a conversation whose 'project' matches that achievement's project.",
+    );
+    expect(multiProjectPrompt).toContain(
+      "The records span multiple distinct projects: alpha, beta.",
+    );
+    expect(multiProjectPrompt).toContain(
+      "messageIds must be 1 to 5 message identifiers taken from the 'id' field of messages in that conversation's 'messages' array (do NOT use the recordId as a messageId).",
+    );
+
+    const singleProjectPrompt = buildPromptText();
+    expect(singleProjectPrompt).toContain(
+      "The cited evidence for each achievement MUST come from a conversation whose 'project' matches that achievement's project.",
+    );
+    expect(singleProjectPrompt).toContain(
+      "messageIds must be 1 to 5 message identifiers taken from the 'id' field of messages in that conversation's 'messages' array (do NOT use the recordId as a messageId).",
+    );
+  });
+
+  test("buildSummaryRequestText appends reminder when multiple projects exist", () => {
+    const multiPayload = JSON.stringify({
+      conversations: [{ project: "proj-1" }, { project: "proj-2" }],
+    });
+    const multiResult = buildSummaryRequestText(multiPayload);
+    expect(multiResult).toContain(
+      '\n\n[Reminder: You must report achievements covering EACH active project (proj-1, proj-2). Cite actual message IDs from the messages array, not recordIds. Exactly one achievement must have "isPrimary": true. Output strictly JSON.]',
+    );
+    expect(
+      multiResult.endsWith(
+        '[Reminder: You must report achievements covering EACH active project (proj-1, proj-2). Cite actual message IDs from the messages array, not recordIds. Exactly one achievement must have "isPrimary": true. Output strictly JSON.]',
+      ),
+    ).toBe(true);
+
+    const singlePayload = JSON.stringify({
+      conversations: [{ project: "proj-1" }],
+    });
+    const singleResult = buildSummaryRequestText(singlePayload);
+    expect(singleResult).not.toContain("[Reminder:");
+
+    const noProjPayload = JSON.stringify({
+      conversations: [],
+    });
+    const noProjResult = buildSummaryRequestText(noProjPayload);
+    expect(noProjResult).not.toContain("[Reminder:");
+  });
+});

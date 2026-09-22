@@ -7,6 +7,7 @@
 
 import type {
   CollectedMessage,
+  CollectedSession,
   CollectionSummary,
   LocalCollector,
   LocalSource,
@@ -68,17 +69,57 @@ export async function buildReportDayPayload({
 }): Promise<ReportDayPayload> {
   const collected = await collector.collect(date, sourceScope);
   const scope = new Set(sourceScope);
-  const time = messageTime(collected.timeZone);
+  const time = messageTime(collected.timeZone, date);
 
   const conversations: unknown[] = [];
   const manifest: Array<{
     source: ReportSource;
     recordId: string;
+    project?: string;
     messageIds: string[];
   }> = [];
 
-  for (const session of collected.sessions) {
-    if (!scope.has(session.source)) continue;
+  const scopedSessions = collected.sessions.filter((session) =>
+    scope.has(session.source),
+  );
+
+  const projectGroups = new Map<string, CollectedSession[]>();
+  for (const session of scopedSessions) {
+    const projectKey = session.project ?? "unassigned";
+    const group = projectGroups.get(projectKey);
+    if (group) {
+      group.push(session);
+    } else {
+      projectGroups.set(projectKey, [session]);
+    }
+  }
+
+  for (const group of projectGroups.values()) {
+    group.sort((a, b) => {
+      const timeA = Date.parse(a.startedAt);
+      const timeB = Date.parse(b.startedAt);
+      if (Number.isNaN(timeA) || Number.isNaN(timeB)) {
+        return a.startedAt.localeCompare(b.startedAt);
+      }
+      return timeA - timeB;
+    });
+  }
+
+  const interleavedSessions: CollectedSession[] = [];
+  const groups = Array.from(projectGroups.values());
+  let maxLen = 0;
+  for (const group of groups) {
+    if (group.length > maxLen) maxLen = group.length;
+  }
+  for (let i = 0; i < maxLen; i++) {
+    for (const group of groups) {
+      if (i < group.length) {
+        interleavedSessions.push(group[i]!);
+      }
+    }
+  }
+
+  for (const session of interleavedSessions) {
     const messages = session.messages.map((message) => ({
       id: message.id,
       role: message.role,
@@ -88,11 +129,13 @@ export async function buildReportDayPayload({
     conversations.push({
       source: session.source,
       recordId: session.id,
+      ...(session.project !== undefined ? { project: session.project } : {}),
       messages,
     });
     manifest.push({
       source: session.source,
       recordId: session.id,
+      ...(session.project !== undefined ? { project: session.project } : {}),
       messageIds: messages.map((message) => message.id),
     });
   }
@@ -127,14 +170,31 @@ function partText(part: MessagePart): string {
     : `${marker}${omitted}\n${body.slice(body.length - toolPartCap)}`;
 }
 
-function messageTime(timeZone: string): (timestamp: string) => string {
-  const format = new Intl.DateTimeFormat("en-GB", {
+export function messageTime(
+  timeZone: string,
+  reportDate?: string,
+): (timestamp: string) => string {
+  const timeFormat = new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     hour12: false,
     minute: "2-digit",
     timeZone,
   });
-  return (timestamp) => format.format(new Date(timestamp));
+  const dateFormat = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone,
+  });
+  return (timestamp) => {
+    const d = new Date(timestamp);
+    const day = dateFormat.format(d);
+    const time = timeFormat.format(d);
+    if (reportDate && day !== reportDate) {
+      return `${day} ${time}`;
+    }
+    return time;
+  };
 }
 
 function reportCoverage(source: SourceCoverage): ReportCoverage {

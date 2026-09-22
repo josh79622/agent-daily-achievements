@@ -166,6 +166,7 @@ function AchievementCard({
   const [isRemoving, setIsRemoving] = useState(false);
   const [editTitle, setEditTitle] = useState(achievement.title);
   const [editDetail, setEditDetail] = useState(achievement.detail);
+  const [editProject, setEditProject] = useState(achievement.project ?? "");
   const [editIsPrimary, setEditIsPrimary] = useState(
     achievement.isPrimary ?? false,
   );
@@ -177,8 +178,14 @@ function AchievementCard({
   useEffect(() => {
     setEditTitle(achievement.title);
     setEditDetail(achievement.detail);
+    setEditProject(achievement.project ?? "");
     setEditIsPrimary(achievement.isPrimary ?? false);
-  }, [achievement.title, achievement.detail, achievement.isPrimary]);
+  }, [
+    achievement.title,
+    achievement.detail,
+    achievement.project,
+    achievement.isPrimary,
+  ]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -193,6 +200,7 @@ function AchievementCard({
           body: JSON.stringify({
             title: editTitle,
             detail: editDetail,
+            project: editProject.trim() || undefined,
             isPrimary: editIsPrimary,
           }),
         },
@@ -272,6 +280,20 @@ function AchievementCard({
             />
           </div>
           <div className="form-group">
+            <label htmlFor={`edit-project-${achievement.id}`}>
+              {t.card.editProjectLabel}
+            </label>
+            <input
+              id={`edit-project-${achievement.id}`}
+              type="text"
+              maxLength={100}
+              value={editProject}
+              onChange={(e) => setEditProject(e.target.value)}
+              disabled={isSaving}
+              placeholder={t.card.editProjectLabel}
+            />
+          </div>
+          <div className="form-group">
             <label htmlFor={`edit-detail-${achievement.id}`}>
               {t.card.editDetailPlaceholder}
             </label>
@@ -314,6 +336,7 @@ function AchievementCard({
                 setEditError(undefined);
                 setEditTitle(achievement.title);
                 setEditDetail(achievement.detail);
+                setEditProject(achievement.project ?? "");
                 setEditIsPrimary(achievement.isPrimary ?? false);
               }}
             >
@@ -327,6 +350,14 @@ function AchievementCard({
             <div className="card-heading">
               <span className={`status-dot ${category}`} title={category} />
               <h3 className="card-title">{achievement.title}</h3>
+              {achievement.project ? (
+                <span className="project-badge" title={achievement.project}>
+                  <span className="project-badge-icon">📁</span>
+                  <span className="project-badge-name">
+                    {achievement.project}
+                  </span>
+                </span>
+              ) : null}
             </div>
             <div className="card-actions">
               {isRemoving ? (

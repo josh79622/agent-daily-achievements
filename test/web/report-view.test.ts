@@ -80,6 +80,16 @@ test("RV-2: mapAchievementsToNodes preserves id/title/detail with no parent", ()
   expect(nodes[1]).toMatchObject(layoutPosition(1, 3));
 });
 
+test("RV-2b: mapAchievementsToNodes preserves project attribution", () => {
+  const achievements = [
+    achievement("a1", { project: "project-x" }),
+    achievement("a2"),
+  ];
+  const nodes = mapAchievementsToNodes(achievements);
+  expect(nodes[0]?.project).toBe("project-x");
+  expect(nodes[1]).not.toHaveProperty("project");
+});
+
 test("RV-3: describeIncomplete produces one friendly line per reason", () => {
   expect(describeIncomplete([])).toEqual([]);
 

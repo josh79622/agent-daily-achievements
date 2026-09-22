@@ -22,8 +22,17 @@ function getLanguageInstruction(language?: string): string {
   return `Write the title and detail strictly in ${name}. No praise, no encouragement, no restating the rules.`;
 }
 
-export function buildPromptText(language?: string): string {
+export function buildPromptText(
+  language?: string,
+  options?: { projects?: readonly string[] },
+): string {
   const languageInstruction = getLanguageInstruction(language);
+  const projects = options?.projects;
+  const projectRule =
+    projects && projects.length > 1
+      ? `The records span multiple distinct projects: ${projects.join(", ")}. You MUST report key achievements from EACH of these active projects (at least 1 achievement per active project with qualifying progress or decisions). The cited evidence for each achievement MUST come from a conversation whose 'project' matches that achievement's project. Do NOT allow one project to monopolize the report.`
+      : "When input records cover multiple distinct projects (indicated by the 'project' field in conversations), you MUST report key achievements from EACH active project that has qualifying work (at least 1 achievement per active project with qualifying progress or decisions). The cited evidence for each achievement MUST come from a conversation whose 'project' matches that achievement's project. Do NOT allow one project to dominate the report when other projects made verifiable progress.";
+
   return `You are given one day of a developer's own records from their AI coding tools. Write what they actually achieved that day.
 
 An achievement is one of four kinds:
@@ -33,23 +42,26 @@ An achievement is one of four kinds:
 - learning: they demonstrated understanding of a new concept or technique in their own words
 
 Rules:
-1. Report 3 to 5 key achievements. Fewer is better than padding. Zero is the correct answer when nothing in the records qualifies. Never report more than ${maxAchievements}.
+1. Cross-Project Balance: ${projectRule} Report 3 to 5 key achievements in total (never more than ${maxAchievements}).
+   Only accomplishments with observable progress, decisions, or milestones completed ON THE REPORT DATE are eligible. Messages from prior dates provide background context, but work completed on prior dates MUST NOT be reported as today's achievement.
 2. Readability & Cognitive Clarity:
    - title: A concise, punchy phrase or short sentence (strictly under 40 characters / 10 words). State what was achieved or decided plainly and directly (e.g. "定稿 Energetica 求職信", "排除 8 筆不合適職缺", "重構認證中介層"). DO NOT include commit hashes, raw file paths, or parenthetical notes in the title.
    - detail: 1 to 2 clean, natural sentences explaining the core outcome or reasoning. Write for the developer to review their own day with clarity and closure. Focus on the net outcome, not the chronological trial-and-error.
+   - project: The project name this achievement belongs to. Must match the 'project' field of the cited conversation record. Never invent or hallucinate a project name not present in the input.
    - Strictly avoid audit-log language: DO NOT say "the user", "使用者", "git log shows", or narrate prompt back-and-forth.
    - DO NOT put raw file paths or commit hashes in the detail; evidence references belong strictly in the "evidence" array.
-3. The "evidence" list holds every record about the activity, not only the records that prove it happened. A record that merely mentions, confirms, repeats, or asks about the activity proves nothing on its own and is listed anyway. Cite only the exact source and recordId values present in the input, and messageIds only from that record. Never invent, reformat, or guess an identifier.
+3. The "evidence" list holds every record about the activity, not only the records that prove it happened. A record that merely mentions, confirms, repeats, or asks about the activity proves nothing on its own and is listed anyway. Cite only the exact source and recordId values present in the input, and messageIds only from that record. messageIds must be 1 to 5 message identifiers taken from the 'id' field of messages in that conversation's 'messages' array (do NOT use the recordId as a messageId). Never invent, reformat, or guess an identifier.
 4. A stated intention is not an achievement. "I'll do X tomorrow", "I plan to", or an unsent draft is not progress, no matter how specific.
 5. A conversation with no evidence that something ran, changed, or was sent cannot establish that a task was completed. Discussion alone is not progress, though it may be a decision, a clarification, or learning. This governs whether an achievement exists, not which records it cites: a record too weak to stand alone is still cited when it refers to an activity established elsewhere.
 6. If later evidence contradicts earlier evidence, do not claim completion. When you cite a record that a later record contradicts, you must cite that later record in the same achievement.
 7. Work in two steps. First group the input records by activity: two records are one activity when they concern the same piece of work, even in different sources, at different times, or with very different detail. Then write at most one achievement per group and list that whole group in its evidence. A group can produce no achievement, but it can never produce two, and no record of a group that produces an achievement is left out of it.
-8. Language: ${languageInstruction}
-9. Key Milestone: Pick the single most significant or impactful achievement of the day and set "isPrimary": true. All other achievements must have "isPrimary": false. If there are no achievements, output empty array.
+8. Multi-project representation: Maintain balanced representation across projects worked on that day, ensuring each active project with verifiable achievements or decisions is represented before selecting additional achievements from the same project.
+9. Language: ${languageInstruction}
+10. Key Milestone: Pick the single most significant or impactful achievement of the day and set "isPrimary": true. All other achievements must have "isPrimary": false. If there are no achievements, output empty array.
 
-Output strictly this JSON and nothing else. No prose, no explanation, no markdown fences:
+Do not use or attempt to call any tools or commands. Output strictly this JSON and nothing else. No prose, no explanation, no markdown fences:
 
-{"achievements":[{"id":"short-kebab-id","category":"progress|decision|clarification|learning","title":"short punchy title","detail":"1-2 clean sentences","isPrimary":true,"evidence":[{"source":"<source from the input>","recordId":"<recordId from the input>","messageIds":["<ids from that record>"]}] <- one entry per record about this activity, in every source; a record that only mentions or confirms it belongs here too}]}
+{"achievements":[{"id":"short-kebab-id","category":"progress|decision|clarification|learning","title":"short punchy title","detail":"1-2 clean sentences","project":"<project name from input>","isPrimary":true,"evidence":[{"source":"<source from the input>","recordId":"<recordId from the input>","messageIds":["<ids from that record>"]}] <- one entry per record about this activity, in every source; a record that only mentions or confirms it belongs here too}]}
 
 If nothing qualifies, output {"achievements":[]}.
 
@@ -61,10 +73,33 @@ export const summaryPrompt = buildPromptText();
 /** The full text handed to a summarizer CLI: rules, then the day's records. */
 export function buildSummaryRequestText(
   payloadJson: string,
-  options?: { language?: string },
+  options?: { language?: string; projects?: readonly string[] },
 ): string {
-  const prompt = options?.language
-    ? buildPromptText(options.language)
-    : summaryPrompt;
-  return `${prompt}\n\nDay records:\n${payloadJson}`;
+  let projects = options?.projects;
+  if (!projects) {
+    try {
+      const parsed = JSON.parse(payloadJson) as {
+        conversations?: Array<{ project?: string }>;
+      };
+      if (Array.isArray(parsed?.conversations)) {
+        projects = [
+          ...new Set(
+            parsed.conversations
+              .map((c) => c.project)
+              .filter(
+                (p): p is string => typeof p === "string" && p.trim() !== "",
+              ),
+          ),
+        ];
+      }
+    } catch {
+      // Ignore JSON parse errors
+    }
+  }
+  const prompt = buildPromptText(options?.language, { projects });
+  const reminder =
+    projects && projects.length > 1
+      ? `\n\n[Reminder: You must report achievements covering EACH active project (${projects.join(", ")}). Cite actual message IDs from the messages array, not recordIds. Exactly one achievement must have "isPrimary": true. Output strictly JSON.]`
+      : "";
+  return `${prompt}\n\nDay records:\n${payloadJson}${reminder}`;
 }

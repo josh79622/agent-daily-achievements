@@ -26,6 +26,7 @@ export interface ConstellationNode {
   evidence: EvidenceRef[];
   x: number;
   y: number;
+  project?: string;
 }
 
 /**
@@ -65,6 +66,9 @@ export function mapAchievementsToNodes(
     detail: achievement.detail,
     kind: "achievement",
     evidence: achievement.evidence,
+    ...(achievement.project !== undefined
+      ? { project: achievement.project }
+      : {}),
     ...layoutPosition(index, achievements.length),
   }));
 }

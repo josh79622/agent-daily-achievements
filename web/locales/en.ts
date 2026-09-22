@@ -54,6 +54,8 @@ export const en = {
     saving: "Saving…",
     evidenceCount: "{n} evidence refs",
     setAsPrimary: "🌟 Set as Key Milestone",
+    editProjectLabel: "Project",
+    project: "Project",
     editTitlePlaceholder: "Title (< 40 characters, punchy and direct)",
     editDetailPlaceholder: "Explain core net outcome or reasoning…",
   },
