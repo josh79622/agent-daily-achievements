@@ -5,7 +5,11 @@
 // case's expectations, which are never placed in a prompt.
 
 import { maxAchievements } from "./contract.js";
+import type { EvidenceManifest } from "./contract.js";
 import { findLanguage } from "./languages.js";
+import type { SummaryChunk } from "./summary-chunking.js";
+
+type SummaryPromptOptions = { language?: string };
 
 function getLanguageInstruction(language?: string): string {
   if (!language || language === "auto") {
@@ -61,10 +65,33 @@ export const summaryPrompt = buildPromptText();
 /** The full text handed to a summarizer CLI: rules, then the day's records. */
 export function buildSummaryRequestText(
   payloadJson: string,
-  options?: { language?: string },
+  options?: SummaryPromptOptions,
 ): string {
   const prompt = options?.language
     ? buildPromptText(options.language)
     : summaryPrompt;
   return `${prompt}\n\nDay records:\n${payloadJson}`;
+}
+
+/** A bounded request for candidate activities from one approved day chunk. */
+export function buildChunkSummaryRequestText(
+  chunk: SummaryChunk,
+  options?: SummaryPromptOptions,
+): string {
+  const prompt = options?.language
+    ? buildPromptText(options.language)
+    : summaryPrompt;
+  return `${prompt}\n\nThis is one chunk of the day's records. Identify qualifying activities from these records only. Cite only the evidence IDs in this chunk; do not cite records or messages outside it.\n\nChunk evidence manifest:\n${JSON.stringify(chunk.manifest)}\n\nChunk day records:\n${chunk.payloadJson}`;
+}
+
+/** Combines validated chunk candidates into one final evidence-traceable day. */
+export function buildMergeSummaryRequestText(
+  chunkCandidates: readonly unknown[],
+  manifest: EvidenceManifest,
+  options?: SummaryPromptOptions,
+): string {
+  const prompt = options?.language
+    ? buildPromptText(options.language)
+    : summaryPrompt;
+  return `${prompt}\n\nMerge the chunk candidates below into 0 to 5 deduplicated final achievements for the day. This merge-specific limit overrides the usual minimum: zero is allowed. Cite only original evidence IDs from the supplied manifest. Never cite chunk IDs or invented IDs. Combine duplicate activities into one achievement and retain all applicable original evidence.\n\nSerialized chunk candidates:\n${JSON.stringify(chunkCandidates)}\n\nFull original day evidence manifest:\n${JSON.stringify(manifest)}`;
 }
