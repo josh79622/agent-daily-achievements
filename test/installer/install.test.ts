@@ -144,6 +144,7 @@ test("reports unsafe recovery when restoring the prior runtime fails", async () 
     status: "unsafe-recovery",
     failedStage: "source",
   });
+  expect(adapter.restorationOrder).not.toContain("job");
 });
 
 test("reports unsafe recovery when restoring report settings fails", async () => {
@@ -158,6 +159,23 @@ test("reports unsafe recovery when restoring report settings fails", async () =>
     status: "unsafe-recovery",
     failedStage: "schedule",
   });
+});
+
+test("restores runtime, source, and settings before reloading the prior job", async () => {
+  const adapter = createAdapter({
+    failAt: "schedule",
+    jobRequiresRestoredPrerequisites: true,
+  });
+
+  await expect(
+    installFreshMacosApplication(request, adapter),
+  ).resolves.toMatchObject({ status: "failed", stage: "schedule" });
+  expect(adapter.restorationOrder).toEqual([
+    "runtime",
+    "source",
+    "settings",
+    "job",
+  ]);
 });
 
 test("rejects mixed-version runtime metadata before activating any runtime", async () => {
@@ -199,6 +217,7 @@ function createAdapter(
     restorationFails?: boolean;
     runtimeRestorationFails?: boolean;
     settingsRestorationFails?: boolean;
+    jobRequiresRestoredPrerequisites?: boolean;
   } = {},
 ) {
   const operations: string[] = [];
@@ -212,6 +231,7 @@ function createAdapter(
   let loadedJob = "prior-job";
   let activeRuntime = "prior-runtime";
   let reportSettings = "prior-settings";
+  const restorationOrder: string[] = [];
 
   const failIfRequested = (operation: string): void => {
     if (options.failAt === operation) throw new Error(`${operation} failed`);
@@ -249,6 +269,7 @@ function createAdapter(
   return {
     operations,
     scheduleRequests,
+    restorationOrder,
     get priorInstallationRemainsUsable() {
       return priorInstallationRemainsUsable;
     },
@@ -322,21 +343,33 @@ function createAdapter(
       failIfRequested("open-page");
     },
     restorePriorInstallation: async () => {
+      restorationOrder.push("source");
       if (options.restorationFails) throw new Error("source restore failed");
       activeSource = "prior-source";
       priorInstallationRemainsUsable = true;
     },
     restorePriorJob: async () => {
+      restorationOrder.push("job");
+      if (
+        options.jobRequiresRestoredPrerequisites &&
+        (activeRuntime !== "prior-runtime" ||
+          activeSource !== "prior-source" ||
+          reportSettings !== "prior-settings")
+      ) {
+        throw new Error("job restore ran before prerequisites");
+      }
       if (options.restorationFails) throw new Error("job restore failed");
       loadedJob = "prior-job";
       priorJobRemainsLoaded = true;
     },
     restorePriorRuntime: async () => {
+      restorationOrder.push("runtime");
       if (options.runtimeRestorationFails)
         throw new Error("runtime restore failed");
       activeRuntime = "prior-runtime";
     },
     restorePriorReportSettings: async () => {
+      restorationOrder.push("settings");
       if (options.settingsRestorationFails)
         throw new Error("settings restore failed");
       reportSettings = "prior-settings";

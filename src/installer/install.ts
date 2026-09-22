@@ -213,13 +213,22 @@ async function recoveryResult(
 async function restorePriorInstallation(
   adapter: FreshMacosInstallationAdapter,
 ): Promise<boolean> {
-  const results = await Promise.allSettled([
-    adapter.restorePriorInstallation(),
-    adapter.restorePriorJob(),
-    adapter.restorePriorRuntime(),
-    adapter.restorePriorReportSettings(),
-  ]);
-  return results.every((result) => result.status === "fulfilled");
+  const runtime = await settle(adapter.restorePriorRuntime());
+  const source = await settle(adapter.restorePriorInstallation());
+  const settings = await settle(adapter.restorePriorReportSettings());
+  if (!runtime || !source || !settings) return false;
+
+  // A previous launchd job can rely on the restored runtime and source.
+  return settle(adapter.restorePriorJob());
+}
+
+async function settle(operation: Promise<void>): Promise<boolean> {
+  try {
+    await operation;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function failedResult(
