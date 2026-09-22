@@ -16,8 +16,8 @@ material.
   messages.
 - Every sent message appears in exactly one chunk. Chunk metadata identifies
   its session and its position if that session was split.
-- Each chunk is summarized against only its own evidence. Merge requests
-  receive bounded intermediate summaries, not the original full-day
+- Each chunk is summarized against only its own evidence. One final merge
+  request receives compact chunk summaries, not the original full-day
   conversations.
 - The merge removes duplicate achievements, combines their evidence, and
   produces the existing 0–5 achievement report contract.
@@ -45,8 +45,8 @@ The shared-limit decision is recorded separately in
 complete day payload
   -> pack sessions into bounded chunks
   -> summarize each chunk with its local evidence manifest
-  -> pack intermediate summaries into bounded merge groups (repeat as needed)
-  -> resolve selected intermediate IDs to original evidence
+  -> compact evidence to session references where necessary
+  -> one final merge of compact chunk summaries
   -> validate and save one AchievementReportV1
 ```
 
@@ -54,11 +54,11 @@ For a day that fits the safe budget, retain the current one-request path. This
 avoids an unnecessary second model call and preserves the established behavior
 for ordinary days.
 
-Each intermediate merge carries compact opaque candidate IDs, not repeated
-original message-ID lists. Its reply groups/selects those IDs; the server
-deterministically unions their original evidence. Every merge input uses the
-same shared budget, forming a bounded merge tree. Records and model replies
-are delimited JSON data, never instructions.
+The final merge carries compact achievements. Their evidence keeps message IDs
+when it fits the request budget and otherwise becomes a session-level
+reference. If the one final merge would exceed the shared budget, save an
+incomplete `merge-too-large` result; recursive merging is explicitly deferred.
+Records and model replies are delimited JSON data, never instructions.
 
 ## Failure behavior
 
@@ -88,7 +88,7 @@ are delimited JSON data, never instructions.
 | CH-8 | A permitted fallback provider is needed | A chunk or merge runner fails | The existing permission and provider-fallback rules are preserved. |
 | CH-9 | A retry starts after an earlier partial run | Generation runs again | It recollects and rechunks the original day rather than mixing old intermediate results. |
 | CH-10 | An achievement's message-ID list exceeds the merge budget | It is prepared for a merge | It falls back to a session-level evidence reference; the full session remains traceable locally. |
-| CH-11 | Many chunk summaries exceed one merge request | They are merged | They are packed into bounded intermediate groups until one final merge fits; no raw evidence list is duplicated across levels. |
+| CH-11 | Compact chunk summaries still exceed one merge request | They are merged | The saved report is incomplete with a merge-too-large reason; no recursive merge runs. |
 | CH-12 | A record or candidate contains instruction-like text | It is placed in a prompt | It is explicitly delimited as untrusted JSON data, never as prompt instructions. |
 
 ## Verification

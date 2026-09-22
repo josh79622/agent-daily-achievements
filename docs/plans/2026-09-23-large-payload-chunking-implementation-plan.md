@@ -83,8 +83,8 @@ rebuilt one message at a time. Do not truncate or reorder text.
 **Step 1: Write failing tests** that prove a chunk prompt asks for qualifying
 activities from its bounded records and only IDs in that chunk. Records must
 be delimited as untrusted JSON data. Prove a merge prompt accepts bounded
-opaque intermediate candidate IDs, treats candidates as untrusted JSON, and
-asks it to group/select IDs without inventing them. Assert language selection
+compact evidence-bearing candidates, treats candidates as untrusted JSON, and
+asks for the established final achievement JSON. Assert language selection
 applies to both prompts. Do not serialize a duplicate chunk manifest.
 
 **Step 2: Run:**
@@ -94,10 +94,11 @@ applies to both prompts. Do not serialize a duplicate chunk manifest.
 Expected: FAIL for absent chunk/merge builders.
 
 **Step 3: Implement** `buildChunkSummaryRequestText(chunk, options)` and
-`buildMergeSummaryRequestText(intermediateCandidates, options)`. Reuse the
-existing achievement schema and language instruction for chunk leaves. The
-merge prompt emits only a grouping schema containing candidate IDs; it never
-repeats full original evidence or accepts candidate text as instructions.
+`buildMergeSummaryRequestText(compactCandidates, options)`. Reuse the existing
+achievement schema and language instruction for chunk leaves and final merge.
+The merge prompt receives only compact evidence-bearing candidates, never full
+conversation records, and accepts candidate text as data rather than
+instructions.
 
 **Step 4: Run the focused tests; expect PASS.**
 
@@ -116,10 +117,11 @@ repeats full original evidence or accepts candidate text as instructions.
 **Step 1: Write failing CH-5 through CH-8 tests.**
 
 Use the existing fake runner. Prove that: each chunk response is validated
-against that chunk's manifest; merge inputs are packed recursively under the
-shared budget; server-side resolution turns selected opaque candidate IDs into
-combined original evidence; chunk failure or merge failure saves `incomplete`;
-and provider fallback still occurs only through the existing app-level loop.
+against that chunk's manifest; message-ID evidence collapses to session-level
+references when needed; one final merge stays within the shared budget or
+saves `incomplete` / `merge-too-large`; chunk failure or merge failure saves
+`incomplete`; and provider fallback still occurs only through the existing
+app-level loop.
 
 Add explicit contract entries for `summary-chunk-failed`,
 `summary-merge-unavailable`, and `summary-message-too-large`, carrying only
@@ -137,12 +139,12 @@ Expected: FAIL because the runner has only a single-request path.
 Call `chunkReportDayPayload` before building a prompt. For `single`, retain
 the existing attempt/retry behavior. For `chunked`, run each chunk through the
 same provider/settings/attempt controls, collect only validated candidates,
-then pack compact intermediate candidates into recursive merge requests. Each
-merge returns selected/grouped opaque IDs; resolve their evidence server-side.
-The final level becomes `AchievementReportV1` only after validating resolved
-original evidence. Collapse an oversized message-ID set to a session-level
-reference before building merge input. Save only the final report; attach typed
-incomplete entries on any unrecoverable chunk/merge result. Throw only when the existing provider
+collapse oversized message-ID evidence to session-level references, and make
+one final merge request. If its exact prompt exceeds the shared budget, save
+an incomplete merge-too-large report; do not recursively merge. Validate the
+final reply against the full original manifest before saving. Save only the
+final report; attach typed incomplete entries on any unrecoverable chunk/merge
+result. Throw only when the existing provider
 fallback contract requires it, so `app.ts` remains the sole owner of provider
 ordering and permission.
 
