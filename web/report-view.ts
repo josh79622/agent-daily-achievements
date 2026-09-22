@@ -93,6 +93,16 @@ export function describeIncomplete(
         return "The summarizer did not produce a report.";
       case "summary-invalid":
         return "The summarizer's output could not be used.";
+      case "summary-chunk-failed":
+        return "One part of the day's summary could not be produced.";
+      case "summary-merge-unavailable":
+        return "The final summary merge did not produce a report.";
+      case "summary-merge-invalid":
+        return "The final summary merge output could not be used.";
+      case "summary-merge-too-large":
+        return "The final summary merge was too large to run.";
+      case "summary-message-too-large":
+        return "One source message was too large to summarize.";
     }
   });
 }

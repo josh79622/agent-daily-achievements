@@ -154,6 +154,55 @@ function request(): SummaryRequest {
   };
 }
 
+function chunkedRequest(): SummaryRequest {
+  const conversations = ["rec-1", "rec-2"].map((recordId, index) => ({
+    source: "codex" as const,
+    recordId,
+    messages: [
+      {
+        id: `m${index}`,
+        role: "user",
+        time: "09:00",
+        text: "x".repeat(70_000),
+      },
+    ],
+  }));
+  const payloadJson = JSON.stringify({ date: "2026-09-18", conversations });
+  return {
+    scheduled: false,
+    payload: {
+      date: "2026-09-18",
+      timeZone: "Australia/Sydney",
+      payloadJson,
+      manifest: conversations.map((conversation) => ({
+        source: conversation.source,
+        recordId: conversation.recordId,
+        messageIds: conversation.messages.map((message) => message.id),
+      })),
+      coverage: [{ source: "codex", state: "included" }],
+      byteLength: Buffer.byteLength(payloadJson),
+    },
+  };
+}
+
+function candidateFor(recordId: string, messageId?: string): string {
+  return JSON.stringify({
+    achievements: [
+      {
+        id: `item-${recordId}`,
+        category: "progress",
+        title: "Item",
+        detail: "Detail",
+        evidence: [
+          messageId
+            ? { source: "codex", recordId, messageIds: [messageId] }
+            : { source: "codex", recordId },
+        ],
+      },
+    ],
+  });
+}
+
 test("SR-1: a valid reply at 0, 1, and 5 achievements is saved and resolves", async () => {
   for (const count of [0, 1, 5]) {
     const { runner, state } = harness({
@@ -177,11 +226,12 @@ test("SR-2: a Markdown-fenced reply parses the same as bare JSON", () => {
   );
 });
 
-test("SR-3: unparseable JSON is saved incomplete and run() resolves", async () => {
+test("SR-3: unparseable JSON retries three times, saves incomplete, and throws for provider fallback", async () => {
   const { runner, state } = harness({
     runnerScript: [claudeExit("not json at all")],
   });
-  await runner.run("claude-code", request());
+  await expect(runner.run("claude-code", request())).rejects.toThrow();
+  expect(state.runs).toHaveLength(3);
   expect(state.saved).toHaveLength(1);
   expect(state.saved[0]!.status).toBe("incomplete");
   expect(state.saved[0]!.incomplete).toEqual([
@@ -213,7 +263,7 @@ test("SR-5: too-many-achievements on all three attempts saves incomplete and thr
   ]);
 });
 
-test("SR-6: any other invalid issue is not retried and run() resolves", async () => {
+test("SR-6: unknown evidence retries exactly three times before provider fallback", async () => {
   const badEvidence = JSON.stringify({
     achievements: [
       {
@@ -230,10 +280,34 @@ test("SR-6: any other invalid issue is not retried and run() resolves", async ()
   const { runner, state } = harness({
     runnerScript: [claudeExit(badEvidence)],
   });
-  await runner.run("claude-code", request());
-  expect(state.runs).toHaveLength(1);
+  await expect(runner.run("claude-code", request())).rejects.toThrow();
+  expect(state.runs).toHaveLength(3);
   expect(state.saved[0]!.incomplete).toEqual([
     { reason: "summary-invalid", issue: "unknown-evidence" },
+  ]);
+});
+
+test("SR-6a: an overlong detail retries exactly three times before provider fallback", async () => {
+  const invalidDetail = JSON.stringify({
+    achievements: [
+      {
+        id: "item-0",
+        category: "progress",
+        title: "Item",
+        detail: "x".repeat(501),
+        evidence: [{ source: "codex", recordId: "rec-1", messageIds: ["m0"] }],
+      },
+    ],
+  });
+  const { runner, state } = harness({
+    runnerScript: [claudeExit(invalidDetail)],
+  });
+
+  await expect(runner.run("claude-code", request())).rejects.toThrow();
+
+  expect(state.runs).toHaveLength(3);
+  expect(state.saved[0]!.incomplete).toEqual([
+    { reason: "summary-invalid", issue: "invalid-achievement" },
   ]);
 });
 
@@ -309,7 +383,9 @@ test("SR-11: pre-existing coverage incompleteness is preserved alongside a summa
   requestWithIncompleteSource.payload.coverage = [
     { source: "codex", state: "incomplete", reason: "collection-failed" },
   ];
-  await runner.run("claude-code", requestWithIncompleteSource);
+  await expect(
+    runner.run("claude-code", requestWithIncompleteSource),
+  ).rejects.toThrow();
   expect(state.saved[0]!.coverage).toEqual([
     { source: "codex", state: "incomplete", reason: "collection-failed" },
   ]);
@@ -319,6 +395,220 @@ test("SR-11: pre-existing coverage incompleteness is preserved alongside a summa
       { reason: "summary-invalid", issue: "invalid-shape" },
     ]),
   );
+});
+
+test("CH-5: two valid chunk summaries produce exactly one final merge", async () => {
+  const { runner, state } = harness({
+    runnerScript: [
+      claudeExit(candidateFor("rec-1", "m0")),
+      claudeExit(candidateFor("rec-2", "m1")),
+      claudeExit(
+        JSON.stringify({
+          achievements: [
+            {
+              id: "merged",
+              category: "progress",
+              title: "Merged",
+              detail: "Detail",
+              evidence: [
+                { source: "codex", recordId: "rec-1", messageIds: ["m0"] },
+                { source: "codex", recordId: "rec-2", messageIds: ["m1"] },
+              ],
+            },
+          ],
+        }),
+      ),
+    ],
+  });
+
+  await runner.run("claude-code", chunkedRequest());
+
+  expect(state.runs).toHaveLength(3);
+  expect(state.runs[2]!.args.join(" ")).toContain(
+    "compact candidate achievements",
+  );
+  expect(state.saved).toHaveLength(1);
+  expect(state.saved[0]!.status).toBe("complete");
+  expect(state.saved[0]!.achievements[0]!.id).toBe("merged");
+});
+
+test("CH-6: invalid chunk evidence retries then accepts before merging", async () => {
+  const { runner, state } = harness({
+    runnerScript: [
+      claudeExit(candidateFor("wrong", "m0")),
+      claudeExit(candidateFor("rec-1", "m0")),
+      claudeExit(candidateFor("rec-2", "m1")),
+      claudeExit(candidateFor("rec-1")),
+    ],
+  });
+
+  await runner.run("claude-code", chunkedRequest());
+
+  expect(state.runs).toHaveLength(4);
+  expect(state.runs[0]!.args).toEqual(state.runs[1]!.args);
+  expect(state.saved[0]!.status).toBe("complete");
+});
+
+test("CH-7: a failed chunk stops before merge, saves a safe failure, and throws", async () => {
+  const { runner, state } = harness({
+    runnerScript: [claudeExit("bad")],
+  });
+
+  await expect(runner.run("claude-code", chunkedRequest())).rejects.toThrow();
+
+  expect(state.runs).toHaveLength(3);
+  expect(state.saved[0]!.incomplete).toEqual([
+    { reason: "summary-chunk-failed", chunkIndex: 0, issue: "invalid-shape" },
+  ]);
+});
+
+test("CH-8: merge retries invalid output then saves its valid later reply", async () => {
+  const { runner, state } = harness({
+    runnerScript: [
+      claudeExit(candidateFor("rec-1", "m0")),
+      claudeExit(candidateFor("rec-2", "m1")),
+      claudeExit("bad"),
+      claudeExit(candidateFor("rec-1")),
+    ],
+  });
+
+  await runner.run("claude-code", chunkedRequest());
+
+  expect(state.runs).toHaveLength(4);
+  expect(state.runs[2]!.args).toEqual(state.runs[3]!.args);
+  expect(state.saved[0]!.status).toBe("complete");
+});
+
+test("CH-8a: unavailable merge retries three times, saves typed incomplete, and throws", async () => {
+  const { runner, state } = harness({
+    runnerScript: [
+      claudeExit(candidateFor("rec-1", "m0")),
+      claudeExit(candidateFor("rec-2", "m1")),
+      "throw",
+    ],
+  });
+
+  await expect(runner.run("claude-code", chunkedRequest())).rejects.toThrow();
+
+  expect(state.runs).toHaveLength(5);
+  expect(state.saved[0]!.incomplete).toEqual([
+    { reason: "summary-merge-unavailable" },
+  ]);
+});
+
+test("CH-9: message-level evidence collapses to session-level before one merge when necessary", async () => {
+  const messageIds = Array.from(
+    { length: 96 },
+    (_, index) => `message-${index}-${"x".repeat(700)}`,
+  );
+  const conversations = ["rec-1", "rec-2"].map((recordId) => ({
+    source: "codex" as const,
+    recordId,
+    messages: messageIds.map((id, index) => ({
+      id,
+      role: "user",
+      time: "09:00",
+      text: index === 0 ? "x".repeat(40_000) : "",
+    })),
+  }));
+  const payloadJson = JSON.stringify({ date: "2026-09-18", conversations });
+  const oversized: SummaryRequest = {
+    scheduled: false,
+    payload: {
+      date: "2026-09-18",
+      timeZone: "Australia/Sydney",
+      payloadJson,
+      manifest: conversations.map((conversation) => ({
+        source: conversation.source,
+        recordId: conversation.recordId,
+        messageIds,
+      })),
+      coverage: [{ source: "codex", state: "included" }],
+      byteLength: Buffer.byteLength(payloadJson),
+    },
+  };
+  const multiEvidenceCandidate = (recordId: string) =>
+    JSON.stringify({
+      achievements: [
+        {
+          id: `item-${recordId}`,
+          category: "progress",
+          title: "Item",
+          detail: "Detail",
+          evidence: [{ source: "codex", recordId, messageIds }],
+        },
+      ],
+    });
+  const { runner, state } = harness({
+    runnerScript: [
+      claudeExit(multiEvidenceCandidate("rec-1")),
+      claudeExit(multiEvidenceCandidate("rec-2")),
+      claudeExit(candidateFor("rec-1")),
+    ],
+  });
+
+  await runner.run("claude-code", oversized);
+
+  const mergeInput = state.runs[2]!.args.join(" ");
+  expect(mergeInput).toContain('"recordId":"rec-1"');
+  expect(mergeInput).not.toContain('"recordId":"rec-1","messageIds"');
+});
+
+test("CH-10: an exact merge prompt over budget saves incomplete without a merge CLI call", async () => {
+  const conversations = Array.from({ length: 200 }, (_, index) => ({
+    source: "codex" as const,
+    recordId: `rec-${index}`,
+    messages: [
+      {
+        id: `m-${index}`,
+        role: "user",
+        time: "09:00",
+        text: "x".repeat(70_000),
+      },
+    ],
+  }));
+  const payloadJson = JSON.stringify({ date: "2026-09-18", conversations });
+  const largeRequest: SummaryRequest = {
+    scheduled: false,
+    payload: {
+      date: "2026-09-18",
+      timeZone: "Australia/Sydney",
+      payloadJson,
+      manifest: conversations.map((conversation) => ({
+        source: conversation.source,
+        recordId: conversation.recordId,
+        messageIds: conversation.messages.map((message) => message.id),
+      })),
+      coverage: [{ source: "codex", state: "included" }],
+      byteLength: Buffer.byteLength(payloadJson),
+    },
+  };
+  const verboseCandidate = (recordId: string, messageId: string) =>
+    JSON.stringify({
+      achievements: [
+        {
+          id: `item-${recordId}`,
+          category: "progress",
+          title: "T".repeat(120),
+          detail: "D".repeat(500),
+          evidence: [{ source: "codex", recordId, messageIds: [messageId] }],
+        },
+      ],
+    });
+  const { runner, state } = harness({
+    runnerScript: conversations.map((conversation) =>
+      claudeExit(
+        verboseCandidate(conversation.recordId, conversation.messages[0]!.id),
+      ),
+    ),
+  });
+
+  await runner.run("claude-code", largeRequest);
+
+  expect(state.runs).toHaveLength(200);
+  expect(state.saved[0]!.incomplete).toEqual([
+    { reason: "summary-merge-too-large" },
+  ]);
 });
 
 test("summary runner enforces the shared bounded reply allowance", async () => {

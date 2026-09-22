@@ -27,7 +27,7 @@ const tooMany: CandidateValidation = {
   retryable: true,
 };
 
-const nonRetryableIssues: ValidationIssue[] = [
+const otherIssues: ValidationIssue[] = [
   "invalid-shape",
   "invalid-category",
   "invalid-achievement",
@@ -59,15 +59,19 @@ test("RS-2: attempt 3 with more than five achievements stops as summary-invalid 
   });
 });
 
-test("RS-3: any other validation issue stops without re-analysis on every attempt", () => {
+test("RS-3: every other validation issue re-analyses twice, then stops", () => {
   for (const attempt of [1, 2, 3]) {
-    for (const issue of nonRetryableIssues) {
+    for (const issue of otherIssues) {
       expect(
         decideAfterAttempt({
           attempt,
           validation: { ok: false, issue, retryable: false },
         }),
-      ).toEqual({ action: "stop", issue });
+      ).toEqual(
+        attempt < 3
+          ? { action: "reanalyse", nextAttempt: attempt + 1 }
+          : { action: "stop", issue },
+      );
     }
   }
 });

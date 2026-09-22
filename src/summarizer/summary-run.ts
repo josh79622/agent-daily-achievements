@@ -7,15 +7,28 @@ import { join } from "node:path";
 import {
   assembleReport,
   validateSummaryCandidate,
+  type Achievement,
   type AchievementReportStore,
   type AchievementReportV1,
+  type CandidateValidation,
+  type EvidenceManifest,
+  type ValidationIssue,
 } from "../report/contract.js";
 import {
   decideAfterAttempt,
   maxSummaryAttempts,
 } from "../report/summary-retry.js";
-import { summaryChunkMaxReplyBytes } from "../report/summary-chunking.js";
-import { buildSummaryRequestText } from "../report/summary-prompt.js";
+import {
+  chunkReportDayPayload,
+  summaryChunkMaxPayloadBytes,
+  summaryChunkMaxReplyBytes,
+} from "../report/summary-chunking.js";
+import {
+  buildChunkSummaryRequestText,
+  buildMergeSummaryRequestText,
+  buildSummaryRequestText,
+  type IntermediateCandidate,
+} from "../report/summary-prompt.js";
 import type { SummaryProvider } from "../storage/summary-permission.js";
 import type { SummaryRequest, SummaryRunner } from "../server/app.js";
 import {
@@ -42,6 +55,11 @@ export type SummaryLocator = (
 /** Everything one attempt tried to say happened, before the report is built. */
 type AttemptOutcome =
   { kind: "no-reply" } | { kind: "reply"; candidate: unknown };
+
+type ValidatedAttempts =
+  | { kind: "valid"; achievements: Achievement[] }
+  | { kind: "unavailable" }
+  | { kind: "invalid"; issue: ValidationIssue };
 
 export function createSummaryRunner({
   locate,
@@ -115,45 +133,110 @@ export function createSummaryRunner({
         await save(request, { kind: "unavailable" });
         throw new Error(`${provider} is not available.`);
       }
+      const executable = executablePath;
       const settings = await models.effectiveSettings(provider);
-      const promptText = buildSummaryRequestText(
-        request.payload.payloadJson,
-        request.language ? { language: request.language } : undefined,
-      );
+      const options = request.language
+        ? { language: request.language }
+        : undefined;
+      const chunking = chunkReportDayPayload(request.payload);
+      if (chunking.kind === "message-too-large") {
+        await save(request, chunking);
+        return;
+      }
 
-      for (let attempt = 1; attempt <= maxSummaryAttempts; attempt++) {
-        const outcome = await runAttempt(
-          provider,
-          executablePath,
-          settings.model,
-          settings.effort,
-          promptText,
+      if (chunking.kind === "single") {
+        const result = await runValidated(
+          buildSummaryRequestText(chunking.chunks[0].payloadJson, options),
+          request.payload.manifest,
         );
-        if (outcome.kind === "no-reply") {
-          if (attempt === maxSummaryAttempts) {
-            await save(request, { kind: "unavailable" });
-            throw new Error(`${provider} produced no usable reply.`);
-          }
+        if (result.kind === "valid") {
+          await save(request, {
+            kind: "candidate",
+            candidate: { achievements: result.achievements },
+          });
+          return;
+        }
+        await save(
+          request,
+          result.kind === "unavailable"
+            ? { kind: "unavailable" }
+            : { kind: "invalid", issue: result.issue },
+        );
+        throw new Error(`${provider} produced no valid summary.`);
+      }
+
+      const candidates: Achievement[] = [];
+      for (const chunk of chunking.chunks) {
+        const result = await runValidated(
+          buildChunkSummaryRequestText(chunk, options),
+          chunk.manifest,
+        );
+        if (result.kind === "valid") {
+          candidates.push(...result.achievements);
           continue;
         }
-        const validation = validateSummaryCandidate(outcome.candidate, {
-          manifest: request.payload.manifest,
-          coverage: request.payload.coverage,
+        await save(request, {
+          kind: "chunk-failed",
+          chunkIndex: chunk.index,
+          ...(result.kind === "invalid" ? { issue: result.issue } : {}),
         });
-        const decision = decideAfterAttempt({ attempt, validation });
-        if (decision.action === "reanalyse") continue;
+        throw new Error(`${provider} failed chunk ${chunk.index}.`);
+      }
+
+      const mergeCandidates = compactCandidates(candidates, options);
+      if (mergeCandidates === undefined) {
+        await save(request, { kind: "merge-too-large" });
+        return;
+      }
+      const merged = await runValidated(
+        buildMergeSummaryRequestText(mergeCandidates, options),
+        request.payload.manifest,
+      );
+      if (merged.kind === "valid") {
         await save(request, {
           kind: "candidate",
-          candidate: outcome.candidate,
+          candidate: { achievements: merged.achievements },
         });
-        if (
-          decision.action === "stop" &&
-          decision.issue === "too-many-achievements"
-        )
-          throw new Error(
-            `${provider} exceeded the achievement limit on every attempt.`,
-          );
         return;
+      }
+      await save(
+        request,
+        merged.kind === "unavailable"
+          ? { kind: "merge-unavailable" }
+          : { kind: "merge-invalid", issue: merged.issue },
+      );
+      throw new Error(`${provider} produced no valid merged summary.`);
+
+      async function runValidated(
+        promptText: string,
+        manifest: EvidenceManifest,
+      ): Promise<ValidatedAttempts> {
+        for (let attempt = 1; attempt <= maxSummaryAttempts; attempt++) {
+          const outcome = await runAttempt(
+            provider,
+            executable,
+            settings.model,
+            settings.effort,
+            promptText,
+          );
+          if (outcome.kind === "no-reply") {
+            if (attempt === maxSummaryAttempts) return { kind: "unavailable" };
+            continue;
+          }
+          const validation: CandidateValidation = validateSummaryCandidate(
+            outcome.candidate,
+            {
+              manifest,
+              coverage: request.payload.coverage,
+            },
+          );
+          const decision = decideAfterAttempt({ attempt, validation });
+          if (decision.action === "accept")
+            return { kind: "valid", achievements: decision.achievements };
+          if (decision.action === "reanalyse") continue;
+          return { kind: "invalid", issue: decision.issue };
+        }
+        return { kind: "unavailable" };
       }
     },
   };
@@ -251,4 +334,69 @@ export function parseCandidateJson(reply: string): unknown {
   } catch {
     return { __unparseable: true };
   }
+}
+
+/**
+ * Keep only the model's structured candidate fields before the final merge.
+ * If the exact final prompt would exceed the shared input budget, remove
+ * message-level identifiers one reference at a time, retaining session-level
+ * source/recordId evidence. Nothing is truncated and no raw record text is
+ * ever carried into the merge request.
+ */
+function compactCandidates(
+  achievements: readonly Achievement[],
+  options: { language?: string } | undefined,
+): IntermediateCandidate[] | undefined {
+  let candidates: IntermediateCandidate[] = achievements.map((achievement) => ({
+    id: achievement.id,
+    category: achievement.category,
+    title: achievement.title,
+    detail: achievement.detail,
+    isPrimary: achievement.isPrimary === true,
+    evidence: achievement.evidence.map((ref) => ({
+      source: ref.source,
+      recordId: ref.recordId,
+      ...(ref.messageIds === undefined
+        ? {}
+        : { messageIds: [...ref.messageIds] }),
+    })),
+  }));
+  if (mergeFits(candidates, options)) return candidates;
+
+  for (
+    let candidateIndex = 0;
+    candidateIndex < candidates.length;
+    candidateIndex++
+  ) {
+    const candidate = candidates[candidateIndex]!;
+    for (let index = 0; index < candidate.evidence.length; index++) {
+      const evidence = candidate.evidence[index]!;
+      if (evidence.messageIds === undefined) continue;
+      candidates = candidates.map((entry, entryIndex) =>
+        entryIndex !== candidateIndex
+          ? entry
+          : {
+              ...entry,
+              evidence: entry.evidence.map((ref, evidenceIndex) =>
+                evidenceIndex === index
+                  ? { source: ref.source, recordId: ref.recordId }
+                  : ref,
+              ),
+            },
+      );
+      if (mergeFits(candidates, options)) return candidates;
+    }
+  }
+  return undefined;
+}
+
+function mergeFits(
+  candidates: readonly IntermediateCandidate[],
+  options: { language?: string } | undefined,
+): boolean {
+  return (
+    Buffer.byteLength(buildMergeSummaryRequestText(candidates, options)) +
+      summaryMaxReplyBytes <=
+    summaryChunkMaxPayloadBytes
+  );
 }
