@@ -778,18 +778,23 @@ State of Josh's machine, so the next session does not re-run anything by acciden
 - The launchd job is **not installed**. Nothing in this repository has ever run `launchctl`.
 
 Open, in the order Josh and I last discussed them:
-1. **Packaging (the live thread when the session ended).** Josh asked whether users will get a
+1. **Large-payload chunking (decision recorded 2026-09-22).** A busy day must
+   use one shared conservative input limit for all providers, then combine
+   chunk summaries without dropping source material. The numerical limit and
+   design/test cases are still needed; see
+   [the decision](docs/decisions/2026-09-22-summary-payload-chunking.md).
+2. **Packaging (the live thread when the session ended).** Josh asked whether users will get a
    one-click install. Today they must do five manual steps and `package.json` has no `bin` or
    `files`. I proposed, and Josh has not yet approved: fold everything into a single
    `npm run setup` (check Node and the agent CLIs, build, store the timezone, install the launchd
    job), with `npx` publishing as a later follow-up and a `.pkg` out of first-version scope.
    Next step is writing that task's test cases for his approval.
-2. **`scripts/install-launchd.mjs` hard-codes `/opt/homebrew/opt/node@24/bin/node`.** That is
+3. **`scripts/install-launchd.mjs` hard-codes `/opt/homebrew/opt/node@24/bin/node`.** That is
    Josh's path, not a portable one; on another Mac the job would point at a missing file and
    silently never run. I introduced it. Fix it as part of item 1 — detect the running Node instead.
-3. `getYesterdayDate()` in `web/date-utils.ts` still assumes a midnight boundary, so between
+4. `getYesterdayDate()` in `web/date-utils.ts` still assumes a midnight boundary, so between
    midnight and 07:00 the page's default date disagrees with the report window.
-4. Then the remaining first-version gaps: a clickable macOS notification, marking incomplete
+5. Then the remaining first-version gaps: a clickable macOS notification, marking incomplete
    reports visibly, five sources tested including failure behavior, install docs, and a
    fresh-macOS install check.
 

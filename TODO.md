@@ -194,9 +194,12 @@ generation moved here and comes first.
       [the truncation decision](docs/decisions/2026-09-18-tool-result-truncation.md).
       Test cases PB-1 to PB-13 in
       [the payload design](docs/plans/2026-09-18-report-day-payload-design.md).
-      Still undecided: splitting days that exceed model input limits (deferred
-      to the summary-run task, to be decided on a measured `byteLength`), and
-      whether secrets inside conversations are masked before sending.
+      Payload chunking decision (2026-09-22): use one shared conservative
+      input limit for every provider; see
+      [the decision](docs/decisions/2026-09-22-summary-payload-chunking.md).
+      The numeric limit and chunk/merge implementation remain unstarted.
+      Still undecided: whether secrets inside conversations are masked before
+      sending.
 - [x] Cap `tool_use` text the same way as `tool_result`, content-blind and
       disclosed. (see the commit for this item)
   - PB-14 to PB-16 pass, PB-7/PB-8 were tightened to pin the exact truncated
