@@ -56,6 +56,10 @@ export interface FreshMacosInstallationAdapter {
   restorePriorInstallation(): Promise<void>;
   /** Restores the launchd job loaded before this transaction. */
   restorePriorJob(): Promise<void>;
+  /** Restores the managed Node runtime active before this transaction. */
+  restorePriorRuntime(): Promise<void>;
+  /** Restores the timezone/settings snapshot captured before this transaction. */
+  restorePriorReportSettings(): Promise<void>;
 }
 
 export type FreshMacosInstallationResult =
@@ -184,6 +188,9 @@ function requiredRuntimeVersion(
   const version = descriptors[0]?.version;
   if (!version)
     throw new Error("an approved Node runtime descriptor is required");
+  if (descriptors.some((descriptor) => descriptor.version !== version)) {
+    throw new Error("approved Node runtime descriptors must use one version");
+  }
   return version;
 }
 
@@ -209,6 +216,8 @@ async function restorePriorInstallation(
   const results = await Promise.allSettled([
     adapter.restorePriorInstallation(),
     adapter.restorePriorJob(),
+    adapter.restorePriorRuntime(),
+    adapter.restorePriorReportSettings(),
   ]);
   return results.every((result) => result.status === "fulfilled");
 }

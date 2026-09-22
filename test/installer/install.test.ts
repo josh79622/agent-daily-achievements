@@ -68,8 +68,11 @@ test("installs a fresh macOS application in the required recoverable stage order
 
 test.each([
   ["validate-macos-and-space", "environment"],
+  ["runtime:architecture", "runtime"],
   ["runtime:download", "runtime"],
   ["runtime:verify", "runtime"],
+  ["runtime:extract", "runtime"],
+  ["runtime:node-executable", "runtime"],
   ["runtime:activate", "runtime"],
   ["source-destination", "source-destination"],
   ["source:download", "source"],
@@ -95,18 +98,22 @@ test.each([
     });
     expect(adapter.priorInstallationRemainsUsable).toBe(true);
     expect(adapter.priorJobRemainsLoaded).toBe(true);
+    expect(adapter.activeRuntime).toBe("prior-runtime");
+    expect(adapter.reportSettings).toBe("prior-settings");
   },
 );
 
 test.each(["timezone", "schedule", "open-page"] as const)(
-  "restores the active source and job when %s fails after source activation",
+  "restores runtime, source, settings, and job when %s fails after activation",
   async (operation) => {
     const adapter = createAdapter({ failAt: operation });
 
     await expect(
       installFreshMacosApplication(request, adapter),
     ).resolves.toMatchObject({ status: "failed", stage: operation });
+    expect(adapter.activeRuntime).toBe("prior-runtime");
     expect(adapter.activeSource).toBe("prior-source");
+    expect(adapter.reportSettings).toBe("prior-settings");
     expect(adapter.loadedJob).toBe("prior-job");
   },
 );
@@ -123,6 +130,51 @@ test("reports unsafe recovery when restoring the prior installation fails", asyn
     status: "unsafe-recovery",
     failedStage: "timezone",
   });
+});
+
+test("reports unsafe recovery when restoring the prior runtime fails", async () => {
+  const adapter = createAdapter({
+    failAt: "source:download",
+    runtimeRestorationFails: true,
+  });
+
+  await expect(
+    installFreshMacosApplication(request, adapter),
+  ).resolves.toMatchObject({
+    status: "unsafe-recovery",
+    failedStage: "source",
+  });
+});
+
+test("reports unsafe recovery when restoring report settings fails", async () => {
+  const adapter = createAdapter({
+    failAt: "schedule",
+    settingsRestorationFails: true,
+  });
+
+  await expect(
+    installFreshMacosApplication(request, adapter),
+  ).resolves.toMatchObject({
+    status: "unsafe-recovery",
+    failedStage: "schedule",
+  });
+});
+
+test("rejects mixed-version runtime metadata before activating any runtime", async () => {
+  const adapter = createAdapter();
+  const mixedRuntimeRequest = {
+    ...request,
+    runtimeDescriptors: [
+      { ...runtime, architecture: "x64" as const, version: "24.11.0" },
+      runtime,
+    ],
+  };
+
+  await expect(
+    installFreshMacosApplication(mixedRuntimeRequest, adapter),
+  ).resolves.toMatchObject({ status: "failed", stage: "runtime" });
+  expect(adapter.operations).not.toContain("runtime:download");
+  expect(adapter.activeRuntime).toBe("prior-runtime");
 });
 
 test("rejects an occupied source destination before fetching the source archive", async () => {
@@ -145,6 +197,8 @@ function createAdapter(
     failAt?: string;
     sourceDestinationOccupied?: boolean;
     restorationFails?: boolean;
+    runtimeRestorationFails?: boolean;
+    settingsRestorationFails?: boolean;
   } = {},
 ) {
   const operations: string[] = [];
@@ -156,6 +210,8 @@ function createAdapter(
   let priorJobRemainsLoaded = false;
   let activeSource = "prior-source";
   let loadedJob = "prior-job";
+  let activeRuntime = "prior-runtime";
+  let reportSettings = "prior-settings";
 
   const failIfRequested = (operation: string): void => {
     if (options.failAt === operation) throw new Error(`${operation} failed`);
@@ -163,6 +219,7 @@ function createAdapter(
   const runtimeSystem: SystemAdapter = {
     describeArchitecture: async () => {
       operations.push("runtime:architecture");
+      if (options.failAt === "runtime:architecture") return "unsupported";
       return "arm64";
     },
     downloadToStaging: async (_url, directory) => {
@@ -176,13 +233,15 @@ function createAdapter(
     },
     extractArchiveToRuntimeRoot: async () => {
       operations.push("runtime:extract");
+      failIfRequested("runtime:extract");
     },
     isExecutable: async () => {
       operations.push("runtime:node-executable");
-      return true;
+      return options.failAt !== "runtime:node-executable";
     },
     activateAtomically: async () => {
       operations.push("runtime:activate");
+      activeRuntime = "new-runtime";
       failIfRequested("runtime:activate");
     },
   };
@@ -201,6 +260,12 @@ function createAdapter(
     },
     get loadedJob() {
       return loadedJob;
+    },
+    get activeRuntime() {
+      return activeRuntime;
+    },
+    get reportSettings() {
+      return reportSettings;
     },
     runtimeSystem,
     validateMacosAndWritableSpace: async () => {
@@ -240,6 +305,7 @@ function createAdapter(
     },
     setupReportTimeZone: async () => {
       operations.push("timezone");
+      reportSettings = "new-settings";
       failIfRequested("timezone");
     },
     writeAndReloadLaunchdJob: async (value: {
@@ -264,6 +330,16 @@ function createAdapter(
       if (options.restorationFails) throw new Error("job restore failed");
       loadedJob = "prior-job";
       priorJobRemainsLoaded = true;
+    },
+    restorePriorRuntime: async () => {
+      if (options.runtimeRestorationFails)
+        throw new Error("runtime restore failed");
+      activeRuntime = "prior-runtime";
+    },
+    restorePriorReportSettings: async () => {
+      if (options.settingsRestorationFails)
+        throw new Error("settings restore failed");
+      reportSettings = "prior-settings";
     },
   };
 }
