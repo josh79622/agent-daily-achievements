@@ -2,9 +2,13 @@ import { expect, test } from "vitest";
 
 import type { EvidenceManifest } from "../../src/report/contract.js";
 import type { ReportDayPayload } from "../../src/report/report-day-payload.js";
+import { buildSummaryRequestText } from "../../src/report/summary-prompt.js";
 import {
   chunkReportDayPayload,
+  summaryChunkMaxReplyBytes,
   summaryChunkMaxPayloadBytes,
+  summaryChunkPromptAndWrapperBytes,
+  summaryChunkRecordBudgetBytes,
 } from "../../src/report/summary-chunking.js";
 
 type Conversation = {
@@ -75,6 +79,34 @@ test("CH-1a: prompt and reply room is reserved below the total request budget", 
     recordId: "session-a",
     messageId: "m-1",
   });
+});
+
+test("CH-1b: near-limit request components fit the shared total budget", () => {
+  const fixedPromptBytes = Buffer.byteLength(buildSummaryRequestText(""));
+  const day = payload([
+    session("session-a", [
+      message("m-1", "x".repeat(summaryChunkRecordBudgetBytes - 1_000)),
+    ]),
+  ]);
+
+  const result = chunkReportDayPayload(day);
+
+  expect(result.kind).toBe("single");
+  expect(fixedPromptBytes).toBeLessThanOrEqual(
+    summaryChunkPromptAndWrapperBytes,
+  );
+  expect(Buffer.byteLength(day.payloadJson)).toBeLessThanOrEqual(
+    summaryChunkRecordBudgetBytes,
+  );
+  expect(
+    summaryChunkRecordBudgetBytes +
+      summaryChunkPromptAndWrapperBytes +
+      summaryChunkMaxReplyBytes,
+  ).toBe(summaryChunkMaxPayloadBytes);
+  expect(
+    Buffer.byteLength(buildSummaryRequestText(day.payloadJson)) +
+      summaryChunkMaxReplyBytes,
+  ).toBeLessThanOrEqual(summaryChunkMaxPayloadBytes);
 });
 
 test("CH-2: complete sessions pack chronologically without splitting", () => {

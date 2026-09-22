@@ -1,13 +1,18 @@
 import type { EvidenceManifest, ReportSource } from "./contract.js";
 import type { ReportDayPayload } from "./report-day-payload.js";
 
-/** Conservative serialized-record budget under the shared ~64k-token limit. */
+/** Total conservative request budget under the shared ~64k-token limit. */
 export const summaryChunkMaxPayloadBytes = 128 * 1024;
 
-/** Room for the prompt, request wrappers, and a bounded structured reply. */
-const summaryChunkReservedRequestBytes = 8 * 1024;
-const summaryChunkRecordBudgetBytes =
-  summaryChunkMaxPayloadBytes - summaryChunkReservedRequestBytes;
+/** Fixed prompt and CLI request/response wrapper allowance. */
+export const summaryChunkPromptAndWrapperBytes = 8 * 1024;
+/** Maximum structured summary reply read from a provider. */
+export const summaryChunkMaxReplyBytes = 8 * 1024;
+/** The remainder is the only space available to serialized source records. */
+export const summaryChunkRecordBudgetBytes =
+  summaryChunkMaxPayloadBytes -
+  summaryChunkPromptAndWrapperBytes -
+  summaryChunkMaxReplyBytes;
 
 export type SummaryChunk = {
   index: number;

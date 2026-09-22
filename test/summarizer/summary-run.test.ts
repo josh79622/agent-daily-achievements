@@ -13,6 +13,7 @@ import type {
   ReplyFileResult,
 } from "../../src/summarizer/readiness-probe.js";
 import { buildSummaryRequestText } from "../../src/report/summary-prompt.js";
+import { summaryChunkMaxReplyBytes } from "../../src/report/summary-chunking.js";
 
 // Test cases SR-1 to SR-11 from docs/plans/2026-09-18-summary-run-design.md.
 // Every process, temp-dir, reply-file, and store dependency is a fake; no
@@ -249,12 +250,18 @@ test("SR-7: no executable located saves unavailable and throws", async () => {
   ]);
 });
 
-test("SR-8: could-not-start, timed out, non-zero exit, and an empty reply all end unavailable", async () => {
+test("SR-8: unavailable or over-cap replies end unavailable without saving content", async () => {
   const scripts: Array<ProbeRunResult | "throw"> = [
     "throw",
     { kind: "timed-out" },
     { kind: "exited", exitCode: 1, stdout: "", stdoutTooLarge: false },
     claudeExit(""),
+    {
+      kind: "exited",
+      exitCode: 0,
+      stdout: JSON.stringify({ is_error: false, result: candidate(1) }),
+      stdoutTooLarge: true,
+    },
   ];
   for (const script of scripts) {
     const { runner, state } = harness({ runnerScript: [script] });
@@ -314,10 +321,15 @@ test("SR-11: pre-existing coverage incompleteness is preserved alongside a summa
   );
 });
 
-// Reply-cap size is not exercised via the injected readReplyFile fake above;
-// this only checks the exported constant is what SR-8's expectations rely on.
-test("summaryMaxReplyBytes is exported for the process runner's stdout cap", () => {
-  expect(summaryMaxReplyBytes).toBeGreaterThan(0);
+test("summary runner enforces the shared bounded reply allowance", async () => {
+  const { runner, state } = harness({
+    runnerScript: [claudeExit(candidate(1))],
+  });
+
+  await runner.run("claude-code", request());
+
+  expect(summaryMaxReplyBytes).toBe(summaryChunkMaxReplyBytes);
+  expect(state.runs[0]?.maxStdoutBytes).toBe(summaryChunkMaxReplyBytes);
 });
 
 test("SR: agy invokes agy CLI without -p and pipes prompt to stdin", async () => {

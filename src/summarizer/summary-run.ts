@@ -14,6 +14,7 @@ import {
   decideAfterAttempt,
   maxSummaryAttempts,
 } from "../report/summary-retry.js";
+import { summaryChunkMaxReplyBytes } from "../report/summary-chunking.js";
 import { buildSummaryRequestText } from "../report/summary-prompt.js";
 import type { SummaryProvider } from "../storage/summary-permission.js";
 import type { SummaryRequest, SummaryRunner } from "../server/app.js";
@@ -29,12 +30,10 @@ import {
 } from "./readiness-probe.js";
 import type { SummarizerModelsService } from "./model-settings.js";
 
-// A real day's payload and reply are both far larger than the readiness
-// probe's one-word exchange, and up to three attempts run in sequence.
-// Provisional (design doc "Open for Josh" item 2): not yet measured against a
-// real run.
+// A real day's prompt and reply are larger than the readiness probe's one-word
+// exchange, and up to three attempts run in sequence.
 export const summaryAttemptTimeoutMs = 10 * 60_000;
-export const summaryMaxReplyBytes = 512 * 1024;
+export const summaryMaxReplyBytes = summaryChunkMaxReplyBytes;
 
 export type SummaryLocator = (
   provider: SummaryProvider,
