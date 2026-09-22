@@ -119,6 +119,17 @@ export function createApp({
       const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
 
       if (pathname === "/api/installer/status") {
+        const origin = localOrigin(request);
+        if (
+          !origin ||
+          (request.headers.origin && request.headers.origin !== origin) ||
+          request.headers["sec-fetch-site"] === "cross-site"
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Use the local app to view installer status." },
+          });
+          return;
+        }
         if (request.method !== "GET") {
           sendJson(response, 405, {
             error: { message: "Method not allowed." },

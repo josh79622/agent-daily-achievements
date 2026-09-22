@@ -72,10 +72,53 @@ test("completed installation with no installed providers is successful but not c
   expect(response.body).not.toContain("raw command output");
 });
 
-function send(port: number, method: string, path: string) {
+test("foreign installer-status requests are rejected before provider status runs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "installer-status-test-"));
+  let listCalls = 0;
+  const service: ProviderLoginService = {
+    async list() {
+      listCalls += 1;
+      return [];
+    },
+    async status() {
+      throw new Error("status must not be called");
+    },
+    async startLogin() {
+      throw new Error("login must not start");
+    },
+    async checkReadiness() {
+      throw new Error("readiness must not run");
+    },
+  };
+  const server = createApp({
+    reportStore: createReportStore(join(root, "reports")),
+    providerLoginService: service,
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const port = (server.address() as AddressInfo).port;
+  cleanups.push(
+    () => new Promise<void>((resolve) => server.close(() => resolve())),
+    () => rm(root, { recursive: true, force: true }),
+  );
+
+  const response = await send(port, "GET", "/api/installer/status", {
+    origin: "http://evil.test",
+  });
+
+  expect(response.status).toBe(403);
+  expect(listCalls).toBe(0);
+});
+
+function send(
+  port: number,
+  method: string,
+  path: string,
+  headers: Record<string, string> = {},
+) {
   return new Promise<{ status: number; body: string }>((resolve, reject) => {
     const req = httpRequest(
-      { host: "127.0.0.1", port, method, path },
+      { host: "127.0.0.1", port, method, path, headers },
       (res) => {
         let body = "";
         res.setEncoding("utf8");
