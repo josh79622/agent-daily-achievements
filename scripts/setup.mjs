@@ -12,24 +12,27 @@
 import { resolve } from "node:path";
 
 import { setupReportTimeZone } from "../src/storage/report-timezone.js";
+import { setupSummaryPermission } from "../src/storage/summary-permission.js";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
-const path = resolve(repositoryRoot, "data/report-timezone.json");
+const timeZonePath = resolve(repositoryRoot, "data/report-timezone.json");
+const summaryPermissionPath = resolve(
+  repositoryRoot,
+  "data/summary-permission.json",
+);
 
 const force = parseForce(process.argv.slice(2));
 
-const result = await setupReportTimeZone({ path, force });
+const tzResult = await setupReportTimeZone({ path: timeZonePath, force });
 
-switch (result.status) {
+switch (tzResult.status) {
   case "written":
     console.log(
-      `${result.replacedCorrupt ? "Replaced a corrupt file, now" : "Stored"} report timezone: ${result.timeZone} (${path})`,
+      `${tzResult.replacedCorrupt ? "Replaced a corrupt file, now" : "Stored"} report timezone: ${tzResult.timeZone} (${timeZonePath})`,
     );
-    process.exit(0);
     break;
   case "kept":
-    console.log(`Kept the existing report timezone: ${result.timeZone}`);
-    process.exit(0);
+    console.log(`Kept the existing report timezone: ${tzResult.timeZone}`);
     break;
   case "no-timezone":
     console.error(
@@ -38,14 +41,37 @@ switch (result.status) {
     process.exit(1);
     break;
   case "invalid-explicit":
-    console.error(`Not a valid IANA timezone: ${result.value}`);
+    console.error(`Not a valid IANA timezone: ${tzResult.value}`);
     process.exit(1);
     break;
   case "write-failed":
-    console.error(`Failed to write ${path}.`);
+    console.error(`Failed to write ${timeZonePath}.`);
     process.exit(1);
     break;
 }
+
+const permissionResult = await setupSummaryPermission({
+  path: summaryPermissionPath,
+});
+
+switch (permissionResult.status) {
+  case "written":
+    console.log(
+      `Stored default summary permission: preferred ${permissionResult.permission.preferredCli ?? "none"}, sources: ${permissionResult.permission.sourceScope.join(", ")} (${summaryPermissionPath})`,
+    );
+    break;
+  case "kept":
+    console.log(
+      `Kept existing summary permission: preferred ${permissionResult.permission.preferredCli ?? "none"}, sources: ${permissionResult.permission.sourceScope.join(", ")}`,
+    );
+    break;
+  case "write-failed":
+    console.error(`Failed to write ${summaryPermissionPath}.`);
+    process.exit(1);
+    break;
+}
+
+process.exit(0);
 
 /** @param {string[]} args */
 function parseForce(args) {

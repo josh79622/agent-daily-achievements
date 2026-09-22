@@ -76,6 +76,9 @@ export const es: Translations = {
     briefingConclusion:
       "✨ Evaluación del día: los hitos clave se lograron, se descartó lo que distraía y el avance fue efectivo.",
     noDeliverables: "No hay entregables con avance en este día.",
+    permissionRequired:
+      "No se ha configurado el permiso de resumen de IA externo. Abra la configuración para otorgar el permiso.",
+    openSettings: "Abrir configuración",
   },
   settings: {
     title: "Preferencias y ajustes del modelo",

@@ -22,4 +22,5 @@ export interface InstallerLayout {
   userDataRoot: string;
   reportsPath: string;
   settingsPath: string;
+  summaryPermissionPath: string;
 }

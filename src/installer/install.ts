@@ -10,6 +10,7 @@ type FreshInstallLayout = {
   runtimeStagingPath(version: string): string;
   releaseStagingPath(version: string): string;
   settingsPath: string;
+  summaryPermissionPath?: string;
 };
 
 export interface SourceReleaseDescriptor {
@@ -47,6 +48,7 @@ export interface FreshMacosInstallationAdapter {
     sourceInstallPath: string,
   ): Promise<void>;
   setupReportTimeZone(settingsPath: string): Promise<void>;
+  setupSummaryPermission(summaryPermissionPath?: string): Promise<void>;
   writeAndReloadLaunchdJob(config: {
     nodePath: string;
     sourceInstallPath: string;
@@ -88,6 +90,7 @@ type InstallationStage =
   | "dependencies"
   | "build"
   | "timezone"
+  | "summary-permission"
   | "schedule"
   | "open-page";
 
@@ -161,6 +164,11 @@ export async function installFreshMacosApplication(
 
     stage = "timezone";
     await adapter.setupReportTimeZone(request.layout.settingsPath);
+
+    stage = "summary-permission";
+    await adapter.setupSummaryPermission(
+      request.layout.summaryPermissionPath ?? request.layout.settingsPath,
+    );
 
     stage = "schedule";
     await adapter.writeAndReloadLaunchdJob({
@@ -250,6 +258,8 @@ function actionFor(stage: InstallationStage): string {
     dependencies: "Check the managed npm dependency installation and retry.",
     build: "Check the production build output and retry.",
     timezone: "Choose a valid report timezone, then retry.",
+    "summary-permission":
+      "Check the external summary permission settings, then retry.",
     schedule: "Check the launchd job setup and retry.",
     "open-page":
       "Open the local page manually after checking the local server.",

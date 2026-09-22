@@ -38,6 +38,9 @@ test("creates versioned managed runtime and application paths separately from us
   expect(layout.settingsPath).toBe(
     "/Users/ava/Library/Application Support/Agent Daily Achievements/data/settings.json",
   );
+  expect(layout.summaryPermissionPath).toBe(
+    "/Users/ava/Library/Application Support/Agent Daily Achievements/data/summary-permission.json",
+  );
   expect(layout.sourceInstallPath).toBe(sourceInstallPath);
 });
 

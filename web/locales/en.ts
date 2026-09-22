@@ -77,6 +77,9 @@ export const en = {
     briefingConclusion:
       "✨ Daily Assessment: Key milestones landed, distractions filtered, effective progress achieved.",
     noDeliverables: "No deliverable progress found for this day.",
+    permissionRequired:
+      "External AI summarization permission has not been configured. Please open settings to grant permission.",
+    openSettings: "Open Settings",
   },
   settings: {
     title: "Preferences & Model Settings",

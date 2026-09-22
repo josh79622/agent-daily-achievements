@@ -46,6 +46,7 @@ export function createInstallerLayout(
     userDataRoot,
     reportsPath: resolve(userDataRoot, "reports"),
     settingsPath: resolve(userDataRoot, "settings.json"),
+    summaryPermissionPath: resolve(userDataRoot, "summary-permission.json"),
   };
 }
 

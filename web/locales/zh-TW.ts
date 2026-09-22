@@ -73,6 +73,8 @@ export const zhTW: Translations = {
     briefingConclusion:
       "✨ 今日評估：關鍵目標全數落地，及時排除無效雜訊，時間利用率高。",
     noDeliverables: "本日無進展類成果。",
+    permissionRequired: "尚未設定外部 AI 摘要授權。請先開啟設定完成授權。",
+    openSettings: "開啟設定",
   },
   settings: {
     title: "偏好與摘要設定",

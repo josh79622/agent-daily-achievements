@@ -19,6 +19,7 @@ const request = {
       `/managed/staging/node-v${version}`,
     releaseStagingPath: (version: string) => `/managed/staging/app-v${version}`,
     settingsPath: "/managed/data/settings.json",
+    summaryPermissionPath: "/managed/data/summary-permission.json",
   },
   runtimeDescriptors: [runtime],
   sourceRelease: {
@@ -55,6 +56,7 @@ test("installs a fresh macOS application in the required recoverable stage order
     "build",
     "source:activate",
     "timezone",
+    "summary-permission",
     "schedule",
     "open-page",
   ]);
@@ -82,6 +84,7 @@ test.each([
   ["build", "build"],
   ["source:activate", "build"],
   ["timezone", "timezone"],
+  ["summary-permission", "summary-permission"],
   ["schedule", "schedule"],
   ["open-page", "open-page"],
 ] as const)(
@@ -103,7 +106,7 @@ test.each([
   },
 );
 
-test.each(["timezone", "schedule", "open-page"] as const)(
+test.each(["timezone", "summary-permission", "schedule", "open-page"] as const)(
   "restores runtime, source, settings, and job when %s fails after activation",
   async (operation) => {
     const adapter = createAdapter({ failAt: operation });
@@ -328,6 +331,11 @@ function createAdapter(
       operations.push("timezone");
       reportSettings = "new-settings";
       failIfRequested("timezone");
+    },
+    setupSummaryPermission: async () => {
+      operations.push("summary-permission");
+      reportSettings = "new-settings";
+      failIfRequested("summary-permission");
     },
     writeAndReloadLaunchdJob: async (value: {
       nodePath: string;

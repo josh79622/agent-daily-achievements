@@ -433,6 +433,9 @@ export function ZenJournal() {
   const [generateMessage, setGenerateMessage] = useState<string | undefined>(
     undefined,
   );
+  const [generateErrorType, setGenerateErrorType] = useState<
+    "permission" | "generic" | undefined
+  >(undefined);
 
   const [language, setLanguage] = useState<Language>(() =>
     loadSavedLanguage(localStorage),
@@ -560,6 +563,7 @@ export function ZenJournal() {
     async (date?: string) => {
       setLoading(true);
       setGenerateMessage(undefined);
+      setGenerateErrorType(undefined);
       try {
         const url = date
           ? `/api/reports/${encodeURIComponent(date)}`
@@ -603,6 +607,7 @@ export function ZenJournal() {
   async function handleGenerateForSelectedDate() {
     setIsGenerating(true);
     setGenerateMessage(undefined);
+    setGenerateErrorType(undefined);
     try {
       const res = await fetch("/api/reports/generate", {
         method: "POST",
@@ -622,15 +627,32 @@ export function ZenJournal() {
         error?: { message?: string };
       };
       if (!res.ok) {
-        throw new Error(
-          data.report?.reason ?? data.error?.message ?? "Generation failed.",
-        );
+        const errorMsg =
+          data.report?.reason ?? data.error?.message ?? "Generation failed.";
+        const isPermissionError =
+          res.status === 403 ||
+          errorMsg.includes("Save external summarization permission first") ||
+          errorMsg.toLowerCase().includes("permission");
+        if (isPermissionError) {
+          setGenerateErrorType("permission");
+          setGenerateMessage(t.states.permissionRequired);
+          return;
+        }
+        throw new Error(errorMsg);
       }
       await loadReport(selectedDate);
     } catch (err) {
-      setGenerateMessage(
-        err instanceof Error ? err.message : "Generation failed.",
-      );
+      const msg = err instanceof Error ? err.message : "Generation failed.";
+      const isPermissionError =
+        msg.includes("Save external summarization permission first") ||
+        msg.toLowerCase().includes("permission");
+      if (isPermissionError) {
+        setGenerateErrorType("permission");
+        setGenerateMessage(t.states.permissionRequired);
+      } else {
+        setGenerateErrorType("generic");
+        setGenerateMessage(msg);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -865,7 +887,35 @@ export function ZenJournal() {
             <p className="zen-state-text">
               {status || format(t.states.emptyDateDesc, { date: selectedDate })}
             </p>
-            {generateMessage ? (
+            {generateErrorType === "permission" ? (
+              <div
+                className="permission-error-callout"
+                style={{
+                  margin: "16px auto",
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(239, 68, 68, 0.1)",
+                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                  maxWidth: "480px",
+                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "10px",
+                }}
+              >
+                <p className="action-message error" style={{ margin: 0 }}>
+                  {t.states.permissionRequired}
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setIsSettingsOpen(true)}
+                >
+                  ⚙️ {t.states.openSettings}
+                </button>
+              </div>
+            ) : generateMessage ? (
               <p className="action-message error">{generateMessage}</p>
             ) : null}
             <div
