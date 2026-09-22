@@ -86,6 +86,10 @@ export const es: Translations = {
     statusLabel: "Estado",
     checkStatus: "Comprobar estado",
     checking: "Comprobando…",
+    noSummarizerConnected:
+      "La instalación está completa, pero aún no hay un resumidor conectado. Instala un proveedor abajo, inicia sesión y comprueba su estado antes de generar un informe.",
+    installProvider: "Instrucciones de instalación",
+    signInProvider: "Iniciar sesión",
     generateReportBtn: "⚡️ Generar el resumen de hoy",
     generateSuccess: "¡Informe generado correctamente!",
     generateError: "Error al generar",

@@ -87,6 +87,10 @@ export const en = {
     statusLabel: "Status",
     checkStatus: "Check Status",
     checking: "Checking…",
+    noSummarizerConnected:
+      "Installation is complete. No summarizer is connected yet. Install a provider below, then sign in and check its status before generating a report.",
+    installProvider: "Installation instructions",
+    signInProvider: "Sign in",
     generateReportBtn: "⚡️ Generate Today's Summary",
     generateSuccess: "Report generated successfully!",
     generateError: "Generation failed",

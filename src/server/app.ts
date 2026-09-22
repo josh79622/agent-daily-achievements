@@ -75,6 +75,8 @@ interface AppOptions {
   providerLoginService?: ProviderLoginService;
   summarizerModels?: SummarizerModelsService;
   languagePackBuilder?: LanguagePackBuilder;
+  /** A successfully started local app has completed its installation flow. */
+  installationComplete?: boolean;
 }
 
 export function createApp({
@@ -105,6 +107,7 @@ export function createApp({
   providerLoginService,
   summarizerModels,
   languagePackBuilder,
+  installationComplete = true,
 }: AppOptions): Server {
   let generation = 0;
   let activeCollections = 0;
@@ -114,6 +117,31 @@ export function createApp({
   return createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
+
+      if (pathname === "/api/installer/status") {
+        if (request.method !== "GET") {
+          sendJson(response, 405, {
+            error: { message: "Method not allowed." },
+          });
+          return;
+        }
+        const providers = providerLoginService
+          ? await providerLoginService.list()
+          : [];
+        sendJson(response, 200, {
+          installation: {
+            status: installationComplete ? "complete" : "pending",
+          },
+          providerConnection: {
+            state: providers.every(
+              (provider) => provider.state === "not-installed",
+            )
+              ? "not-connected"
+              : "configured",
+          },
+        });
+        return;
+      }
 
       if (pathname.startsWith("/api/collector/")) {
         const origin = localOrigin(request);
