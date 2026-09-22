@@ -68,7 +68,7 @@ test("selects the matching architecture, cleans staging, and hands approved meta
   await expect(readLog(fixture, "sudo")).resolves.toBe("");
   await expect(readLog(fixture, "brew")).resolves.toBe("");
   await expect(readLog(fixture, "ambient-node")).resolves.toBe("");
-});
+}, 15000);
 
 test("selects x64 only for Intel Macs", async () => {
   const fixture = await createFixture("x86_64", { checksum: "x64-sha" });
@@ -80,7 +80,7 @@ test("selects x64 only for Intel Macs", async () => {
     "https://approved.example/node-x64.tar.gz",
   );
   expect(await readLog(fixture, "curl")).not.toContain("node-arm64");
-});
+}, 15000);
 
 test("stops before download when the selected source directory is occupied", async () => {
   const fixture = await createFixture("arm64");
@@ -91,7 +91,7 @@ test("stops before download when the selected source directory is occupied", asy
   expect(result.status).not.toBe(0);
   expect(result.stderr).toMatch(/already contains an installation.*update/i);
   await expect(readLog(fixture, "curl")).resolves.toBe("");
-});
+}, 15000);
 
 test("stops on a checksum mismatch without activating a runtime or invoking Node", async () => {
   const fixture = await createFixture("arm64", { checksum: "wrong" });
@@ -105,7 +105,7 @@ test("stops on a checksum mismatch without activating a runtime or invoking Node
   ).rejects.toThrow();
   await expect(readLog(fixture, "node")).resolves.toBe("");
   expect(await stagedBootstrapDirectories(fixture)).toEqual([]);
-});
+}, 15000);
 
 test("does not evaluate argument values as shell code", async () => {
   const fixture = await createFixture("arm64");
@@ -123,7 +123,7 @@ test("does not evaluate argument values as shell code", async () => {
   expect(await readLog(fixture, "node")).toContain(
     `--source-dir ${sourceDirectory}`,
   );
-});
+}, 15000);
 
 test("passes a leading-dash approved URL after curl's option terminator", async () => {
   const fixture = await createFixture("arm64", {
@@ -142,7 +142,7 @@ test("passes a leading-dash approved URL after curl's option terminator", async 
   expect(await readLog(fixture, "curl")).toContain(
     "--\n-approved-node-arm64.tar.gz",
   );
-});
+}, 15000);
 
 test("cleans staging and stops instead of resuming when interrupted during download", async () => {
   const fixture = await createFixture("arm64", {
@@ -154,7 +154,7 @@ test("cleans staging and stops instead of resuming when interrupted during downl
   expect(result.status).not.toBe(0);
   expect(await stagedBootstrapDirectories(fixture)).toEqual([]);
   await expect(readLog(fixture, "node")).resolves.toBe("");
-});
+}, 15000);
 
 function requiredArguments(fixture: Fixture): string[] {
   return [

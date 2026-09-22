@@ -652,49 +652,47 @@ export function ZenJournal() {
     <div className="zen-app-shell">
       <header className="zen-header">
         <div className="brand-badge">Daily Proof</div>
-        <div className="zen-nav-group">
-          <div className="date-picker-wrap">
-            <DateSelector
-              selectedDate={selectedDate}
-              onDateChange={setSelectedDate}
-              disabled={loading || isGenerating}
-              t={t}
-              direction={direction}
-            />
-          </div>
+        <div className="date-picker-wrap">
+          <DateSelector
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            disabled={loading || isGenerating}
+            t={t}
+            direction={direction}
+          />
+        </div>
 
-          <div className="header-utilities">
-            <HeaderIconButton
-              label={t.header.activity}
-              onClick={() => setIsActivityOpen(true)}
-              disabled={isGenerating}
-            >
-              <span aria-hidden="true">📂</span>
-            </HeaderIconButton>
+        <div className="header-utilities">
+          <HeaderIconButton
+            label={t.header.activity}
+            onClick={() => setIsActivityOpen(true)}
+            disabled={isGenerating}
+          >
+            <span aria-hidden="true">📂</span>
+          </HeaderIconButton>
 
-            <HeaderIconButton
-              label={t.header.settings}
-              onClick={() => setIsSettingsOpen(true)}
-              disabled={isGenerating}
-            >
-              <span aria-hidden="true">⚙️</span>
-            </HeaderIconButton>
+          <HeaderIconButton
+            label={t.header.settings}
+            onClick={() => setIsSettingsOpen(true)}
+            disabled={isGenerating}
+          >
+            <span aria-hidden="true">⚙️</span>
+          </HeaderIconButton>
 
-            <LanguageSelector
-              language={language}
-              onLanguageChange={(code) => void handleLanguageChange(code)}
-              disabled={isGenerating}
-              t={t}
-            />
+          <LanguageSelector
+            language={language}
+            onLanguageChange={(code) => void handleLanguageChange(code)}
+            disabled={isGenerating}
+            t={t}
+          />
 
-            <HeaderIconButton
-              label={t.header.themeToggle}
-              onClick={toggleTheme}
-              disabled={isGenerating}
-            >
-              <span aria-hidden="true">{theme === "dark" ? "☀️" : "🌙"}</span>
-            </HeaderIconButton>
-          </div>
+          <HeaderIconButton
+            label={t.header.themeToggle}
+            onClick={toggleTheme}
+            disabled={isGenerating}
+          >
+            <span aria-hidden="true">{theme === "dark" ? "☀️" : "🌙"}</span>
+          </HeaderIconButton>
         </div>
       </header>
 

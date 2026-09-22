@@ -36,7 +36,7 @@ describe("ZenJournal header utility controls", () => {
       expect(button).toHaveClass("header-icon-button");
       expect(button).not.toHaveTextContent(button.getAttribute("aria-label")!);
     }
-    expect(screen.getAllByRole("tooltip", { hidden: true })).toHaveLength(5);
+    expect(screen.getAllByRole("tooltip", { hidden: true })).toHaveLength(4);
 
     fireEvent.click(activity);
     expect(

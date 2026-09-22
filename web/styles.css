@@ -1022,6 +1022,8 @@ main,
 }
 
 .brand-badge {
+  display: inline-flex;
+  align-items: center;
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -1031,14 +1033,7 @@ main,
   padding: 0.35rem 0.8rem;
   border-radius: 9999px;
   box-shadow: 0 0 16px rgba(16, 185, 129, 0.15);
-}
-
-.zen-nav-group {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  min-width: 0;
-  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .header-utilities {
@@ -1047,6 +1042,7 @@ main,
   gap: 0.5rem;
   min-width: 0;
   flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .header-icon-control {
@@ -1186,7 +1182,9 @@ main,
 .date-picker-wrap {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .zen-date-input {
@@ -2919,16 +2917,16 @@ body[data-theme="light"] {
   .zen-header {
     align-items: stretch;
     flex-direction: column;
+    gap: 0.75rem;
   }
 
-  .zen-nav-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
+  .brand-badge {
+    align-self: center;
   }
 
   .date-picker-wrap {
     overflow-x: auto;
+    justify-content: center;
   }
 
   .header-utilities {

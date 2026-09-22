@@ -97,36 +97,27 @@ describe("Disabled stepper (T5-15)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: en.header.datePrev }));
     fireEvent.click(screen.getByRole("button", { name: en.header.dateNext }));
-    fireEvent.click(screen.getByRole("button", { name: en.header.dateToday }));
 
     expect(onDateChange).not.toHaveBeenCalled();
   });
 });
 
 describe("Today icon control (HIC-1, HIC-3 to HIC-5)", () => {
-  test("uses an icon-only accessible button which returns to the current local date", () => {
-    const onDateChange = vi.fn();
+  test("does not render a dedicated today button to preserve symmetrical stepper layout", () => {
     render(
       <DateSelector
         selectedDate={selectedDate}
-        onDateChange={onDateChange}
+        onDateChange={vi.fn()}
         t={en}
       />,
     );
 
-    const today = screen.getByRole("button", { name: en.header.dateToday });
-    expect(today).toHaveClass("header-icon-button");
-    expect(today).toHaveTextContent("📅");
-    expect(today).not.toHaveTextContent(en.header.dateToday);
-    expect(screen.getByRole("tooltip", { hidden: true })).toHaveTextContent(
-      en.header.dateToday,
-    );
+    expect(
+      screen.queryByRole("button", { name: en.header.dateToday }),
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText(en.header.selectDate)).toHaveAttribute(
       "type",
       "date",
     );
-
-    fireEvent.click(today);
-    expect(onDateChange).toHaveBeenCalledWith(getTodayDate());
   });
 });

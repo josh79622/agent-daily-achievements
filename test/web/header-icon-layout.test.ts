@@ -16,16 +16,13 @@ describe("header icon layout contracts (HIC-1, HIC-2, HIC-7, HIC-8)", () => {
     expect(button).toMatch(/justify-content\s*:\s*center\s*;/);
   });
 
-  test("uses deliberate non-wrapping desktop groups and a narrow two-row layout", () => {
+  test("uses deliberate non-wrapping desktop groups and a narrow column layout", () => {
     expect(blockFor(css, ".zen-header")).toMatch(/flex-wrap\s*:\s*nowrap\s*;/);
-    expect(blockFor(css, ".zen-nav-group")).toMatch(
-      /flex-wrap\s*:\s*nowrap\s*;/,
-    );
     expect(blockFor(css, ".header-utilities")).toMatch(
       /flex-wrap\s*:\s*nowrap\s*;/,
     );
     expect(css).toMatch(
-      /@media\s*\(max-width:\s*620px\)[\s\S]*?\.zen-nav-group\s*\{[\s\S]*?flex-direction\s*:\s*column\s*;/,
+      /@media\s*\(max-width:\s*620px\)[\s\S]*?\.zen-header\s*\{[\s\S]*?flex-direction\s*:\s*column\s*;/,
     );
     expect(css).toMatch(/overflow-x\s*:\s*hidden\s*;/);
   });
