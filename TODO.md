@@ -23,6 +23,13 @@
 
 ## Later phases
 
+### Large payload chunking (designed, not implemented)
+
+- [ ] Split a report day above the shared safe input budget and merge its
+      validated chunk summaries without omitting source material.
+  - Shared ~64k-token policy and CH-1 to CH-9 are in
+    [the chunking design](docs/plans/2026-09-23-large-payload-chunking-design.md).
+
 ### Phase 4 — Report intelligence (complete as scoped, 2026-09-18)
 
 - [x] Confirm user consent for external summarization separately from local-source consent.
