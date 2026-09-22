@@ -1,10 +1,14 @@
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 
-import type { AchievementReportV1 } from "../../src/report/contract.js";
+import type {
+  AchievementReportV1,
+  EvidenceManifest,
+} from "../../src/report/contract.js";
 import type { SummaryRequest } from "../../src/server/app.js";
 import {
   createSummaryRunner,
   parseCandidateJson,
+  sanitizeCandidateEvidence,
   summaryMaxReplyBytes,
 } from "../../src/summarizer/summary-run.js";
 import type {
@@ -337,4 +341,175 @@ test("SR: agy invokes agy CLI without -p and pipes prompt to stdin", async () =>
   expect(state.saved).toHaveLength(1);
   expect(state.saved[0]?.status).toBe("complete");
   expect(state.saved[0]?.achievements).toHaveLength(3);
+});
+
+describe("sanitizeCandidateEvidence", () => {
+  const manifest: EvidenceManifest = [
+    {
+      source: "codex",
+      recordId: "rec-1",
+      project: "proj-a",
+      messageIds: ["m0", "m1", "m2"],
+    },
+    {
+      source: "claude-code",
+      recordId: "rec-2",
+      project: "proj-b",
+      messageIds: ["m10"],
+    },
+  ];
+
+  test("passes through non-plain-objects or malformed candidates untouched", () => {
+    expect(sanitizeCandidateEvidence(null, manifest)).toBe(null);
+    expect(sanitizeCandidateEvidence(undefined, manifest)).toBe(undefined);
+    expect(sanitizeCandidateEvidence("string", manifest)).toBe("string");
+    expect(sanitizeCandidateEvidence([], manifest)).toEqual([]);
+    expect(sanitizeCandidateEvidence({}, manifest)).toEqual({});
+    expect(
+      sanitizeCandidateEvidence({ achievements: "not-an-array" }, manifest),
+    ).toEqual({ achievements: "not-an-array" });
+  });
+
+  test("preserves valid messageIds", () => {
+    const candidateObj = {
+      achievements: [
+        {
+          id: "item-0",
+          category: "progress",
+          title: "Item 0",
+          detail: "Detail 0",
+          evidence: [
+            { source: "codex", recordId: "rec-1", messageIds: ["m0", "m1"] },
+          ],
+        },
+      ],
+    };
+    const sanitized = sanitizeCandidateEvidence(candidateObj, manifest) as {
+      achievements: Array<{ evidence: Array<{ messageIds: string[] }> }>;
+    };
+    expect(sanitized.achievements[0]?.evidence[0]?.messageIds).toEqual([
+      "m0",
+      "m1",
+    ]);
+  });
+
+  test("filters out hallucinated messageIds keeping valid ones", () => {
+    const candidateObj = {
+      achievements: [
+        {
+          id: "item-0",
+          category: "progress",
+          title: "Item 0",
+          detail: "Detail 0",
+          evidence: [
+            {
+              source: "codex",
+              recordId: "rec-1",
+              messageIds: ["m1", "hallucinated-id", "another-fake"],
+            },
+          ],
+        },
+      ],
+    };
+    const sanitized = sanitizeCandidateEvidence(candidateObj, manifest) as {
+      achievements: Array<{ evidence: Array<{ messageIds: string[] }> }>;
+    };
+    expect(sanitized.achievements[0]?.evidence[0]?.messageIds).toEqual(["m1"]);
+  });
+
+  test("falls back to the last messageId when all messageIds are hallucinated or recordId is passed", () => {
+    const candidateObj = {
+      achievements: [
+        {
+          id: "item-0",
+          category: "progress",
+          title: "Item 0",
+          detail: "Detail 0",
+          evidence: [
+            {
+              source: "codex",
+              recordId: "rec-1",
+              messageIds: ["rec-1", "fake-msg"],
+            },
+          ],
+        },
+      ],
+    };
+    const sanitized = sanitizeCandidateEvidence(candidateObj, manifest) as {
+      achievements: Array<{ evidence: Array<{ messageIds: string[] }> }>;
+    };
+    expect(sanitized.achievements[0]?.evidence[0]?.messageIds).toEqual(["m2"]);
+  });
+
+  test("falls back to the last messageId when messageIds is omitted or not an array", () => {
+    const candidateObj = {
+      achievements: [
+        {
+          id: "item-0",
+          category: "progress",
+          title: "Item 0",
+          detail: "Detail 0",
+          evidence: [{ source: "claude-code", recordId: "rec-2" }],
+        },
+      ],
+    };
+    const sanitized = sanitizeCandidateEvidence(candidateObj, manifest) as {
+      achievements: Array<{ evidence: Array<{ messageIds: string[] }> }>;
+    };
+    expect(sanitized.achievements[0]?.evidence[0]?.messageIds).toEqual(["m10"]);
+  });
+
+  test("does not touch evidence whose recordId is not in manifest", () => {
+    const candidateObj = {
+      achievements: [
+        {
+          id: "item-0",
+          category: "progress",
+          title: "Item 0",
+          detail: "Detail 0",
+          evidence: [
+            {
+              source: "codex",
+              recordId: "unknown-record",
+              messageIds: ["m0"],
+            },
+          ],
+        },
+      ],
+    };
+    const sanitized = sanitizeCandidateEvidence(candidateObj, manifest) as {
+      achievements: Array<{ evidence: Array<{ messageIds: string[] }> }>;
+    };
+    expect(sanitized.achievements[0]?.evidence[0]?.messageIds).toEqual(["m0"]);
+  });
+
+  test("runner successfully completes when LLM returns hallucinated messageIds", async () => {
+    const candidateWithBadMsgId = JSON.stringify({
+      achievements: [
+        {
+          id: "item-0",
+          category: "progress",
+          title: "Item 0",
+          detail: "Detail 0",
+          isPrimary: true,
+          evidence: [
+            {
+              source: "codex",
+              recordId: "rec-1",
+              messageIds: ["rec-1"], // LLM passed recordId as messageId!
+            },
+          ],
+        },
+      ],
+    });
+    const { runner, state } = harness({
+      runnerScript: [claudeExit(candidateWithBadMsgId)],
+    });
+    await runner.run("claude-code", request());
+    expect(state.saved).toHaveLength(1);
+    expect(state.saved[0]!.status).toBe("complete");
+    expect(state.saved[0]!.achievements[0]?.evidence[0]?.messageIds).toEqual([
+      "m5",
+    ]);
+  });
 });
