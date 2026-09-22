@@ -1,6 +1,9 @@
 import { expect, test } from "vitest";
 
-import { createLanguagePackBuilder } from "../../src/summarizer/language-pack-run.js";
+import {
+  createLanguagePackBuilder,
+  languagePackMaxReplyBytes,
+} from "../../src/summarizer/language-pack-run.js";
 import type {
   ProbeRunRequest,
   ProbeRunResult,
@@ -117,6 +120,17 @@ test("L2-10: a successful build writes the cache and a following get serves it",
   expect(result.kind).toBe("built");
   expect(store.ja).toBeDefined();
   expect(await builder.get("ja")).toEqual(store.ja);
+});
+
+test("L2-10a: language-pack generation retains its 512 KiB reply allowance", async () => {
+  const { builder, state } = harness({
+    runnerScript: [claudeExit(JSON.stringify(translate(en)))],
+  });
+
+  await builder.build("ja");
+
+  expect(languagePackMaxReplyBytes).toBe(512 * 1024);
+  expect(state.runs[0]?.maxStdoutBytes).toBe(languagePackMaxReplyBytes);
 });
 
 test("L2-11: a second build request when the file exists does not invoke the provider", async () => {

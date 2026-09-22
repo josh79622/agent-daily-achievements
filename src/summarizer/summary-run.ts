@@ -224,10 +224,11 @@ export function agyReplyText(
 export async function codexReplyText(
   readReplyFile: ReplyFileReader,
   replyFile: string,
+  maxReplyBytes = summaryMaxReplyBytes,
 ): Promise<string | undefined> {
   let reply: ReplyFileResult;
   try {
-    reply = await readReplyFile(replyFile, summaryMaxReplyBytes);
+    reply = await readReplyFile(replyFile, maxReplyBytes);
   } catch {
     return undefined;
   }
