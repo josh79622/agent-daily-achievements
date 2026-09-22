@@ -63,7 +63,7 @@ test("does not activate a candidate whose checksum fails verification", async ()
     ),
   ).rejects.toThrow(/verification failed/i);
   expect(adapter.activations).toEqual([]);
-  expect(adapter.extractions).toEqual([]);
+  expect(adapter.runtimeRootExtractions).toEqual([]);
 });
 
 test("returns the verified extracted runtime's absolute node executable", async () => {
@@ -85,6 +85,24 @@ test("returns the verified extracted runtime's absolute node executable", async 
   expect(adapter.activations).toEqual([
     ["/staging/node-v24.12.0", "/runtimes/node-v24.12.0"],
   ]);
+});
+
+test("extracts the official archive's top-level directory into the runtime root", async () => {
+  const adapter = createAdapter();
+
+  await installManagedNodeRuntime(
+    {
+      descriptors: [arm64Runtime, x64Runtime],
+      stagingDirectory: "/staging/node-v24.12.0",
+      activeDirectory: "/runtimes/node-v24.12.0",
+    },
+    adapter,
+  );
+
+  expect(adapter.runtimeRootExtractions).toEqual([
+    ["/staging/node-v24.12.0/node.tar.gz", "/staging/node-v24.12.0"],
+  ]);
+  expect(adapter.executableChecks).toEqual(["/staging/node-v24.12.0/bin/node"]);
 });
 
 test.each([
@@ -109,6 +127,36 @@ test.each([
   },
 );
 
+test.each([
+  [
+    "unnormalized staging path",
+    "/staging/../staging/node-v24.12.0",
+    "/runtimes/node-v24.12.0",
+  ],
+  [
+    "overlapping runtime paths",
+    "/runtimes/node-v24.12.0",
+    "/runtimes/node-v24.12.0/next",
+  ],
+])(
+  "rejects %s before any system operation",
+  async (_label, stagingDirectory, activeDirectory) => {
+    const adapter = createAdapter();
+
+    await expect(
+      installManagedNodeRuntime(
+        {
+          descriptors: [arm64Runtime, x64Runtime],
+          stagingDirectory,
+          activeDirectory,
+        },
+        adapter,
+      ),
+    ).rejects.toThrow(/path|overlap/i);
+    expect(adapter.operations).toEqual([]);
+  },
+);
+
 function createAdapter(
   options: {
     architecture?: string;
@@ -117,29 +165,48 @@ function createAdapter(
   } = {},
 ): SystemAdapter & {
   downloads: Array<[string, string]>;
-  extractions: Array<[string, string]>;
+  runtimeRootExtractions: Array<[string, string]>;
   activations: Array<[string, string]>;
+  executableChecks: string[];
+  operations: string[];
 } {
   const downloads: Array<[string, string]> = [];
-  const extractions: Array<[string, string]> = [];
+  const runtimeRootExtractions: Array<[string, string]> = [];
   const activations: Array<[string, string]> = [];
+  const executableChecks: string[] = [];
+  const operations: string[] = [];
 
   return {
     downloads,
-    extractions,
+    runtimeRootExtractions,
     activations,
-    describeArchitecture: async () => options.architecture ?? "arm64",
+    executableChecks,
+    operations,
+    describeArchitecture: async () => {
+      operations.push("describeArchitecture");
+      return options.architecture ?? "arm64";
+    },
     downloadToStaging: async (url, stagingDirectory) => {
+      operations.push("downloadToStaging");
       downloads.push([url, stagingDirectory]);
       return `${stagingDirectory}/node.tar.gz`;
     },
-    verifySha256: async () => options.checksumMatches ?? true,
-    extractArchive: async (archivePath, destination) => {
-      extractions.push([archivePath, destination]);
+    verifySha256: async () => {
+      operations.push("verifySha256");
+      return options.checksumMatches ?? true;
+    },
+    extractArchiveToRuntimeRoot: async (archivePath, runtimeRoot) => {
+      operations.push("extractArchiveToRuntimeRoot");
+      runtimeRootExtractions.push([archivePath, runtimeRoot]);
     },
     activateAtomically: async (stagedPath, activePath) => {
+      operations.push("activateAtomically");
       activations.push([stagedPath, activePath]);
     },
-    isExecutable: async () => options.executable ?? true,
+    isExecutable: async (path) => {
+      operations.push("isExecutable");
+      executableChecks.push(path);
+      return options.executable ?? true;
+    },
   };
 }

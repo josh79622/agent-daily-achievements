@@ -10,7 +10,14 @@ export interface SystemAdapter {
     stagingDirectory: string,
   ): Promise<string>;
   verifySha256(archivePath: string, expectedSha256: string): Promise<boolean>;
-  extractArchive(archivePath: string, destination: string): Promise<void>;
+  /**
+   * Extracts an official Node archive into `runtimeRoot`, removing its single
+   * top-level directory so `runtimeRoot/bin/node` is the runtime executable.
+   */
+  extractArchiveToRuntimeRoot(
+    archivePath: string,
+    runtimeRoot: string,
+  ): Promise<void>;
   activateAtomically(stagedPath: string, activePath: string): Promise<void>;
   isExecutable(path: string): Promise<boolean>;
 }

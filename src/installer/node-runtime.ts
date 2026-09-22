@@ -1,4 +1,4 @@
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 
 import type { SystemAdapter } from "./system-adapter.js";
 
@@ -51,8 +51,12 @@ export async function installManagedNodeRuntime(
   request: ManagedNodeRuntimeRequest,
   system: SystemAdapter,
 ): Promise<ManagedNodeRuntime> {
-  requireAbsolutePath("runtime staging directory", request.stagingDirectory);
-  requireAbsolutePath("active runtime directory", request.activeDirectory);
+  requireSafeAbsolutePath(
+    "runtime staging directory",
+    request.stagingDirectory,
+  );
+  requireSafeAbsolutePath("active runtime directory", request.activeDirectory);
+  requireDistinctPaths(request.stagingDirectory, request.activeDirectory);
 
   const descriptor = selectNodeRuntime(
     await system.describeArchitecture(),
@@ -70,7 +74,10 @@ export async function installManagedNodeRuntime(
     throw new Error("Node runtime verification failed: SHA-256 mismatch");
   }
 
-  await system.extractArchive(archivePath, request.stagingDirectory);
+  await system.extractArchiveToRuntimeRoot(
+    archivePath,
+    request.stagingDirectory,
+  );
   const stagedNodePath = join(request.stagingDirectory, "bin", "node");
   if (!(await system.isExecutable(stagedNodePath))) {
     throw new Error("verified Node runtime has no usable node executable");
@@ -95,6 +102,22 @@ function isNode24Version(version: string): boolean {
   return /^24\./.test(version);
 }
 
-function requireAbsolutePath(label: string, path: string): void {
+function requireSafeAbsolutePath(label: string, path: string): void {
   if (!isAbsolute(path)) throw new Error(`${label} must be absolute`);
+  if (resolve(path) !== path) {
+    throw new Error(`${label} must be normalized and must not escape its path`);
+  }
+}
+
+function requireDistinctPaths(
+  stagingDirectory: string,
+  activeDirectory: string,
+): void {
+  if (
+    stagingDirectory === activeDirectory ||
+    stagingDirectory.startsWith(`${activeDirectory}/`) ||
+    activeDirectory.startsWith(`${stagingDirectory}/`)
+  ) {
+    throw new Error("runtime staging and active directories must not overlap");
+  }
 }
