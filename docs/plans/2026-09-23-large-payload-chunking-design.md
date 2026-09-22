@@ -24,6 +24,9 @@ material.
 - The normal selected-provider, retry, and permitted-provider fallback rules
   apply to chunk and merge calls. Chunking never creates authority to send
   data to another provider.
+- Every deterministic validation failure is re-analysed with the same provider
+  and payload up to three attempts. A third invalid reply becomes incomplete
+  and triggers the normal permitted-provider fallback.
 - A failed chunk or merge saves an incomplete report with its local coverage
   and failure reason. It must never be represented as a complete daily report.
 - A retry begins with fresh source collection and chunking; intermediate
