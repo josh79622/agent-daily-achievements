@@ -79,6 +79,11 @@ export const es: Translations = {
     permissionRequired:
       "No se ha configurado el permiso de resumen de IA externo. Abra la configuración para otorgar el permiso.",
     openSettings: "Abrir configuración",
+    summaryInvalid:
+      "No se pudo utilizar el resultado del generador de resúmenes.",
+    summaryUnavailable: "El generador de resúmenes no produjo ningún informe.",
+    sourceIncomplete: "Los datos de {source} están incompletos.",
+    regenerateReport: "Regenerar resumen",
   },
   settings: {
     title: "Preferencias y ajustes del modelo",
@@ -88,6 +93,11 @@ export const es: Translations = {
     modelLabel: "Modelo",
     effortLabel: "Esfuerzo de razonamiento",
     statusLabel: "Estado",
+    statusReady: "Listo",
+    statusSignInRequired: "Inicio de sesión requerido",
+    statusLoginInProgress: "Inicio de sesión en curso…",
+    statusNotInstalled: "No instalado",
+    statusSignedIn: "Sesión iniciada",
     checkStatus: "Comprobar estado",
     checking: "Comprobando…",
     noSummarizerConnected:

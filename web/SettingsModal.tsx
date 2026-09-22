@@ -455,17 +455,40 @@ export function SettingsModal({
                                 <span className="control-label">
                                   {t.settings.statusLabel}:
                                 </span>
-                                <span
-                                  className={`status-pill status-${status?.state || "unknown"}`}
-                                >
-                                  {status?.state === "ready"
-                                    ? "🟢 Ready"
-                                    : status?.state === "sign-in-required"
-                                      ? "🟡 Sign-in required"
-                                      : status?.state === "not-installed"
-                                        ? "⚪️ Not installed"
-                                        : status?.state || "Not checked"}
-                                </span>
+                                {status?.state === "ready" ? (
+                                  <span className="status-pill status-ready">
+                                    🟢 {t.settings.statusReady}
+                                  </span>
+                                ) : status?.signedIn ? (
+                                  <span className="status-pill status-signed-in">
+                                    🔵 {t.settings.statusSignedIn}
+                                  </span>
+                                ) : status?.state === "login-in-progress" ? (
+                                  <span
+                                    className="status-pill status-login-in-progress"
+                                    title={t.settings.checkStatus}
+                                  >
+                                    🟡 {t.settings.statusLoginInProgress}
+                                  </span>
+                                ) : status?.state === "sign-in-required" ? (
+                                  <span className="status-pill status-sign-in-required">
+                                    🟡 {t.settings.statusSignInRequired}
+                                  </span>
+                                ) : status?.state === "not-installed" ? (
+                                  <span className="status-pill status-not-installed">
+                                    ⚪️ {t.settings.statusNotInstalled}
+                                  </span>
+                                ) : status?.state === "probe-failed" ? (
+                                  <span className="status-pill status-probe-failed">
+                                    🔴 Check failed
+                                  </span>
+                                ) : (
+                                  <span
+                                    className={`status-pill status-${status?.state || "unknown"}`}
+                                  >
+                                    {status?.state || "Not checked"}
+                                  </span>
+                                )}
                               </div>
                               <button
                                 type="button"
@@ -479,16 +502,20 @@ export function SettingsModal({
                                   ? t.settings.checking
                                   : t.settings.checkStatus}
                               </button>
-                              <button
-                                type="button"
-                                className="btn btn-secondary check-btn"
-                                disabled={
-                                  isBusy || status?.state === "not-installed"
-                                }
-                                onClick={() => void handleStartLogin(provider)}
-                              >
-                                {t.settings.signInProvider}
-                              </button>
+                              {!status?.signedIn &&
+                                status?.state !== "ready" &&
+                                status?.state !== "not-installed" && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-secondary check-btn"
+                                    disabled={isBusy}
+                                    onClick={() =>
+                                      void handleStartLogin(provider)
+                                    }
+                                  >
+                                    {t.settings.signInProvider}
+                                  </button>
+                                )}
                               {status?.state === "not-installed" && (
                                 <a
                                   className="btn btn-secondary check-btn"

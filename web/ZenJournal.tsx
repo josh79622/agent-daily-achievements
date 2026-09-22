@@ -582,7 +582,7 @@ export function ZenJournal() {
         const body = (await response.json()) as { report: AchievementReportV1 };
         setReport(body.report);
 
-        const incomplete = describeIncomplete(body.report.incomplete);
+        const incomplete = describeIncomplete(body.report.incomplete, t);
         if (incomplete.length) {
           setStatus(incomplete.join(" "));
         } else if (body.report.achievements.length === 0) {
@@ -597,7 +597,7 @@ export function ZenJournal() {
         setLoading(false);
       }
     },
-    [t.states.emptyDesc],
+    [t],
   );
 
   useEffect(() => {
@@ -775,6 +775,32 @@ export function ZenJournal() {
                 <span>{status}</span>
               </div>
             ) : null}
+
+            {report?.status === "incomplete" && (
+              <div
+                className="incomplete-regenerate-bar"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: "8px",
+                  marginTop: "-0.75rem",
+                  marginBottom: "1.5rem",
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleGenerateForSelectedDate}
+                  disabled={isGenerating}
+                >
+                  ⚡ {t.states.regenerateReport}
+                </button>
+                {generateMessage && (
+                  <p className="action-message error">{generateMessage}</p>
+                )}
+              </div>
+            )}
 
             {/* View 1: Zen Journal (Vertical cards) */}
             {viewMode === "journal" && (

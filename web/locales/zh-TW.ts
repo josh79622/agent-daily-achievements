@@ -75,6 +75,10 @@ export const zhTW: Translations = {
     noDeliverables: "本日無進展類成果。",
     permissionRequired: "尚未設定外部 AI 摘要授權。請先開啟設定完成授權。",
     openSettings: "開啟設定",
+    summaryInvalid: "摘要結果未通過證據檢驗，無法採用。",
+    summaryUnavailable: "摘要工具未產生報告。",
+    sourceIncomplete: "{source} 資料不完整。",
+    regenerateReport: "重新產生摘要",
   },
   settings: {
     title: "偏好與摘要設定",
@@ -84,6 +88,11 @@ export const zhTW: Translations = {
     modelLabel: "模型",
     effortLabel: "推論精力 (Effort)",
     statusLabel: "狀態",
+    statusReady: "就緒 (Ready)",
+    statusSignInRequired: "需登入",
+    statusLoginInProgress: "登入中…",
+    statusNotInstalled: "未安裝",
+    statusSignedIn: "已登入",
     checkStatus: "檢查狀態",
     checking: "檢查中…",
     noSummarizerConnected:

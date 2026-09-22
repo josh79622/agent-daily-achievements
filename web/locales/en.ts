@@ -80,6 +80,10 @@ export const en = {
     permissionRequired:
       "External AI summarization permission has not been configured. Please open settings to grant permission.",
     openSettings: "Open Settings",
+    summaryInvalid: "The summarizer's output could not be used.",
+    summaryUnavailable: "The summarizer did not produce a report.",
+    sourceIncomplete: "{source} data is incomplete.",
+    regenerateReport: "Regenerate Summary",
   },
   settings: {
     title: "Preferences & Model Settings",
@@ -89,6 +93,11 @@ export const en = {
     modelLabel: "Model",
     effortLabel: "Reasoning Effort",
     statusLabel: "Status",
+    statusReady: "Ready",
+    statusSignInRequired: "Sign-in required",
+    statusLoginInProgress: "Login in progress…",
+    statusNotInstalled: "Not installed",
+    statusSignedIn: "Signed in",
     checkStatus: "Check Status",
     checking: "Checking…",
     noSummarizerConnected:
