@@ -3,7 +3,7 @@
 // back to a developer's shell PATH or Homebrew runtime.
 
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 
 import {
   buildLaunchdPlist,
@@ -84,12 +84,18 @@ export async function installLaunchdJob(configuration, adapter) {
   return { status: "ready", replaced };
 }
 
-function managedNodePathFromInstallerConfiguration() {
-  const nodePath = process.env.AGENT_DAILY_ACHIEVEMENTS_MANAGED_NODE_PATH;
-  if (!nodePath?.startsWith("/")) {
-    throw new Error(
-      "AGENT_DAILY_ACHIEVEMENTS_MANAGED_NODE_PATH must contain the installer-managed absolute Node path.",
-    );
+/**
+ * Uses the installer-provided managed runtime when available. Manual setup
+ * deliberately uses the Node executable that started this script instead of
+ * relying on a shell PATH or a machine-specific runtime location.
+ *
+ * @param {{ installerNodePath?: string, executingNodePath: string }} configuration
+ */
+export function resolveManagedNodePath(configuration) {
+  const nodePath =
+    configuration.installerNodePath ?? configuration.executingNodePath;
+  if (!isAbsolute(nodePath)) {
+    throw new Error("managed Node path must be absolute");
   }
   return nodePath;
 }
@@ -99,7 +105,11 @@ async function main() {
   const uid = process.getuid?.() ?? 0;
   const result = await installLaunchdJob(
     {
-      nodePath: managedNodePathFromInstallerConfiguration(),
+      nodePath: resolveManagedNodePath({
+        installerNodePath:
+          process.env.AGENT_DAILY_ACHIEVEMENTS_MANAGED_NODE_PATH,
+        executingNodePath: process.execPath,
+      }),
       repositoryRoot,
       plistPath: defaultLaunchdPlistPath(),
       uid,

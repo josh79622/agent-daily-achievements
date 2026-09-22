@@ -1,11 +1,32 @@
 import { expect, test, vi } from "vitest";
 
-import { installLaunchdJob } from "../../scripts/install-launchd.mjs";
+import {
+  installLaunchdJob,
+  resolveManagedNodePath,
+} from "../../scripts/install-launchd.mjs";
 
 const nodePath = "/managed/runtimes/node-v24.12.0/bin/node";
 const repositoryRoot = "/Applications/Agent Daily Achievements";
 const plistPath =
   "/Users/example/Library/LaunchAgents/com.dailyproof.scheduled-report.plist";
+
+test("uses the currently executing absolute Node path for manual installation", () => {
+  expect(
+    resolveManagedNodePath({
+      installerNodePath: undefined,
+      executingNodePath: process.execPath,
+    }),
+  ).toBe(process.execPath);
+});
+
+test("keeps an installer-managed Node path ahead of the manual default", () => {
+  expect(
+    resolveManagedNodePath({
+      installerNodePath: nodePath,
+      executingNodePath: "/different/node",
+    }),
+  ).toBe(nodePath);
+});
 
 test("reloads exactly one existing launchd plist before bootstrapping it", async () => {
   const launchctl = vi.fn(() => ({ status: 0 }));
