@@ -123,5 +123,5 @@ export function buildMergeSummaryRequestText(
       ),
     }),
   );
-  return `${prompt}\n\nThese are compact candidate achievements from chunks of one day. Merge duplicates and return 0 to 5 final achievements using the established output schema above; this merge-specific count overrides the usual minimum. Cite only evidence identifiers in the compact candidates, never invent an identifier.\n\n${frameUntrustedJsonData("compact candidate achievements", JSON.stringify(compactCandidates))}`;
+  return `${prompt}\n\nThese are compact candidate achievements from chunks of one day. Merge duplicates and return 0 to 5 final achievements using the established output schema above; this merge-specific count overrides the usual minimum. Cite only evidence identifiers in the compact candidates, never invent an identifier. Omit messageIds only when the supplied compact evidence omits them; a session-level evidence entry is {"source":"<source from the input>","recordId":"<recordId from the input>"} with no messageIds.\n\n${frameUntrustedJsonData("compact candidate achievements", JSON.stringify(compactCandidates))}`;
 }
