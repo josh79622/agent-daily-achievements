@@ -83,3 +83,19 @@ test("rejects relative and escaping installer path inputs", () => {
     }).runtimePath("../outside"),
   ).toThrow(/escape/i);
 });
+
+test("rejects a source installation that overlaps managed runtime or user-data paths", () => {
+  expect(() =>
+    createInstallerLayout({
+      homeDirectory,
+      sourceInstallPath:
+        "/Users/ava/Library/Application Support/Agent Daily Achievements/data/reports",
+    }),
+  ).toThrow(/overlap/i);
+  expect(() =>
+    createInstallerLayout({
+      homeDirectory,
+      sourceInstallPath: "/Users/ava/Library/Application Support",
+    }),
+  ).toThrow(/overlap/i);
+});

@@ -20,11 +20,14 @@ export function createInstallerLayout(
     "home directory",
     config.homeDirectory,
   );
+  const managedRoot = resolve(homeDirectory, ...applicationSupportDirectory);
   const sourceInstallPath = requireAbsolutePath(
     "source-install path",
     config.sourceInstallPath,
   );
-  const managedRoot = resolve(homeDirectory, ...applicationSupportDirectory);
+  if (pathsOverlap(sourceInstallPath, managedRoot)) {
+    throw new Error("source-install path must not overlap the managed root");
+  }
   const stagingRoot = resolve(managedRoot, "staging");
   const userDataRoot = resolve(managedRoot, "data");
 
@@ -71,4 +74,12 @@ function versionedPath(
   return directory
     ? resolve(root, directory, `${prefix}-v${version}`)
     : resolve(root, `${prefix}-v${version}`);
+}
+
+function pathsOverlap(first: string, second: string): boolean {
+  return (
+    first === second ||
+    first.startsWith(`${second}/`) ||
+    second.startsWith(`${first}/`)
+  );
 }
