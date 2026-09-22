@@ -17,6 +17,7 @@ export const es: Translations = {
     themeLight: "Claro",
     themeDark: "Oscuro",
     languageToggle: "Cambiar idioma",
+    languageCurrentTooltip: "Idioma: {language}",
     languageSearchPlaceholder: "Buscar idiomas…",
     languageNoResults: "Ningún idioma coincide",
     languageBuiltIn: "Integrado",

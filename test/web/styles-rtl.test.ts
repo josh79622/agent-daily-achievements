@@ -29,6 +29,7 @@ describe("web/styles.css logical properties (L3-11 to L3-14)", () => {
       ".palette-menu",
       ".collector-panel",
       ".language-menu",
+      ".header-icon-tooltip",
     ]) {
       const block = blockFor(css, selector);
       expect(block, `${selector} rule not found`).toBeTruthy();

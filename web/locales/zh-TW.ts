@@ -16,6 +16,7 @@ export const zhTW: Translations = {
     themeLight: "淺色",
     themeDark: "深色",
     languageToggle: "切換語言",
+    languageCurrentTooltip: "語言：{language}",
     languageSearchPlaceholder: "搜尋語言…",
     languageNoResults: "找不到符合的語言",
     languageBuiltIn: "內建",

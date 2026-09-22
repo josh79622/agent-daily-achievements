@@ -1005,6 +1005,7 @@ main,
     "Segoe UI",
     sans-serif;
   color: #f1f5f9;
+  overflow-x: hidden;
 }
 
 .zen-header {
@@ -1013,6 +1014,8 @@ main,
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 1rem;
   margin-bottom: 2rem;
   padding-bottom: 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -1034,6 +1037,86 @@ main,
   display: flex;
   align-items: center;
   gap: 1.25rem;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.header-utilities {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.header-icon-control {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.header-icon-button {
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.header-icon-button:hover:not(:disabled),
+.header-icon-button:focus-visible,
+.header-icon-button[aria-expanded="true"],
+.header-icon-button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.header-icon-button:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 3px;
+}
+
+.header-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.header-icon-tooltip {
+  position: absolute;
+  z-index: 60;
+  inset-inline-start: 50%;
+  inset-block-start: calc(100% + 0.45rem);
+  transform: translateX(-50%);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+
+.header-icon-control:hover .header-icon-tooltip,
+.header-icon-control:focus-within .header-icon-tooltip,
+.header-icon-tooltip.is-visible {
+  visibility: visible;
+  opacity: 1;
 }
 
 .date-display {
@@ -1840,6 +1923,29 @@ body[data-theme="light"] {
   background: #f1f5f9;
   color: #0f172a;
   border-color: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .header-icon-button {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .header-icon-button:hover:not(:disabled),
+[data-theme="light"] .header-icon-button:focus-visible,
+[data-theme="light"] .header-icon-button[aria-expanded="true"],
+[data-theme="light"] .header-icon-button[aria-pressed="true"] {
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #0f172a;
+}
+
+[data-theme="light"] .header-icon-tooltip {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.16);
+  color: #0f172a;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
 }
 
 [data-theme="light"] .concept-switcher-bar {
@@ -2787,6 +2893,10 @@ body[data-theme="light"] {
   font-size: 0.82rem !important;
 }
 
+.header-icon-button.date-selector-btn {
+  padding: 0 !important;
+}
+
 .search-activity-btn {
   font-size: 0.82rem !important;
   padding: 0.35rem 0.85rem !important;
@@ -2802,8 +2912,28 @@ body[data-theme="light"] {
 }
 
 .language-selector-btn {
-  min-width: 7.5rem;
-  justify-content: center;
+  min-inline-size: 0;
+}
+
+@media (max-width: 620px) {
+  .zen-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .zen-nav-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .date-picker-wrap {
+    overflow-x: auto;
+  }
+
+  .header-utilities {
+    justify-content: space-between;
+  }
 }
 
 .language-menu {

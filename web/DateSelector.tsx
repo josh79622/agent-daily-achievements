@@ -1,6 +1,7 @@
 import type { Translations } from "./i18n.js";
 import { dayArrowGlyphs, getTodayDate, shiftDateString } from "./date-utils.js";
 import type { Direction } from "../src/report/languages.js";
+import { HeaderIconButton } from "./HeaderIconButton.js";
 
 export interface DateSelectorProps {
   selectedDate: string;
@@ -61,15 +62,14 @@ export function DateSelector({
       />
 
       {/* 3. 本日 / Today */}
-      <button
-        type="button"
-        className={`zen-nav-btn date-selector-btn ${isToday ? "active" : ""}`}
+      <HeaderIconButton
+        className={`date-selector-btn ${isToday ? "active" : ""}`}
         onClick={() => !disabled && onDateChange(today)}
         disabled={disabled}
-        title={t.header.dateToday}
+        label={t.header.dateToday}
       >
-        {t.header.dateToday}
-      </button>
+        <span aria-hidden="true">📅</span>
+      </HeaderIconButton>
 
       {/* 4. -> Next Day */}
       <button

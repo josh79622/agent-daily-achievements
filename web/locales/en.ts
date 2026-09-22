@@ -19,6 +19,7 @@ export const en = {
     themeLight: "Light",
     themeDark: "Dark",
     languageToggle: "Switch Language",
+    languageCurrentTooltip: "Language: {language}",
     languageSearchPlaceholder: "Search languages…",
     languageNoResults: "No matching language",
     languageBuiltIn: "Built-in",
