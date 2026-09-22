@@ -1,18 +1,9 @@
-// Installs the daily 07:00 report job as a launchd LaunchAgent.
-//
-// Not run automatically by anything in this repository (not `npm run
-// check`, not `npm run build`) — the owner runs it by hand, once they are
-// ready to schedule the job on their own Mac:
-//
-//   npx tsx scripts/install-launchd.mjs
-//
-// It writes the generated .plist to the same fixed path every time
-// (src/schedule/launchd-install.js keeps installing idempotent: a second
-// run replaces the job rather than duplicating it, S1-18), then asks
-// launchctl to reload it.
+// Installs the daily 07:00 report job as a launchd LaunchAgent. The
+// installer supplies the managed absolute Node path; this script never falls
+// back to a developer's shell PATH or Homebrew runtime.
 
-import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
 
 import {
   buildLaunchdPlist,
@@ -20,46 +11,109 @@ import {
 } from "../src/schedule/launchd-plist.js";
 import {
   defaultLaunchdPlistPath,
-  writeLaunchdJob,
+  writeLaunchdJob as writeLaunchdJobToDisk,
 } from "../src/schedule/launchd-install.js";
 
-// The shell's default Node fails to start on this machine (AGENTS.md /
-// PROGRESS.md); the job must reference the approved runtime by absolute
-// path rather than rely on launchd inheriting a shell PATH.
-const nodePath = "/opt/homebrew/opt/node@24/bin/node";
-const repositoryRoot = resolve(import.meta.dirname, "..");
-const scriptPath = resolve(repositoryRoot, "dist/src/schedule/entry.js");
-const plistPath = defaultLaunchdPlistPath();
+/**
+ * @typedef {{ status: number | null }} LaunchctlResult
+ * @typedef {{ nodePath: string, repositoryRoot: string, plistPath: string, uid: number, label?: string }} LaunchdJobConfiguration
+ * @typedef {{
+ *   launchctl: (arguments_: string[]) => LaunchctlResult,
+ *   writeLaunchdJob: (request: { plistPath: string, content: string }) => Promise<{ replaced: boolean }>,
+ *   report: (message: string) => void,
+ * }} LaunchdJobAdapter
+ */
 
-const content = buildLaunchdPlist({
-  nodePath,
-  scriptPath,
-  workingDirectory: repositoryRoot,
-  standardOutPath: resolve(repositoryRoot, "data/logs/scheduled-report.log"),
-  standardErrorPath: resolve(repositoryRoot, "data/logs/scheduled-report.log"),
-});
+/**
+ * Writes and reloads exactly one launchd job through injected platform
+ * operations. Keeping the process adapter outside the plist builder lets
+ * unit tests verify reload behavior without invoking launchctl.
+ *
+ * @param {LaunchdJobConfiguration} configuration
+ * @param {LaunchdJobAdapter} adapter
+ * @returns {Promise<{ status: "ready", replaced: boolean } | { status: "failed", exitCode: number }>}
+ */
+export async function installLaunchdJob(configuration, adapter) {
+  if (!configuration.nodePath.startsWith("/")) {
+    throw new Error("managed Node path must be absolute");
+  }
 
-const { replaced } = await writeLaunchdJob({ plistPath, content });
+  const label = configuration.label ?? defaultLaunchdJobLabel;
+  const scriptPath = resolve(
+    configuration.repositoryRoot,
+    "dist/src/schedule/entry.js",
+  );
+  const content = buildLaunchdPlist({
+    label,
+    nodePath: configuration.nodePath,
+    scriptPath,
+    workingDirectory: configuration.repositoryRoot,
+    standardOutPath: resolve(
+      configuration.repositoryRoot,
+      "data/logs/scheduled-report.log",
+    ),
+    standardErrorPath: resolve(
+      configuration.repositoryRoot,
+      "data/logs/scheduled-report.log",
+    ),
+  });
+  const { replaced } = await adapter.writeLaunchdJob({
+    plistPath: configuration.plistPath,
+    content,
+  });
 
-const uid = process.getuid?.() ?? 0;
-const target = `gui/${uid}/${defaultLaunchdJobLabel}`;
-// Unloading a job that was never loaded exits non-zero; that is fine here.
-spawnSync("launchctl", ["bootout", `gui/${uid}`, plistPath], {
-  stdio: "ignore",
-});
-const bootstrap = spawnSync(
-  "launchctl",
-  ["bootstrap", `gui/${uid}`, plistPath],
-  {
-    stdio: "inherit",
-  },
-);
+  const domain = `gui/${configuration.uid}`;
+  const target = `${domain}/${label}`;
+  // A job that has never been loaded exits non-zero. Its fixed plist path
+  // ensures that a re-install replaces the same job rather than adding one.
+  adapter.launchctl(["bootout", domain, configuration.plistPath]);
+  const bootstrap = adapter.launchctl([
+    "bootstrap",
+    domain,
+    configuration.plistPath,
+  ]);
+  if (bootstrap.status !== 0) {
+    const exitCode = bootstrap.status ?? 1;
+    adapter.report(`launchctl bootstrap failed for ${target}.`);
+    return { status: "failed", exitCode };
+  }
 
-if (bootstrap.status !== 0) {
-  console.error(`launchctl bootstrap failed for ${target}.`);
-  process.exit(bootstrap.status ?? 1);
+  adapter.report(
+    `${replaced ? "Replaced" : "Installed"} the launchd job at ${configuration.plistPath}, running ${scriptPath} daily at 07:00.`,
+  );
+  return { status: "ready", replaced };
 }
 
-console.log(
-  `${replaced ? "Replaced" : "Installed"} the launchd job at ${plistPath}, running ${scriptPath} daily at 07:00.`,
-);
+function managedNodePathFromInstallerConfiguration() {
+  const nodePath = process.env.AGENT_DAILY_ACHIEVEMENTS_MANAGED_NODE_PATH;
+  if (!nodePath?.startsWith("/")) {
+    throw new Error(
+      "AGENT_DAILY_ACHIEVEMENTS_MANAGED_NODE_PATH must contain the installer-managed absolute Node path.",
+    );
+  }
+  return nodePath;
+}
+
+async function main() {
+  const repositoryRoot = resolve(import.meta.dirname, "..");
+  const uid = process.getuid?.() ?? 0;
+  const result = await installLaunchdJob(
+    {
+      nodePath: managedNodePathFromInstallerConfiguration(),
+      repositoryRoot,
+      plistPath: defaultLaunchdPlistPath(),
+      uid,
+    },
+    {
+      launchctl: (arguments_) =>
+        spawnSync("launchctl", arguments_, { stdio: "inherit" }),
+      writeLaunchdJob: writeLaunchdJobToDisk,
+      report: (message) => console.log(message),
+    },
+  );
+  if (result.status === "failed") process.exitCode = result.exitCode;
+}
+
+if (import.meta.main) {
+  await main();
+}
