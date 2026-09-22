@@ -4,6 +4,11 @@ import type { ReportDayPayload } from "./report-day-payload.js";
 /** Conservative serialized-record budget under the shared ~64k-token limit. */
 export const summaryChunkMaxPayloadBytes = 128 * 1024;
 
+/** Room for the prompt, request wrappers, and a bounded structured reply. */
+const summaryChunkReservedRequestBytes = 8 * 1024;
+const summaryChunkRecordBudgetBytes =
+  summaryChunkMaxPayloadBytes - summaryChunkReservedRequestBytes;
+
 export type SummaryChunk = {
   index: number;
   payloadJson: string;
@@ -46,7 +51,7 @@ export function chunkReportDayPayload(
     payload.manifest,
   );
 
-  if (byteLength(wholeChunk.payloadJson) <= summaryChunkMaxPayloadBytes)
+  if (byteLength(wholeChunk.payloadJson) <= summaryChunkRecordBudgetBytes)
     return { kind: "single", chunks: [wholeChunk] };
 
   const chunks: SummaryChunk[] = [];
@@ -91,13 +96,6 @@ export function chunkReportDayPayload(
         current = [splitConversation];
       }
     }
-
-    if (current.length > 0) {
-      chunks.push(
-        makeChunk(chunks.length, parsed.date, current, payload.manifest),
-      );
-      current = [];
-    }
   }
 
   if (current.length > 0)
@@ -124,7 +122,7 @@ function appendMessage(
 function fits(date: string, conversations: PayloadConversation[]): boolean {
   return (
     byteLength(JSON.stringify({ date, conversations })) <=
-    summaryChunkMaxPayloadBytes
+    summaryChunkRecordBudgetBytes
   );
 }
 

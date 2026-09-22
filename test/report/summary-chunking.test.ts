@@ -62,6 +62,21 @@ test("CH-1: a safe payload is one unchanged summary chunk", () => {
   ]);
 });
 
+test("CH-1a: prompt and reply room is reserved below the total request budget", () => {
+  const day = payload([
+    session("session-a", [
+      message("m-1", "x".repeat(summaryChunkMaxPayloadBytes - 1_000)),
+    ]),
+  ]);
+
+  expect(chunkReportDayPayload(day)).toEqual({
+    kind: "message-too-large",
+    source: "codex",
+    recordId: "session-a",
+    messageId: "m-1",
+  });
+});
+
 test("CH-2: complete sessions pack chronologically without splitting", () => {
   const body = "x".repeat(70_000);
   const day = payload([
@@ -124,6 +139,28 @@ test("CH-3: an oversized session splits only between messages", () => {
       JSON.parse(chunk.payloadJson).conversations[0].messages.map(
         (entry: { id: string }) => entry.id,
       ),
+    ),
+  ).toEqual(["m-1", "m-2", "m-3"]);
+});
+
+test("CH-3a: a split session's final fragment packs with the following session", () => {
+  const day = payload([
+    session("session-a", [
+      message("m-1", "x".repeat(80_000)),
+      message("m-2", "x".repeat(55_000)),
+    ]),
+    session("session-b", [message("m-3", "x".repeat(50_000))]),
+  ]);
+
+  const chunks = chunksOf(chunkReportDayPayload(day));
+
+  expect(chunks.map((chunk) => chunk.sessionIds)).toEqual([
+    ["session-a"],
+    ["session-a", "session-b"],
+  ]);
+  expect(
+    chunks.flatMap((chunk) =>
+      chunk.manifest.flatMap((entry) => entry.messageIds),
     ),
   ).toEqual(["m-1", "m-2", "m-3"]);
 });
