@@ -21,3 +21,18 @@ bootstrap_cleanup_staging() {
     rm -rf "$BOOTSTRAP_STAGING_DIRECTORY"
   fi
 }
+
+bootstrap_exit_after_hup() {
+  bootstrap_cleanup_staging
+  exit 129
+}
+
+bootstrap_exit_after_interrupt() {
+  bootstrap_cleanup_staging
+  exit 130
+}
+
+bootstrap_exit_after_termination() {
+  bootstrap_cleanup_staging
+  exit 143
+}

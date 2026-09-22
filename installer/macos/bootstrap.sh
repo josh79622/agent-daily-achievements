@@ -79,12 +79,15 @@ fi
 
 mkdir -p "$MANAGED_ROOT"
 BOOTSTRAP_STAGING_DIRECTORY=$(mktemp -d "${TMPDIR:-/tmp}/agent-daily-achievements-bootstrap.XXXXXX")
-trap bootstrap_cleanup_staging EXIT HUP INT TERM
+trap bootstrap_cleanup_staging 0
+trap bootstrap_exit_after_hup HUP
+trap bootstrap_exit_after_interrupt INT
+trap bootstrap_exit_after_termination TERM
 ARCHIVE_PATH="$BOOTSTRAP_STAGING_DIRECTORY/node.tar.gz"
 RUNTIME_STAGING_DIRECTORY="$BOOTSTRAP_STAGING_DIRECTORY/runtime"
 mkdir -p "$RUNTIME_STAGING_DIRECTORY"
 
-if ! curl -fL "$NODE_URL" -o "$ARCHIVE_PATH"; then
+if ! curl -fL -o "$ARCHIVE_PATH" -- "$NODE_URL"; then
   bootstrap_error "could not download the approved Node runtime; check the release metadata and connection"
 fi
 

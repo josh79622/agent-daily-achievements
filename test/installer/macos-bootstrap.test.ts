@@ -67,6 +67,7 @@ test("selects the matching architecture, cleans staging, and hands approved meta
   expect(await stagedBootstrapDirectories(fixture)).toEqual([]);
   await expect(readLog(fixture, "sudo")).resolves.toBe("");
   await expect(readLog(fixture, "brew")).resolves.toBe("");
+  await expect(readLog(fixture, "ambient-node")).resolves.toBe("");
 });
 
 test("selects x64 only for Intel Macs", async () => {
@@ -124,6 +125,37 @@ test("does not evaluate argument values as shell code", async () => {
   );
 });
 
+test("passes a leading-dash approved URL after curl's option terminator", async () => {
+  const fixture = await createFixture("arm64", {
+    requireOptionTerminator: true,
+  });
+
+  const result = await runBootstrap(fixture, [
+    ...requiredArguments(fixture).flatMap((value) =>
+      value === "https://approved.example/node-arm64.tar.gz"
+        ? ["-approved-node-arm64.tar.gz"]
+        : [value],
+    ),
+  ]);
+
+  expect(result.status).toBe(0);
+  expect(await readLog(fixture, "curl")).toContain(
+    "--\n-approved-node-arm64.tar.gz",
+  );
+});
+
+test("cleans staging and stops instead of resuming when interrupted during download", async () => {
+  const fixture = await createFixture("arm64", {
+    interruptDuringDownload: true,
+  });
+
+  const result = await runBootstrap(fixture, requiredArguments(fixture));
+
+  expect(result.status).not.toBe(0);
+  expect(await stagedBootstrapDirectories(fixture)).toEqual([]);
+  await expect(readLog(fixture, "node")).resolves.toBe("");
+});
+
 function requiredArguments(fixture: Fixture): string[] {
   return [
     "--source-dir",
@@ -153,7 +185,11 @@ type Fixture = {
 
 async function createFixture(
   architecture: string,
-  options: { checksum?: string } = {},
+  options: {
+    checksum?: string;
+    interruptDuringDownload?: boolean;
+    requireOptionTerminator?: boolean;
+  } = {},
 ): Promise<Fixture> {
   const root = await mkdtemp(join(tmpdir(), "macos-bootstrap-"));
   temporaryDirectories.push(root);
@@ -174,7 +210,7 @@ async function createFixture(
   await writeExecutable(
     binDirectory,
     "curl",
-    `#!/bin/sh\nprintf '%s\\n' "$@" >> "$TEST_LOGS/curl"\ntouch "$4"\n`,
+    `#!/bin/sh\nprintf '%s\\n' "$@" >> "$TEST_LOGS/curl"\n${options.requireOptionTerminator ? '[ "$4" = "--" ] || exit 88\n' : ""}output=\nwhile [ "$#" -gt 0 ]; do\n  if [ "$1" = "-o" ]; then output=$2; shift 2; continue; fi\n  shift\ndone\n[ -n "$output" ] && touch "$output"\n${options.interruptDuringDownload ? 'kill -TERM "$PPID"\n' : ""}`,
   );
   await writeExecutable(
     binDirectory,
@@ -195,6 +231,11 @@ async function createFixture(
     binDirectory,
     "brew",
     `#!/bin/sh\nprintf '%s\\n' "$@" >> "$TEST_LOGS/brew"\nexit 99\n`,
+  );
+  await writeExecutable(
+    binDirectory,
+    "node",
+    `#!/bin/sh\nprintf '%s\\n' "$@" >> "$TEST_LOGS/ambient-node"\nexit 99\n`,
   );
   return {
     root,
