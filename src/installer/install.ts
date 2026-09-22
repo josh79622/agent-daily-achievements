@@ -52,10 +52,10 @@ export interface FreshMacosInstallationAdapter {
     sourceInstallPath: string;
   }): Promise<void>;
   openLocalPage(sourceInstallPath: string): Promise<void>;
-  /** Restores the prior active release if a newly staged installation fails. */
-  preservePriorInstallation(): Promise<void>;
-  /** Leaves the previously loaded label in place if scheduling cannot finish. */
-  preservePriorJob(): Promise<void>;
+  /** Restores the active source installation captured before this transaction. */
+  restorePriorInstallation(): Promise<void>;
+  /** Restores the launchd job loaded before this transaction. */
+  restorePriorJob(): Promise<void>;
 }
 
 export type FreshMacosInstallationResult =
@@ -68,6 +68,11 @@ export type FreshMacosInstallationResult =
   | {
       status: "failed";
       stage: InstallationStage;
+      action: string;
+    }
+  | {
+      status: "unsafe-recovery";
+      failedStage: InstallationStage;
       action: string;
     };
 
@@ -115,10 +120,10 @@ export async function installFreshMacosApplication(
         request.layout.sourceInstallPath,
       )
     ) {
-      await retainPriorInstallation(adapter);
-      return failedResult(
+      return recoveryResult(
         "source-destination",
         "The selected source directory is already installed; use the update flow instead.",
+        adapter,
       );
     }
 
@@ -169,8 +174,7 @@ export async function installFreshMacosApplication(
       providers: "not-connected",
     };
   } catch {
-    await retainPriorInstallation(adapter);
-    return failedResult(stage, actionFor(stage));
+    return recoveryResult(stage, actionFor(stage), adapter);
   }
 }
 
@@ -183,13 +187,30 @@ function requiredRuntimeVersion(
   return version;
 }
 
-async function retainPriorInstallation(
+async function recoveryResult(
+  stage: InstallationStage,
+  action: string,
   adapter: FreshMacosInstallationAdapter,
-): Promise<void> {
-  await Promise.allSettled([
-    adapter.preservePriorInstallation(),
-    adapter.preservePriorJob(),
+): Promise<FreshMacosInstallationResult> {
+  if (await restorePriorInstallation(adapter)) {
+    return failedResult(stage, action);
+  }
+  return {
+    status: "unsafe-recovery",
+    failedStage: stage,
+    action:
+      "The installation could not restore the prior application or scheduled job. Do not retry automatically; inspect the installation state before continuing.",
+  };
+}
+
+async function restorePriorInstallation(
+  adapter: FreshMacosInstallationAdapter,
+): Promise<boolean> {
+  const results = await Promise.allSettled([
+    adapter.restorePriorInstallation(),
+    adapter.restorePriorJob(),
   ]);
+  return results.every((result) => result.status === "fulfilled");
 }
 
 function failedResult(

@@ -69,10 +69,15 @@ test("installs a fresh macOS application in the required recoverable stage order
 test.each([
   ["validate-macos-and-space", "environment"],
   ["runtime:download", "runtime"],
+  ["runtime:verify", "runtime"],
+  ["runtime:activate", "runtime"],
   ["source-destination", "source-destination"],
   ["source:download", "source"],
+  ["source:verify", "source"],
+  ["source:extract", "source"],
   ["npm-ci", "dependencies"],
   ["build", "build"],
+  ["source:activate", "build"],
   ["timezone", "timezone"],
   ["schedule", "schedule"],
   ["open-page", "open-page"],
@@ -93,6 +98,33 @@ test.each([
   },
 );
 
+test.each(["timezone", "schedule", "open-page"] as const)(
+  "restores the active source and job when %s fails after source activation",
+  async (operation) => {
+    const adapter = createAdapter({ failAt: operation });
+
+    await expect(
+      installFreshMacosApplication(request, adapter),
+    ).resolves.toMatchObject({ status: "failed", stage: operation });
+    expect(adapter.activeSource).toBe("prior-source");
+    expect(adapter.loadedJob).toBe("prior-job");
+  },
+);
+
+test("reports unsafe recovery when restoring the prior installation fails", async () => {
+  const adapter = createAdapter({
+    failAt: "timezone",
+    restorationFails: true,
+  });
+
+  await expect(
+    installFreshMacosApplication(request, adapter),
+  ).resolves.toMatchObject({
+    status: "unsafe-recovery",
+    failedStage: "timezone",
+  });
+});
+
 test("rejects an occupied source destination before fetching the source archive", async () => {
   const adapter = createAdapter({ sourceDestinationOccupied: true });
 
@@ -112,6 +144,7 @@ function createAdapter(
   options: {
     failAt?: string;
     sourceDestinationOccupied?: boolean;
+    restorationFails?: boolean;
   } = {},
 ) {
   const operations: string[] = [];
@@ -121,6 +154,8 @@ function createAdapter(
   }> = [];
   let priorInstallationRemainsUsable = false;
   let priorJobRemainsLoaded = false;
+  let activeSource = "prior-source";
+  let loadedJob = "prior-job";
 
   const failIfRequested = (operation: string): void => {
     if (options.failAt === operation) throw new Error(`${operation} failed`);
@@ -137,7 +172,7 @@ function createAdapter(
     },
     verifySha256: async () => {
       operations.push("runtime:verify");
-      return true;
+      return options.failAt !== "runtime:verify";
     },
     extractArchiveToRuntimeRoot: async () => {
       operations.push("runtime:extract");
@@ -148,6 +183,7 @@ function createAdapter(
     },
     activateAtomically: async () => {
       operations.push("runtime:activate");
+      failIfRequested("runtime:activate");
     },
   };
 
@@ -159,6 +195,12 @@ function createAdapter(
     },
     get priorJobRemainsLoaded() {
       return priorJobRemainsLoaded;
+    },
+    get activeSource() {
+      return activeSource;
+    },
+    get loadedJob() {
+      return loadedJob;
     },
     runtimeSystem,
     validateMacosAndWritableSpace: async () => {
@@ -177,10 +219,11 @@ function createAdapter(
     },
     verifySourceArchive: async () => {
       operations.push("source:verify");
-      return true;
+      return options.failAt !== "source:verify";
     },
     extractSourceArchive: async () => {
       operations.push("source:extract");
+      failIfRequested("source:extract");
     },
     runManagedNpmCi: async () => {
       operations.push("npm-ci");
@@ -192,6 +235,8 @@ function createAdapter(
     },
     activateSourceAtomically: async () => {
       operations.push("source:activate");
+      activeSource = "new-source";
+      failIfRequested("source:activate");
     },
     setupReportTimeZone: async () => {
       operations.push("timezone");
@@ -202,6 +247,7 @@ function createAdapter(
       sourceInstallPath: string;
     }) => {
       operations.push("schedule");
+      loadedJob = "new-job";
       failIfRequested("schedule");
       scheduleRequests.push(value);
     },
@@ -209,10 +255,14 @@ function createAdapter(
       operations.push("open-page");
       failIfRequested("open-page");
     },
-    preservePriorInstallation: async () => {
+    restorePriorInstallation: async () => {
+      if (options.restorationFails) throw new Error("source restore failed");
+      activeSource = "prior-source";
       priorInstallationRemainsUsable = true;
     },
-    preservePriorJob: async () => {
+    restorePriorJob: async () => {
+      if (options.restorationFails) throw new Error("job restore failed");
+      loadedJob = "prior-job";
       priorJobRemainsLoaded = true;
     },
   };
