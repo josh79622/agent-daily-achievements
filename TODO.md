@@ -482,6 +482,11 @@ regression to fix mid-task.
       - Implemented `src/schedule/notification.ts` using native `osascript` with localized title, message, sound, and browser link (`http://127.0.0.1:4317/`).
       - Integrated into `src/schedule/entry.ts` on report completion and failure with graceful non-fatal error handling.
       - 6 unit tests in `test/schedule/notification.test.ts` (N1-1 to N1-6) passing; 641 tests passing across 70 test files.
+- [x] Auto-wake web server launcher and decoupled production build:
+      - Fixed Vite build wiping `dist/web/i18n.js` (`emptyOutDir: false`) and decoupled server language imports to `src/report/languages.ts`.
+      - Added cross-platform auto-wake launcher (`src/server/launcher.ts` and `scripts/open-app.mjs`) to test port 4317, launch detached server, and open default browser.
+      - Added web server launchd plist builder (`src/server/web-launchd-plist.ts`) and installer (`scripts/install-web-server.mjs`) with `KeepAlive: true` and `RunAtLoad: true`.
+      - 13 new unit tests in `test/server/launcher.test.ts` and `test/server/web-launchd-plist.test.ts`; 654 tests passing across 72 files.
 
 ### Phase 7 — Release readiness
 

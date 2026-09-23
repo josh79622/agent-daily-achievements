@@ -13,7 +13,7 @@ import {
 import { randomUUID } from "node:crypto";
 import { extname, join } from "node:path";
 
-import type { Translations } from "../../web/i18n.js";
+import type { Translations } from "../report/language-pack.js";
 
 export interface LanguagePackStore {
   read(code: string): Promise<Translations | undefined>;

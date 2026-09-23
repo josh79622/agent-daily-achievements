@@ -2,6 +2,11 @@
 
 ## Handoff — 2026-09-24 (read first)
 
+- Auto-wake web server launcher and decoupled production build (`feature/auto-wake-server`):
+  - Fixed Vite build wiping `dist/web/i18n.js` (`emptyOutDir: false`) and extracted `isBuiltInLanguage` into `src/report/languages.ts`. Standalone `node dist/src/server/index.js` now boots cleanly without missing modules.
+  - Implemented cross-platform auto-wake launcher (`src/server/launcher.ts` and `scripts/open-app.mjs`) checking port 4317; if stopped, automatically spawns the server in the background and opens the default browser (`npm run open`).
+  - Implemented macOS web server LaunchAgent generator (`src/server/web-launchd-plist.ts`) and installer (`scripts/install-web-server.mjs`) with `KeepAlive: true` and `RunAtLoad: true`, ensuring auto-restart within 1 second if killed.
+  - Added unit test suites `test/server/launcher.test.ts` and `test/server/web-launchd-plist.test.ts`. All 654 tests in 72 test files pass; `npm run check` and `npm run lint` pass cleanly.
 - Native macOS report notification (`feature/macos-notification`):
   - Implemented `src/schedule/notification.ts`: zero-dependency notification sender using macOS `/usr/bin/osascript`.
   - Supports multi-language localization (`zh-TW`, `zh`, `es`, `en` fallback) for titles and messages, system sound chime, and embedded browser link (`http://127.0.0.1:4317/`).

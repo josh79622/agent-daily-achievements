@@ -99,3 +99,10 @@ export function isSupportedSummaryLanguage(value: unknown): value is string {
     typeof value === "string" && (value === "auto" || !!findLanguage(value))
   );
 }
+
+export const builtInLanguageCodes = ["en", "zh-TW", "es"] as const;
+export type BuiltInLanguage = (typeof builtInLanguageCodes)[number];
+
+export function isBuiltInLanguage(code: string): code is BuiltInLanguage {
+  return (builtInLanguageCodes as readonly string[]).includes(code);
+}

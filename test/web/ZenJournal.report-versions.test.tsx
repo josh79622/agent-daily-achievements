@@ -10,8 +10,9 @@ import {
 
 import { ZenJournal } from "../../web/ZenJournal.js";
 import type { AchievementReportV1 } from "../../src/report/contract.js";
+import { getYesterdayDate } from "../../web/date-utils.js";
 
-const date = "2026-09-22";
+const date = getYesterdayDate();
 
 function report(title: string): AchievementReportV1 {
   return {

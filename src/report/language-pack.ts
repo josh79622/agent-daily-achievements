@@ -8,6 +8,8 @@
 
 import { en, placeholdersOf, type Translations } from "../../web/i18n.js";
 
+export type { Translations };
+
 export type LanguagePackValidation =
   { ok: true; pack: Translations } | { ok: false; reason: string };
 
