@@ -1,5 +1,30 @@
 # Progress
 
+## Handoff — 2026-09-23 (read first)
+
+- PR [#3](https://github.com/josh79622/agent-daily-achievements/pull/3) was merged into
+  `master` as `9cbe65d`; the main checkout has been fast-forwarded to it.
+  It adds same-date report version history and localizes the settings model
+  badge/default-model option. The branch design and implementation plan are in
+  `docs/plans/2026-09-23-report-version-history-*.md`.
+- The last full `npm run check` on the feature worktree passed: 606 tests in
+  68 files, format, lint, both TypeScript checks, and build. Both PR checks
+  passed before merge. No full gate was rerun on `master` after the merge;
+  the merged product code is the same reviewed code.
+- `http://127.0.0.1:4317/` is currently served from
+  `.worktrees/report-version-history` (not the main checkout), with that
+  worktree's `data` symlink pointing to this checkout's real `data/`.
+  The 4317 process was confirmed listening and its version API returned one
+  legacy version for 2026-09-18. Do not delete or commit the real `data/`.
+- Josh asked to verify the UI after the restart. Multiple versions have
+  component/API tests, but a second real 2026-09-18 version has not yet been
+  generated under the new storage format. Previously overwritten 9/18
+  reports are not recoverable from the current report file. The next step is
+  for Josh to inspect 4317; if he regenerates 9/18, the page should display
+  the legacy and new versions newest first. Regeneration sends that day's
+  full authorized conversations to the saved summarizer CLI, so do not
+  trigger it without Josh's current instruction.
+
 ## Current phase
 
 **Phase 5 — Report control** (scoped work complete as of 2026-09-18)
@@ -848,10 +873,11 @@ this conversation, only this repo's files.
   - bring decisions one at a time with options and a recommendation;
   - run `npm run check` and verify before claiming tasks complete;
   - never transmit raw conversation data without saved consent.
-- **2026-09-23, `feature/report-version-history`:** Implemented append-only report
+- **2026-09-23, PR #3 merged:** Implemented append-only report
   versions for each date, legacy flat-report compatibility, version-specific
   achievement edits, and a homepage that shows all versions newest first.
   Settings model badge/default option now follow the UI language. The content
   of each saved report stays in its original language. `npm run check` passed:
   606 tests across 68 files, format, lint, typecheck, and build. Changes are
-  committed on the feature branch; the running 4317 server still uses `master`.
+  are merged into `master`; the running 4317 server uses the feature worktree
+  with shared local data for Josh's UI verification.

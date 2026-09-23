@@ -480,8 +480,11 @@ regression to fix mid-task.
 - [ ] Design the optional Chrome add-on separately.
 - [x] Preserve and display all regenerated versions of the same report date;
       keep legacy flat reports readable and edit the selected version only.
-      Implemented on `feature/report-version-history`; `npm run check` passed
-      with 606 tests on 2026-09-23. PR/merge and live browser verification
-      remain as integration steps.
+      Merged via PR #3 into `master` (`9cbe65d`). `npm run check` passed with
+      606 tests on 2026-09-23 before merge.
 - [x] Localize the preferred-provider badge and default-model option for the
       built-in languages, with English fallback for existing runtime packs.
+- [ ] Verify the merged version-history behavior in the live browser on 4317:
+      one date must show both its legacy and newly regenerated report, newest
+      first; editing one must leave the other unchanged. Josh is currently
+      testing this. The API currently reports one legacy version for 9/18.
