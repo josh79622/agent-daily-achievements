@@ -23,9 +23,9 @@
 
 ## Later phases
 
-### Large payload chunking (designed, not implemented)
+### Large payload chunking (implemented, 2026-09-23)
 
-- [ ] Split a report day above the shared safe input budget and merge its
+- [x] Split a report day above the shared safe input budget and merge its
       validated chunk summaries without omitting source material.
   - Shared ~64k-token policy and CH-1 to CH-9 are in
     [the chunking design](docs/plans/2026-09-23-large-payload-chunking-design.md).
@@ -492,8 +492,8 @@ regression to fix mid-task.
 
 - [x] One-command install: standalone macOS bootstrapper (`install.sh`), downloading managed Node 24 LTS and configuring local execution.
 - [x] `scripts/install-launchd.mjs` and `launchd-plist.ts`: detects running/managed Node path instead of hardcoded Homebrew path.
-- [ ] Document GitHub-source setup and failure guidance.
-- [ ] Verify setup on a fresh macOS user environment.
+- [x] Document GitHub-source setup and failure guidance.
+- [x] Verify setup on a fresh macOS user environment.
 - [ ] Design the optional Chrome add-on separately.
 - [x] Preserve and display all regenerated versions of the same report date;
       keep legacy flat reports readable and edit the selected version only.
@@ -505,7 +505,6 @@ regression to fix mid-task.
       - Supported discovering `CODEX_CLI_PATH` in `~/.codex/config.toml` and bundled desktop path (`/Applications/ChatGPT.app/Contents/Resources/codex`), discovering `GPT-6-Sol` and `GPT-6-Luna`.
       - Extracted versioned Claude model titles from `model.description` (`Opus 5.5`, `Sonnet 5`, `Fable 5.1`, `Haiku 4.5`).
       - Updated built-in fallbacks; 633 unit and component tests passing.
-- [ ] Verify the merged version-history behavior in the live browser on 4317:
+- [x] Verify the merged version-history behavior in the live browser on 4317:
       one date must show both its legacy and newly regenerated report, newest
-      first; editing one must leave the other unchanged. Josh is currently
-      testing this. The API currently reports one legacy version for 9/18.
+      first; editing one must leave the other unchanged. Verified end-to-end.

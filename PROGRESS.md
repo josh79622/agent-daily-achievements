@@ -2,6 +2,12 @@
 
 ## Handoff — 2026-09-24 (read first)
 
+- Phase 7: Release Readiness complete (`feature/phase-7-release-readiness`):
+  - Rewrote `README.md` completely into a comprehensive, production-grade documentation covering project vision ("Daily cognitive relief with evidence-backed achievements from local AI agent conversations"), 100% local privacy architecture, supported platforms (macOS Apple Silicon & Intel, Node 24 LTS), supported agent sources (`claude`, `codex`, `agy`), quick start with one-command bootstrap (`./install.sh`) and manual GitHub setup, macOS background automation LaunchAgents (`schedule:install`, `server:install`, uninstallation), daily UI operations (Zen Journal, Focus Bento, Executive Briefing, source trace-back, safe edits/deletions, version history, dynamic language packs), troubleshooting & failure guidance, and quality gate.
+  - Created `install.sh`: clean, executable bash installer verifying macOS (`Darwin`), Node.js >= 24 LTS, npm, running `npm install`, `npm run setup`, `npm run build`, prompting interactively for LaunchAgent installation (`server:install`, `schedule:install`), and launching `npm run open`.
+  - Created `scripts/verify-fresh-install.mjs` (and added `npm run verify:install`): standalone verification checking Node.js >= 24, required macOS utilities (`/usr/bin/osascript`, `/bin/launchctl`), isolated timezone and summarizer permission setup without touching production `data/`, valid LaunchAgent XML generation with absolute paths, and port 4317 listener readiness.
+  - Added unit test suite `test/installer/verify-fresh-install.test.ts`: executes verification script and validates exit code 0 and all passing assertions.
+  - Updated `TODO.md` marking large payload chunking and Phase 7 release readiness checkboxes complete.
 - Auto-wake web server launcher and decoupled production build (`feature/auto-wake-server`):
   - Fixed Vite build wiping `dist/web/i18n.js` (`emptyOutDir: false`) and extracted `isBuiltInLanguage` into `src/report/languages.ts`. Standalone `node dist/src/server/index.js` now boots cleanly without missing modules.
   - Implemented cross-platform auto-wake launcher (`src/server/launcher.ts` and `scripts/open-app.mjs`) checking port 4317; if stopped, automatically spawns the server in the background and opens the default browser (`npm run open`).

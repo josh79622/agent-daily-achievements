@@ -20,7 +20,8 @@
     "setup": "tsx scripts/setup.mjs",
     "start": "node dist/src/server/index.js",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.web.json --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.web.json --noEmit",
+    "verify:install": "node scripts/verify-fresh-install.mjs"
   },
   "dependencies": {
     "@xyflow/react": "^12.11.6",
