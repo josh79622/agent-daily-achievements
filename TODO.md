@@ -489,6 +489,10 @@ regression to fix mid-task.
       606 tests on 2026-09-23 before merge.
 - [x] Localize the preferred-provider badge and default-model option for the
       built-in languages, with English fallback for existing runtime packs.
+- [x] Detect latest provider models (Codex CLI app path & Claude Code versioned labels):
+      - Supported discovering `CODEX_CLI_PATH` in `~/.codex/config.toml` and bundled desktop path (`/Applications/ChatGPT.app/Contents/Resources/codex`), discovering `GPT-6-Sol` and `GPT-6-Luna`.
+      - Extracted versioned Claude model titles from `model.description` (`Opus 5.5`, `Sonnet 5`, `Fable 5.1`, `Haiku 4.5`).
+      - Updated built-in fallbacks; 633 unit and component tests passing.
 - [ ] Verify the merged version-history behavior in the live browser on 4317:
       one date must show both its legacy and newly regenerated report, newest
       first; editing one must leave the other unchanged. Josh is currently

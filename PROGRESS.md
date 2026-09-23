@@ -1,31 +1,21 @@
 # Progress
 
-## Handoff — 2026-09-23 (read first)
+## Handoff — 2026-09-24 (read first)
 
-- Task W1 (`feature/frontend-date-window`) is complete: frontend 07:00 report window alignment.
-  Extracted pure, browser-safe 07:00 window calculations into `src/report/date-window.ts`
-  (re-exported by `src/collector/local-collector.ts` and `src/schedule/report-window.ts`).
-  Aligned `web/date-utils.ts` (`getYesterdayDate()` returns most recent finished window,
-  `getTodayDate()` returns open window) and clamped `DateSelector` forward stepping.
-  625 tests in 69 files, format, lint, both TypeScript checks, and build all passed.
+- Task M1 (`feature/latest-provider-models`) is complete: detect latest provider models (Codex bundled CLI & Claude Code versioned labels).
+  - Extended `createLocalCommandExecutor` in `src/summarizer/provider-login.ts` to locate Codex by first reading `CODEX_CLI_PATH` from `~/.codex/config.toml` (or `$CODEX_HOME/config.toml`) and checking `/Applications/ChatGPT.app/Contents/Resources/codex` before `$PATH`. This discovers the bundled CLI (0.155.0-alpha) which supports `GPT-6-Sol` and `GPT-6-Luna`.
+  - Updated `parseClaudeModels` in `src/summarizer/model-catalog.ts` to parse versioned labels from `model.description` (`description.split(" · ")[0]`) matching Claude Code CLI's interactive TUI menu (`Opus 5.5`, `Sonnet 5`, `Fable 5.1`, `Haiku 4.5`), falling back to `model.displayName`.
+  - Updated `builtInModels` in `src/summarizer/model-catalog.ts` with `gpt-6-sol`, `gpt-6-luna`, and versioned Claude names.
+  - Added unit test cases M1-1 through M1-6 in `test/summarizer/provider-login.test.ts` and `test/summarizer/model-catalog.test.ts`. All 633 tests in 69 files pass; `npm run check` and `npm run lint` pass cleanly.
+- Task W1 (`feature/frontend-date-window`) was merged into `master` as `f8444c1`:
+  frontend 07:00 report window alignment. Extracted pure, browser-safe 07:00 window calculations
+  into `src/report/date-window.ts` (re-exported by `src/collector/local-collector.ts` and
+  `src/schedule/report-window.ts`). Aligned `web/date-utils.ts` and clamped `DateSelector` forward stepping.
 - PR [#3](https://github.com/josh79622/agent-daily-achievements/pull/3) was merged into
-  `master` as `9cbe65d`; the main checkout has been fast-forwarded to it.
-  It adds same-date report version history and localizes the settings model
-  badge/default-model option. The branch design and implementation plan are in
-  `docs/plans/2026-09-23-report-version-history-*.md`.
-- `http://127.0.0.1:4317/` is currently served from
-  `.worktrees/report-version-history` (not the main checkout), with that
-  worktree's `data` symlink pointing to this checkout's real `data/`.
-  The 4317 process was confirmed listening and its version API returned one
-  legacy version for 2026-09-18. Do not delete or commit the real `data/`.
-- Josh asked to verify the UI after the restart. Multiple versions have
-  component/API tests, but a second real 2026-09-18 version has not yet been
-  generated under the new storage format. Previously overwritten 9/18
-  reports are not recoverable from the current report file. The next step is
-  for Josh to inspect 4317; if he regenerates 9/18, the page should display
-  the legacy and new versions newest first. Regeneration sends that day's
-  full authorized conversations to the saved summarizer CLI, so do not
-  trigger it without Josh's current instruction.
+  `master` as `9cbe65d`: same-date report version history and localizes settings model badge.
+- `http://127.0.0.1:4317/` dev server: when testing on main checkout, run
+  `cd /Users/joshtsai/Documents/agent-daily-achievements && npm run dev`.
+  Do not trigger real report regeneration without Josh's current instruction.
 
 ## Current phase
 

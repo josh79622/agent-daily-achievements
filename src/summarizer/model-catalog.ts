@@ -30,6 +30,16 @@ export type ModelCatalog = Record<SummaryProvider, ProviderCatalog>;
 export const builtInModels: Record<SummaryProvider, ModelOption[]> = {
   codex: [
     {
+      value: "gpt-6-sol",
+      label: "GPT-6-Sol",
+      effortLevels: ["low", "medium", "high", "xhigh", "max", "ultra"],
+    },
+    {
+      value: "gpt-6-luna",
+      label: "GPT-6-Luna",
+      effortLevels: ["low", "medium", "high", "xhigh", "max"],
+    },
+    {
       value: "gpt-5.6-sol",
       label: "GPT-5.6-Sol",
       effortLevels: ["low", "medium", "high", "xhigh", "max", "ultra"],
@@ -58,20 +68,20 @@ export const builtInModels: Record<SummaryProvider, ModelOption[]> = {
   "claude-code": [
     {
       value: "sonnet",
-      label: "Sonnet",
+      label: "Sonnet 5",
       effortLevels: ["low", "medium", "high", "xhigh", "max"],
     },
     {
       value: "claude-fable-5[1m]",
-      label: "Fable",
+      label: "Fable 5.1",
       effortLevels: ["low", "medium", "high", "xhigh", "max"],
     },
     {
       value: "opus",
-      label: "Opus",
+      label: "Opus 5.5",
       effortLevels: ["low", "medium", "high", "xhigh", "max"],
     },
-    { value: "haiku", label: "Haiku", effortLevels: [] },
+    { value: "haiku", label: "Haiku 4.5", effortLevels: [] },
   ],
   agy: [
     {
@@ -420,7 +430,15 @@ function initializeResponse(
   return { models: response.response.models };
 }
 
-function parseClaudeModels(models: unknown): ParsedList | undefined {
+export function claudeModelLabel(model: Record<string, unknown>): unknown {
+  if (typeof model.description === "string") {
+    const prefix = model.description.split(" · ")[0]?.trim();
+    if (prefix) return prefix;
+  }
+  return model.displayName;
+}
+
+export function parseClaudeModels(models: unknown): ParsedList | undefined {
   if (!Array.isArray(models)) return undefined;
   const defaultEntry = models.find(
     (model) => isRecord(model) && model.value === "default",
@@ -431,7 +449,7 @@ function parseClaudeModels(models: unknown): ParsedList | undefined {
       isRecord(model) && model.value !== "default"
         ? (option(
             model.value,
-            model.displayName,
+            claudeModelLabel(model),
             model.supportedEffortLevels,
           ) ?? [])
         : [],

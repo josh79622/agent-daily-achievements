@@ -1,8 +1,14 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { expect, test } from "vitest";
 
 import {
+  createLocalCommandExecutor,
   createMacTerminalLauncher,
   createProviderLoginService,
+  defaultReadCodexConfig,
   loginCommand,
   statusCommand,
   type CommandExecutor,
@@ -326,3 +332,107 @@ for (const exitCode of [1, null]) {
     );
   });
 }
+
+test("M1-1: executor.locate('codex') returns CODEX_CLI_PATH ahead of $PATH", async () => {
+  const accessible = new Set([
+    "/configured/bin/codex",
+    "/Applications/ChatGPT.app/Contents/Resources/codex",
+    "/usr/bin/codex",
+  ]);
+  const executor = createLocalCommandExecutor({
+    searchPath: "/usr/bin",
+    readCodexConfig: async () => "/configured/bin/codex",
+    knownPaths: {
+      codex: ["/Applications/ChatGPT.app/Contents/Resources/codex"],
+    },
+    checkAccess: async (path) => {
+      if (!accessible.has(path)) throw new Error("not accessible");
+    },
+  });
+
+  const located = await executor.locate("codex");
+  expect(located).toBe("/configured/bin/codex");
+});
+
+test("M1-2: executor.locate('codex') returns known bundle path when no config exists", async () => {
+  const accessible = new Set([
+    "/Applications/ChatGPT.app/Contents/Resources/codex",
+    "/usr/bin/codex",
+  ]);
+  const executor = createLocalCommandExecutor({
+    searchPath: "/usr/bin",
+    readCodexConfig: async () => undefined,
+    knownPaths: {
+      codex: ["/Applications/ChatGPT.app/Contents/Resources/codex"],
+    },
+    checkAccess: async (path) => {
+      if (!accessible.has(path)) throw new Error("not accessible");
+    },
+  });
+
+  const located = await executor.locate("codex");
+  expect(located).toBe("/Applications/ChatGPT.app/Contents/Resources/codex");
+});
+
+test("M1-3: executor.locate('codex') falls back to $PATH when neither config nor bundle exists", async () => {
+  const accessible = new Set(["/usr/bin/codex"]);
+  const executor = createLocalCommandExecutor({
+    searchPath: "/usr/bin",
+    readCodexConfig: async () => undefined,
+    knownPaths: {
+      codex: ["/Applications/ChatGPT.app/Contents/Resources/codex"],
+    },
+    checkAccess: async (path) => {
+      if (!accessible.has(path)) throw new Error("not accessible");
+    },
+  });
+
+  const located = await executor.locate("codex");
+  expect(located).toBe("/usr/bin/codex");
+});
+
+test("M1-edge: non-absolute or unexecutable CODEX_CLI_PATH falls through to known paths or $PATH", async () => {
+  const accessible = new Set(["/usr/bin/codex"]);
+  const executor = createLocalCommandExecutor({
+    searchPath: "/usr/bin",
+    readCodexConfig: async () => "relative/codex",
+    knownPaths: {
+      codex: ["/nonexistent/codex"],
+    },
+    checkAccess: async (path) => {
+      if (!accessible.has(path)) throw new Error("not accessible");
+    },
+  });
+
+  expect(await executor.locate("codex")).toBe("/usr/bin/codex");
+});
+
+test("defaultReadCodexConfig reads CODEX_CLI_PATH from CODEX_HOME/config.toml", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "codex-test-"));
+  const previousHome = process.env.CODEX_HOME;
+  try {
+    process.env.CODEX_HOME = tempDir;
+
+    // When config file doesn't exist
+    expect(await defaultReadCodexConfig()).toBeUndefined();
+
+    // When config file contains CODEX_CLI_PATH
+    await writeFile(
+      join(tempDir, "config.toml"),
+      '# Comment\nCODEX_CLI_PATH = "/custom/bundled/codex"\n',
+      "utf-8",
+    );
+    expect(await defaultReadCodexConfig()).toBe("/custom/bundled/codex");
+
+    // When config file does not contain CODEX_CLI_PATH
+    await writeFile(join(tempDir, "config.toml"), 'model = "gpt-5"\n', "utf-8");
+    expect(await defaultReadCodexConfig()).toBeUndefined();
+  } finally {
+    if (previousHome === undefined) {
+      delete process.env.CODEX_HOME;
+    } else {
+      process.env.CODEX_HOME = previousHome;
+    }
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});

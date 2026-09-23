@@ -4,8 +4,10 @@ import { describe, expect, test } from "vitest";
 import {
   builtInDefaultEffortLevels,
   builtInModels,
+  claudeModelLabel,
   createModelCatalogLoader,
   isSafeModelValue,
+  parseClaudeModels,
   type CatalogChild,
 } from "../../src/summarizer/model-catalog.js";
 import type {
@@ -428,4 +430,111 @@ test("EC-1: Claude Code keeps the default entry's effort levels without offering
     source: "fetched",
     defaultEffortLevels: [],
   });
+});
+
+test("M1-4: Claude model label parses prefix from description", () => {
+  expect(
+    claudeModelLabel({
+      displayName: "Opus",
+      description: "Opus 5.5 · Best for everyday tasks",
+    }),
+  ).toBe("Opus 5.5");
+
+  const parsed = parseClaudeModels([
+    {
+      value: "opus",
+      displayName: "Opus",
+      description: "Opus 5.5 · Best for everyday tasks",
+      supportedEffortLevels: ["low", "high"],
+    },
+  ]);
+  expect(parsed?.options).toEqual([
+    {
+      value: "opus",
+      label: "Opus 5.5",
+      effortLevels: ["low", "high"],
+    },
+  ]);
+});
+
+test("M1-5: Claude model label falls back to displayName when description is missing or invalid", () => {
+  expect(
+    claudeModelLabel({
+      displayName: "Opus",
+    }),
+  ).toBe("Opus");
+
+  expect(
+    claudeModelLabel({
+      displayName: "Opus",
+      description: "",
+    }),
+  ).toBe("Opus");
+
+  expect(
+    claudeModelLabel({
+      displayName: "Opus",
+      description: 123,
+    }),
+  ).toBe("Opus");
+
+  const parsed = parseClaudeModels([
+    {
+      value: "opus",
+      displayName: "Opus",
+      supportedEffortLevels: ["low"],
+    },
+  ]);
+  expect(parsed?.options).toEqual([
+    {
+      value: "opus",
+      label: "Opus",
+      effortLevels: ["low"],
+    },
+  ]);
+});
+
+test("M1-6: built-in catalog contains latest models with safe values and non-empty labels", async () => {
+  const { load } = loader({ installed: false });
+  const catalog = await load();
+
+  // Codex includes GPT-6-Sol and GPT-6-Luna
+  const codexValues = catalog.codex.options.map((opt) => opt.value);
+  expect(codexValues).toContain("gpt-6-sol");
+  expect(codexValues).toContain("gpt-6-luna");
+
+  const sol = catalog.codex.options.find((opt) => opt.value === "gpt-6-sol");
+  expect(sol).toEqual({
+    value: "gpt-6-sol",
+    label: "GPT-6-Sol",
+    effortLevels: ["low", "medium", "high", "xhigh", "max", "ultra"],
+  });
+
+  const luna = catalog.codex.options.find((opt) => opt.value === "gpt-6-luna");
+  expect(luna).toEqual({
+    value: "gpt-6-luna",
+    label: "GPT-6-Luna",
+    effortLevels: ["low", "medium", "high", "xhigh", "max"],
+  });
+
+  // Claude Code labels are versioned
+  const claudeLabels = catalog["claude-code"].options.map((opt) => opt.label);
+  expect(claudeLabels).toContain("Opus 5.5");
+  expect(claudeLabels).toContain("Sonnet 5");
+  expect(claudeLabels).toContain("Fable 5.1");
+  expect(claudeLabels).toContain("Haiku 4.5");
+
+  // All entries across all providers have non-empty labels, safe values, and valid effort levels
+  for (const [provider, provCatalog] of Object.entries(catalog)) {
+    expect(provCatalog.options.length).toBeGreaterThan(0);
+    for (const option of provCatalog.options) {
+      expect(
+        isSafeModelValue(option.value),
+        `${provider}: ${option.value}`,
+      ).toBe(true);
+      expect(typeof option.label).toBe("string");
+      expect(option.label.trim().length).toBeGreaterThan(0);
+      expect(Array.isArray(option.effortLevels)).toBe(true);
+    }
+  }
 });
