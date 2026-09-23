@@ -128,6 +128,8 @@ describe("Language packs (LC-1 to LC-5)", () => {
       expect(shown.activity.sessionsCount).toBe(
         translations.en.activity.sessionsCount,
       );
+      expect(shown.settings.preferredBadge).toBe("★ Preferred");
+      expect(shown.settings.defaultModel).toBe("Default model");
     } finally {
       forgetLanguagePack("ja");
     }

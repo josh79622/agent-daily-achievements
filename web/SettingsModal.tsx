@@ -402,7 +402,7 @@ export function SettingsModal({
                             </label>
                             {isPreferred && (
                               <span className="preferred-badge">
-                                ★ 首選 Preferred
+                                {t.settings.preferredBadge}
                               </span>
                             )}
                           </div>
@@ -425,7 +425,7 @@ export function SettingsModal({
                                 }
                               >
                                 <option value="default">
-                                  預設模型 (Default)
+                                  {t.settings.defaultModel}
                                 </option>
                                 {modelView?.options.map((opt) => (
                                   <option key={opt.value} value={opt.value}>

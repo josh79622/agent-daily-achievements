@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 
 import { SettingsModal } from "../../web/SettingsModal.js";
 import { en } from "../../web/locales/en.js";
+import { es } from "../../web/locales/es.js";
 import { zhTW } from "../../web/locales/zh-TW.js";
 
 afterEach(() => {
@@ -163,3 +164,35 @@ test("displays probe-failed pill when not signed in", async () => {
   });
   expect(signInButtons).toHaveLength(1);
 });
+
+test.each([
+  ["en", en, "★ Preferred", "Default model"],
+  ["zh-TW", zhTW, "★ 首選", "預設模型"],
+  ["es", es, "★ Preferido", "Modelo predeterminado"],
+] as const)(
+  "renders the preferred badge and default model in %s only",
+  async (language, t, preferredBadge, defaultModel) => {
+    mockFetchWithProviders([
+      { provider: "agy", state: "ready" },
+      { provider: "claude-code", state: "not-installed" },
+      { provider: "codex", state: "not-installed" },
+    ]);
+
+    render(
+      <SettingsModal
+        isOpen
+        onClose={vi.fn()}
+        language={language}
+        t={t}
+        selectedDate="2026-09-23"
+        onDateChange={vi.fn()}
+        onReportGenerated={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText(preferredBadge)).toBeInTheDocument();
+    expect(screen.getAllByRole("option", { name: defaultModel })).toHaveLength(
+      3,
+    );
+  },
+);
