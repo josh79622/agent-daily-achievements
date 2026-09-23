@@ -848,3 +848,10 @@ this conversation, only this repo's files.
   - bring decisions one at a time with options and a recommendation;
   - run `npm run check` and verify before claiming tasks complete;
   - never transmit raw conversation data without saved consent.
+- **2026-09-23, `feature/report-version-history`:** Implemented append-only report
+  versions for each date, legacy flat-report compatibility, version-specific
+  achievement edits, and a homepage that shows all versions newest first.
+  Settings model badge/default option now follow the UI language. The content
+  of each saved report stays in its original language. `npm run check` passed:
+  606 tests across 68 files, format, lint, typecheck, and build. Changes are
+  committed on the feature branch; the running 4317 server still uses `master`.
