@@ -7,15 +7,27 @@ import { join } from "node:path";
 import {
   assembleReport,
   validateSummaryCandidate,
+  type Achievement,
   type AchievementReportStore,
   type AchievementReportV1,
+  type CandidateValidation,
   type EvidenceManifest,
+  type ValidationIssue,
 } from "../report/contract.js";
 import {
   decideAfterAttempt,
   maxSummaryAttempts,
 } from "../report/summary-retry.js";
-import { buildSummaryRequestText } from "../report/summary-prompt.js";
+import {
+  chunkReportDayPayload,
+  summaryChunkMaxPayloadBytes,
+} from "../report/summary-chunking.js";
+import {
+  buildChunkSummaryRequestText,
+  buildMergeSummaryRequestText,
+  buildSummaryRequestText,
+  type IntermediateCandidate,
+} from "../report/summary-prompt.js";
 import type { SummaryProvider } from "../storage/summary-permission.js";
 import type { SummaryRequest, SummaryRunner } from "../server/app.js";
 import {
@@ -30,12 +42,15 @@ import {
 } from "./readiness-probe.js";
 import type { SummarizerModelsService } from "./model-settings.js";
 
-// A real day's payload and reply are both far larger than the readiness
-// probe's one-word exchange, and up to three attempts run in sequence.
-// Provisional (design doc "Open for Josh" item 2): not yet measured against a
-// real run.
+// A real day's prompt and reply are larger than the readiness probe's one-word
+// exchange, and up to three attempts run in sequence.
 export const summaryAttemptTimeoutMs = 10 * 60_000;
-export const summaryMaxReplyBytes = 512 * 1024;
+/**
+ * Provider output needs a safety limit independent of the conservative
+ * 64k-token prompt-input budget. Evidence-heavy valid JSON can exceed the
+ * chunk prompt's 8 KiB reply reservation.
+ */
+export const summaryTransportMaxReplyBytes = 512 * 1024;
 
 export type SummaryLocator = (
   provider: SummaryProvider,
@@ -44,6 +59,11 @@ export type SummaryLocator = (
 /** Everything one attempt tried to say happened, before the report is built. */
 type AttemptOutcome =
   { kind: "no-reply" } | { kind: "reply"; candidate: unknown };
+
+type ValidatedAttempts =
+  | { kind: "valid"; achievements: Achievement[] }
+  | { kind: "unavailable" }
+  | { kind: "invalid"; issue: ValidationIssue };
 
 export function sanitizeCandidateEvidence(
   candidate: unknown,
@@ -149,7 +169,7 @@ export function createSummaryRunner({
           cwd: directory,
           captureStdout: provider === "claude-code" || provider === "agy",
           timeoutMs: summaryAttemptTimeoutMs,
-          maxStdoutBytes: summaryMaxReplyBytes,
+          maxStdoutBytes: summaryTransportMaxReplyBytes,
           stdin: provider === "agy" ? promptText : undefined,
         });
       } catch {
@@ -177,49 +197,118 @@ export function createSummaryRunner({
         await save(request, { kind: "unavailable" });
         throw new Error(`${provider} is not available.`);
       }
+      const executable = executablePath;
       const settings = await models.effectiveSettings(provider);
-      const promptText = buildSummaryRequestText(
-        request.payload.payloadJson,
-        request.language ? { language: request.language } : undefined,
-      );
+      const options = request.language
+        ? { language: request.language }
+        : undefined;
+      const chunking = chunkReportDayPayload(request.payload);
+      if (chunking.kind === "message-too-large") {
+        await save(request, chunking);
+        return;
+      }
 
-      for (let attempt = 1; attempt <= maxSummaryAttempts; attempt++) {
-        const outcome = await runAttempt(
-          provider,
-          executablePath,
-          settings.model,
-          settings.effort,
-          promptText,
-        );
-        if (outcome.kind === "no-reply") {
-          if (attempt === maxSummaryAttempts) {
-            await save(request, { kind: "unavailable" });
-            throw new Error(`${provider} produced no usable reply.`);
-          }
-          continue;
-        }
-        const candidateToValidate = sanitizeCandidateEvidence(
-          outcome.candidate,
+      if (chunking.kind === "single") {
+        const result = await runValidated(
+          buildSummaryRequestText(chunking.chunks[0].payloadJson, options),
           request.payload.manifest,
         );
-        const validation = validateSummaryCandidate(candidateToValidate, {
-          manifest: request.payload.manifest,
-          coverage: request.payload.coverage,
+        if (result.kind === "valid") {
+          await save(request, {
+            kind: "candidate",
+            candidate: { achievements: result.achievements },
+          });
+          return;
+        }
+        await save(
+          request,
+          result.kind === "unavailable"
+            ? { kind: "unavailable" }
+            : { kind: "invalid", issue: result.issue },
+        );
+        throw new Error(`${provider} produced no valid summary.`);
+      }
+
+      const candidates: Achievement[] = [];
+      for (const chunk of chunking.chunks) {
+        const result = await runValidated(
+          buildChunkSummaryRequestText(chunk, options),
+          chunk.manifest,
+        );
+        if (result.kind === "valid") {
+          candidates.push(...result.achievements);
+          continue;
+        }
+        await save(request, {
+          kind: "chunk-failed",
+          chunkIndex: chunk.index,
+          sessions: chunk.manifest.map(({ source, recordId }) => ({
+            source,
+            recordId,
+          })),
+          ...(result.kind === "invalid" ? { issue: result.issue } : {}),
         });
-        const decision = decideAfterAttempt({ attempt, validation });
-        if (decision.action === "reanalyse") continue;
+        throw new Error(`${provider} failed chunk ${chunk.index}.`);
+      }
+
+      const mergeCandidates = compactCandidates(candidates, options);
+      if (mergeCandidates === undefined) {
+        await save(request, { kind: "merge-too-large" });
+        return;
+      }
+      const merged = await runValidated(
+        buildMergeSummaryRequestText(mergeCandidates, options),
+        mergeEvidenceManifest(mergeCandidates),
+      );
+      if (merged.kind === "valid") {
         await save(request, {
           kind: "candidate",
-          candidate: candidateToValidate,
+          candidate: { achievements: merged.achievements },
         });
-        if (
-          decision.action === "stop" &&
-          decision.issue === "too-many-achievements"
-        )
-          throw new Error(
-            `${provider} exceeded the achievement limit on every attempt.`,
-          );
         return;
+      }
+      await save(
+        request,
+        merged.kind === "unavailable"
+          ? { kind: "merge-unavailable" }
+          : { kind: "merge-invalid", issue: merged.issue },
+      );
+      throw new Error(`${provider} produced no valid merged summary.`);
+
+      async function runValidated(
+        promptText: string,
+        manifest: EvidenceManifest,
+      ): Promise<ValidatedAttempts> {
+        for (let attempt = 1; attempt <= maxSummaryAttempts; attempt++) {
+          const outcome = await runAttempt(
+            provider,
+            executable,
+            settings.model,
+            settings.effort,
+            promptText,
+          );
+          if (outcome.kind === "no-reply") {
+            if (attempt === maxSummaryAttempts) return { kind: "unavailable" };
+            continue;
+          }
+          const candidateToValidate = sanitizeCandidateEvidence(
+            outcome.candidate,
+            manifest,
+          );
+          const validation: CandidateValidation = validateSummaryCandidate(
+            candidateToValidate,
+            {
+              manifest,
+              coverage: request.payload.coverage,
+            },
+          );
+          const decision = decideAfterAttempt({ attempt, validation });
+          if (decision.action === "accept")
+            return { kind: "valid", achievements: decision.achievements };
+          if (decision.action === "reanalyse") continue;
+          return { kind: "invalid", issue: decision.issue };
+        }
+        return { kind: "unavailable" };
       }
     },
   };
@@ -290,10 +379,11 @@ export function agyReplyText(
 export async function codexReplyText(
   readReplyFile: ReplyFileReader,
   replyFile: string,
+  maxReplyBytes = summaryTransportMaxReplyBytes,
 ): Promise<string | undefined> {
   let reply: ReplyFileResult;
   try {
-    reply = await readReplyFile(replyFile, summaryMaxReplyBytes);
+    reply = await readReplyFile(replyFile, maxReplyBytes);
   } catch {
     return undefined;
   }
@@ -316,4 +406,101 @@ export function parseCandidateJson(reply: string): unknown {
   } catch {
     return { __unparseable: true };
   }
+}
+
+/**
+ * Keep only the model's structured candidate fields before the final merge.
+ * If the exact final prompt would exceed the shared input budget, remove
+ * message-level identifiers one reference at a time, retaining session-level
+ * source/recordId evidence. Nothing is truncated and no raw record text is
+ * ever carried into the merge request.
+ */
+function compactCandidates(
+  achievements: readonly Achievement[],
+  options: { language?: string } | undefined,
+): IntermediateCandidate[] | undefined {
+  let candidates: IntermediateCandidate[] = achievements.map((achievement) => ({
+    id: achievement.id,
+    category: achievement.category,
+    title: achievement.title,
+    detail: achievement.detail,
+    ...(achievement.project === undefined
+      ? {}
+      : { project: achievement.project }),
+    isPrimary: achievement.isPrimary === true,
+    evidence: achievement.evidence.map((ref) => ({
+      source: ref.source,
+      recordId: ref.recordId,
+      ...(ref.messageIds === undefined
+        ? {}
+        : { messageIds: [...ref.messageIds] }),
+    })),
+  }));
+  if (mergeFits(candidates, options)) return candidates;
+
+  for (
+    let candidateIndex = 0;
+    candidateIndex < candidates.length;
+    candidateIndex++
+  ) {
+    const candidate = candidates[candidateIndex]!;
+    for (let index = 0; index < candidate.evidence.length; index++) {
+      const evidence = candidate.evidence[index]!;
+      if (evidence.messageIds === undefined) continue;
+      candidates = candidates.map((entry, entryIndex) =>
+        entryIndex !== candidateIndex
+          ? entry
+          : {
+              ...entry,
+              evidence: entry.evidence.map((ref, evidenceIndex) =>
+                evidenceIndex === index
+                  ? { source: ref.source, recordId: ref.recordId }
+                  : ref,
+              ),
+            },
+      );
+      if (mergeFits(candidates, options)) return candidates;
+    }
+  }
+  return undefined;
+}
+
+function mergeFits(
+  candidates: readonly IntermediateCandidate[],
+  options: { language?: string } | undefined,
+): boolean {
+  return (
+    Buffer.byteLength(buildMergeSummaryRequestText(candidates, options)) <=
+    summaryChunkMaxPayloadBytes
+  );
+}
+
+/**
+ * The final model sees only compact candidate evidence, so its validation
+ * manifest must be constructed from exactly those references—not the full
+ * day's records. Session-level references deliberately contribute no message
+ * IDs, preventing a merge reply from introducing IDs that were compacted out.
+ */
+function mergeEvidenceManifest(
+  candidates: readonly IntermediateCandidate[],
+): EvidenceManifest {
+  const entries = new Map<string, EvidenceManifest[number]>();
+  for (const candidate of candidates) {
+    for (const evidence of candidate.evidence) {
+      const key = `${evidence.source}\u0000${evidence.recordId}`;
+      const existing = entries.get(key);
+      const messageIds = new Set(existing?.messageIds ?? []);
+      for (const messageId of evidence.messageIds ?? [])
+        messageIds.add(messageId);
+      entries.set(key, {
+        source: evidence.source,
+        recordId: evidence.recordId,
+        ...(existing?.project === undefined && candidate.project === undefined
+          ? {}
+          : { project: existing?.project ?? candidate.project }),
+        messageIds: [...messageIds],
+      });
+    }
+  }
+  return [...entries.values()];
 }

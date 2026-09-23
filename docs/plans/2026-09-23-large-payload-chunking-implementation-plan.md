@@ -13,9 +13,12 @@ requests and one merge request, validating every model response against the
 evidence it was allowed to see.
 
 **Tech Stack:** TypeScript, Node built-ins, Vitest, existing local CLI runners.
-Use a 128 KiB serialized-record budget for each request: it is a deliberately
-conservative 2 bytes/token approximation under the shared ~64k-token policy,
-including room for the prompt and reply. No tokenizer package is added.
+Use the shared 128 KiB prompt-input budget: a deliberately conservative 2
+bytes/token approximation under the ~64k-token policy. Pack actual serialized
+data under its record allowance after fixed prompt/wrapper allowance. The
+provider reply has a separate 512 KiB transport safety cap, not charged to the
+prompt-input budget. If message-ID evidence cannot fit, use a session-level
+reference rather than dropping source material. No tokenizer package is added.
 
 ---
 
@@ -79,9 +82,11 @@ rebuilt one message at a time. Do not truncate or reorder text.
 - Test: `test/report/summary-prompt.test.ts`
 
 **Step 1: Write failing tests** that prove a chunk prompt asks for qualifying
-activities and only IDs in that chunk, while a merge prompt receives summaries
-plus the full original evidence manifest and asks for 0–5 deduplicated final
-achievements. Assert language selection applies to both prompts.
+activities from its bounded records and only IDs in that chunk. Records must
+be delimited as untrusted JSON data. Prove a merge prompt accepts bounded
+compact evidence-bearing candidates, treats candidates as untrusted JSON, and
+asks for the established final achievement JSON. Assert language selection
+applies to both prompts. Do not serialize a duplicate chunk manifest.
 
 **Step 2: Run:**
 
@@ -90,10 +95,11 @@ achievements. Assert language selection applies to both prompts.
 Expected: FAIL for absent chunk/merge builders.
 
 **Step 3: Implement** `buildChunkSummaryRequestText(chunk, options)` and
-`buildMergeSummaryRequestText(chunkCandidates, manifest, options)`. Reuse the
-existing achievement JSON schema and language instruction. The merge prompt
-must state that it may cite only original evidence IDs from the supplied
-manifest, never chunk IDs or invented IDs.
+`buildMergeSummaryRequestText(compactCandidates, options)`. Reuse the existing
+achievement schema and language instruction for chunk leaves and final merge.
+The merge prompt receives only compact evidence-bearing candidates, never full
+conversation records, and accepts candidate text as data rather than
+instructions.
 
 **Step 4: Run the focused tests; expect PASS.**
 
@@ -112,10 +118,11 @@ manifest, never chunk IDs or invented IDs.
 **Step 1: Write failing CH-5 through CH-8 tests.**
 
 Use the existing fake runner. Prove that: each chunk response is validated
-against that chunk's manifest; a successful merge validates against the full
-day manifest; a duplicate final activity is emitted once with combined
-evidence; chunk failure or merge failure saves `incomplete`; and provider
-fallback still occurs only through the existing app-level loop.
+against that chunk's manifest; message-ID evidence collapses to session-level
+references when needed; one final merge stays within the shared budget or
+saves `incomplete` / `merge-too-large`; chunk failure or merge failure saves
+`incomplete`; and provider fallback still occurs only through the existing
+app-level loop.
 
 Add explicit contract entries for `summary-chunk-failed`,
 `summary-merge-unavailable`, and `summary-message-too-large`, carrying only
@@ -133,9 +140,13 @@ Expected: FAIL because the runner has only a single-request path.
 Call `chunkReportDayPayload` before building a prompt. For `single`, retain
 the existing attempt/retry behavior. For `chunked`, run each chunk through the
 same provider/settings/attempt controls, collect only validated candidates,
-then run exactly one merge request and validate it against the full manifest.
-Save only the final `AchievementReportV1`; attach typed incomplete entries on
-any unrecoverable chunk/merge result. Throw only when the existing provider
+collapse oversized message-ID evidence to session-level references, and make
+one final merge request. If its exact prompt exceeds the shared prompt-input
+budget, save an incomplete merge-too-large report; do not recursively merge.
+Validate the final reply against a manifest derived only from compact evidence
+actually sent to the merge prompt before saving. Save only the final report;
+attach typed incomplete entries on any unrecoverable chunk/merge
+result. Throw only when the existing provider
 fallback contract requires it, so `app.ts` remains the sole owner of provider
 ordering and permission.
 

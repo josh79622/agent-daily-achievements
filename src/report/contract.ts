@@ -18,6 +18,8 @@ export interface EvidenceRef {
   messageIds?: string[];
 }
 
+export type SessionIdentity = Pick<EvidenceRef, "source" | "recordId">;
+
 export interface Achievement {
   id: string;
   category: AchievementCategory;
@@ -304,7 +306,22 @@ function hasOnlyKeys(
 export type IncompleteEntry =
   | { reason: "source-incomplete"; source: ReportSource }
   | { reason: "summary-unavailable" }
-  | { reason: "summary-invalid"; issue: ValidationIssue };
+  | { reason: "summary-invalid"; issue: ValidationIssue }
+  | {
+      reason: "summary-chunk-failed";
+      chunkIndex: number;
+      sessions: readonly SessionIdentity[];
+      issue?: ValidationIssue;
+    }
+  | { reason: "summary-merge-unavailable" }
+  | { reason: "summary-merge-invalid"; issue: ValidationIssue }
+  | { reason: "summary-merge-too-large" }
+  | {
+      reason: "summary-message-too-large";
+      source: ReportSource;
+      recordId: string;
+      messageId: string;
+    };
 
 export interface AchievementReportV1 {
   schemaVersion: 1;
@@ -318,7 +335,24 @@ export interface AchievementReportV1 {
 
 /** What the summarizer run produced; `unavailable` covers no run or a failed run. */
 export type SummaryOutcome =
-  { kind: "candidate"; candidate: unknown } | { kind: "unavailable" };
+  | { kind: "candidate"; candidate: unknown }
+  | { kind: "unavailable" }
+  | { kind: "invalid"; issue: ValidationIssue }
+  | {
+      kind: "chunk-failed";
+      chunkIndex: number;
+      sessions: readonly SessionIdentity[];
+      issue?: ValidationIssue;
+    }
+  | { kind: "merge-unavailable" }
+  | { kind: "merge-invalid"; issue: ValidationIssue }
+  | { kind: "merge-too-large" }
+  | {
+      kind: "message-too-large";
+      source: ReportSource;
+      recordId: string;
+      messageId: string;
+    };
 
 /**
  * Minimal storage the real summarizer run needs: just the one method it
@@ -356,6 +390,31 @@ export function assembleReport({
   let achievements: Achievement[] = [];
   if (summary.kind === "unavailable") {
     incomplete.push({ reason: "summary-unavailable" });
+  } else if (summary.kind === "invalid") {
+    incomplete.push({ reason: "summary-invalid", issue: summary.issue });
+  } else if (summary.kind === "chunk-failed") {
+    incomplete.push({
+      reason: "summary-chunk-failed",
+      chunkIndex: summary.chunkIndex,
+      sessions: summary.sessions.map(({ source, recordId }) => ({
+        source,
+        recordId,
+      })),
+      ...(summary.issue === undefined ? {} : { issue: summary.issue }),
+    });
+  } else if (summary.kind === "merge-unavailable") {
+    incomplete.push({ reason: "summary-merge-unavailable" });
+  } else if (summary.kind === "merge-invalid") {
+    incomplete.push({ reason: "summary-merge-invalid", issue: summary.issue });
+  } else if (summary.kind === "merge-too-large") {
+    incomplete.push({ reason: "summary-merge-too-large" });
+  } else if (summary.kind === "message-too-large") {
+    incomplete.push({
+      reason: "summary-message-too-large",
+      source: summary.source,
+      recordId: summary.recordId,
+      messageId: summary.messageId,
+    });
   } else {
     const result = validateSummaryCandidate(summary.candidate, {
       manifest,

@@ -253,4 +253,3 @@ no physical tooltip positioning properties.
 Update `PROGRESS.md` or `TODO.md` only if one already exists and needs the completed
 header task recorded. Do not create a status file solely for this work. Commit any
 verification-driven correction separately with an accurate message.
-

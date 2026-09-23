@@ -24,6 +24,37 @@ const allIncluded: ReportCoverage[] = [
 
 const secretText = "FICTIONAL-CANDIDATE-TEXT-MUST-NOT-LEAK";
 
+test("RC: chunking failures are typed incomplete entries without candidate text", () => {
+  const base = {
+    date: "2026-09-23",
+    timezone: "UTC",
+    manifest,
+    coverage: allIncluded,
+  };
+  expect(
+    assembleReport({ ...base, summary: { kind: "merge-too-large" } })
+      .incomplete,
+  ).toEqual([{ reason: "summary-merge-too-large" }]);
+  expect(
+    assembleReport({
+      ...base,
+      summary: {
+        kind: "message-too-large",
+        source: "codex",
+        recordId: "codex-201",
+        messageId: "m1",
+      },
+    }).incomplete,
+  ).toEqual([
+    {
+      reason: "summary-message-too-large",
+      source: "codex",
+      recordId: "codex-201",
+      messageId: "m1",
+    },
+  ]);
+});
+
 function item(overrides: Record<string, unknown> = {}) {
   return {
     id: "a1",

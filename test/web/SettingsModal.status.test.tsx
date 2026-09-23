@@ -76,6 +76,8 @@ test("hides login button when provider is signedIn or ready, shows only when una
       onClose={vi.fn()}
       language="en"
       t={en}
+      selectedDate="2026-09-23"
+      onDateChange={vi.fn()}
       onReportGenerated={vi.fn()}
     />,
   );
@@ -113,6 +115,8 @@ test("displays localized status pills in zh-TW", async () => {
       onClose={vi.fn()}
       language="zh-TW"
       t={zhTW}
+      selectedDate="2026-09-23"
+      onDateChange={vi.fn()}
       onReportGenerated={vi.fn()}
     />,
   );
@@ -147,6 +151,8 @@ test("displays probe-failed pill when not signed in", async () => {
       onClose={vi.fn()}
       language="en"
       t={en}
+      selectedDate="2026-09-23"
+      onDateChange={vi.fn()}
       onReportGenerated={vi.fn()}
     />,
   );

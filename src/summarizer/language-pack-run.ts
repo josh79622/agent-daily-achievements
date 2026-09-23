@@ -26,7 +26,6 @@ import {
   codexReplyText,
   parseCandidateJson,
   summaryAttemptTimeoutMs,
-  summaryMaxReplyBytes,
   type SummaryLocator,
 } from "./summary-run.js";
 import type { SummarizerModelsService } from "./model-settings.js";
@@ -37,6 +36,9 @@ export type LanguagePackBuildResult =
   | { kind: "cached"; pack: Translations }
   | { kind: "built"; pack: Translations }
   | { kind: "failed"; reason: string };
+
+/** UI packs are separate from a daily report's shared request budget. */
+export const languagePackMaxReplyBytes = 512 * 1024;
 
 export interface LanguagePackBuilder {
   /** The cached pack for a code, or undefined when none has been built. */
@@ -112,7 +114,7 @@ export function createLanguagePackBuilder({
           cwd: directory,
           captureStdout: provider === "claude-code" || provider === "agy",
           timeoutMs: summaryAttemptTimeoutMs,
-          maxStdoutBytes: summaryMaxReplyBytes,
+          maxStdoutBytes: languagePackMaxReplyBytes,
           stdin: provider === "agy" ? promptText : undefined,
         });
       } catch {
@@ -125,7 +127,11 @@ export function createLanguagePackBuilder({
           ? claudeReplyText(result)
           : provider === "agy"
             ? agyReplyText(result)
-            : await codexReplyText(readReplyFile, replyFile);
+            : await codexReplyText(
+                readReplyFile,
+                replyFile,
+                languagePackMaxReplyBytes,
+              );
       if (reply === undefined) return { kind: "no-reply" };
       return { kind: "reply", candidate: parseCandidateJson(reply) };
     } finally {

@@ -478,4 +478,3 @@ regression to fix mid-task.
 - [ ] Document GitHub-source setup and failure guidance.
 - [ ] Verify setup on a fresh macOS user environment.
 - [ ] Design the optional Chrome add-on separately.
-

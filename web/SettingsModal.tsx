@@ -1,5 +1,7 @@
 import { useEffect, useState, useTransition } from "react";
 import type { Language, Translations } from "./i18n.js";
+import { DateSelector } from "./DateSelector.js";
+import { directionFor } from "../src/report/languages.js";
 
 export type SummaryProvider = "claude-code" | "codex" | "agy";
 
@@ -41,7 +43,8 @@ interface SettingsModalProps {
   onClose: () => void;
   language: Language;
   t: Translations;
-  selectedDate?: string;
+  selectedDate: string;
+  onDateChange: (date: string) => void;
   isGenerating?: boolean;
   onReportGenerated: () => void;
 }
@@ -52,6 +55,7 @@ export function SettingsModal({
   language,
   t,
   selectedDate,
+  onDateChange,
   isGenerating = false,
   onReportGenerated,
 }: SettingsModalProps) {
@@ -339,6 +343,16 @@ export function SettingsModal({
         </header>
 
         <div className="modal-body">
+          <section className="settings-section">
+            <DateSelector
+              selectedDate={selectedDate}
+              onDateChange={onDateChange}
+              disabled={isBusy}
+              t={t}
+              direction={directionFor(language)}
+            />
+          </section>
+
           {/* Section 2: Summarizer Models */}
           <section className="settings-section">
             <h3 className="section-title">{t.settings.modelSectionTitle}</h3>

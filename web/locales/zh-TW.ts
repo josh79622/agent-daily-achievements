@@ -101,7 +101,7 @@ export const zhTW: Translations = {
       "安裝已完成，但尚未連接摘要工具。請先在下方安裝供應商，再登入並檢查狀態後產生報告。",
     installProvider: "安裝說明",
     signInProvider: "登入",
-    generateReportBtn: "⚡️ 重新生成今日摘要",
+    generateReportBtn: "重新產生摘要",
     generateSuccess: "日報生成成功！",
     generateError: "生成失敗",
   },

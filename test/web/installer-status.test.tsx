@@ -48,6 +48,8 @@ test("a completed installation with no provider shows safe connection guidance",
       onClose={vi.fn()}
       language="en"
       t={en}
+      selectedDate="2026-09-23"
+      onDateChange={vi.fn()}
       onReportGenerated={vi.fn()}
     />,
   );

@@ -5,8 +5,9 @@ import type {
 } from "./contract.js";
 
 // Approved by Josh on 2026-09-17: three attempts in total with the same
-// summarizer and the same server-built payload. Only output with more than
-// five achievements is re-analysed.
+// summarizer and the same server-built payload. Any validation failure is
+// re-analysed because it is deterministic, local, and often repairable by a
+// clearer second response.
 export const maxSummaryAttempts = 3;
 
 export type SummaryAttemptDecision =
@@ -30,10 +31,7 @@ export function decideAfterAttempt({
     throw new RangeError("Summary attempt is outside the approved limit.");
   if (validation.ok)
     return { action: "accept", achievements: validation.achievements };
-  if (
-    validation.issue === "too-many-achievements" &&
-    attempt < maxSummaryAttempts
-  )
+  if (attempt < maxSummaryAttempts)
     return { action: "reanalyse", nextAttempt: attempt + 1 };
   return { action: "stop", issue: validation.issue };
 }

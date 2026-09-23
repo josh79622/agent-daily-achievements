@@ -106,7 +106,7 @@ export const en = {
       "Installation is complete. No summarizer is connected yet. Install a provider below, then sign in and check its status before generating a report.",
     installProvider: "Installation instructions",
     signInProvider: "Sign in",
-    generateReportBtn: "⚡️ Generate Today's Summary",
+    generateReportBtn: "Regenerate Summary",
     generateSuccess: "Report generated successfully!",
     generateError: "Generation failed",
   },

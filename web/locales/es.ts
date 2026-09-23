@@ -106,7 +106,7 @@ export const es: Translations = {
       "La instalación está completa, pero aún no hay un resumidor conectado. Instala un proveedor abajo, inicia sesión y comprueba su estado antes de generar un informe.",
     installProvider: "Instrucciones de instalación",
     signInProvider: "Iniciar sesión",
-    generateReportBtn: "⚡️ Generar el resumen de hoy",
+    generateReportBtn: "Regenerar resumen",
     generateSuccess: "¡Informe generado correctamente!",
     generateError: "Error al generar",
   },

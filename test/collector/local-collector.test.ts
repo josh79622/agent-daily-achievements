@@ -122,6 +122,10 @@ test("local collector returns report-day sessions with their earlier context and
   const collector = createLocalCollector({
     claudeDirectories: [claudeDirectory, join(root, "claude.jsonl")],
     codexDirectories: [codexDirectory, join(root, "codex.jsonl")],
+    // This fixture's 02:00Z/04:00Z records are before the 07:00 report
+    // boundary in UTC. Pin the zone so the test describes its intended
+    // report window rather than the machine that runs it.
+    timeZone: "Australia/Sydney",
   });
   const summary = await collector.collect("2026-09-16", [
     "claude-code",

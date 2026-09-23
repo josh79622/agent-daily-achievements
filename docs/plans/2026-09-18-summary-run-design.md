@@ -7,16 +7,14 @@ is included in this task.
 
 ## What is already decided (not re-opened here)
 
-- Retry limit and fallback (D1, [report contract design](2026-09-17-report-contract-design.md)):
-  a candidate over five achievements is re-analysed with the same provider and
-  the same payload, up to three attempts total. If attempt three still exceeds
-  five, the report is saved `incomplete` / `summary-invalid` /
-  `too-many-achievements`, **and this counts as a failure of that CLI**, so the
-  caller (the existing `/api/reports/generate` provider loop in `app.ts`) tries
-  the next permitted CLI. Any other invalid output (bad shape, unknown
-  category, unknown evidence, etc.) is not retried and does not fall back — the
-  report is saved as `incomplete` with that issue, and generation succeeds from
-  the caller's point of view (a report exists).
+- Retry limit and fallback (updated by Josh, 2026-09-23): every reply that
+  fails deterministic validation (too many achievements, bad shape, unknown
+  category/evidence, overlong field, or other contract issue) is re-analysed
+  with the same provider and same payload, up to three attempts total. If the
+  third reply is still invalid, save `incomplete` / `summary-invalid` with its
+  final issue and count it as a failure of that CLI, so the caller (the existing
+  `/api/reports/generate` provider loop in `app.ts`) tries the next permitted
+  CLI. A valid reply is accepted immediately.
 - A CLI that never produces a reply at all (could not start, timed out,
   non-zero exit, empty/unreadable/oversized reply) is `SummaryOutcome`
   `{ kind: "unavailable" }`. This also counts as a failure of that CLI for the
@@ -88,10 +86,10 @@ Pure/fake-runner tests only; no real CLI is invoked by any of them.
 | --- | --- |
 | SR-1 | A valid single-attempt reply (0, 1, and 5 achievements) is saved as a `complete` or `incomplete` report matching `assembleReport`'s own rules; `run()` resolves. |
 | SR-2 | A reply wrapped in a Markdown code fence parses the same as bare JSON. |
-| SR-3 | Unparseable JSON is treated as `invalid-shape`, saved `incomplete`, `run()` resolves (no fallback). |
+| SR-3 | Unparseable JSON is treated as `invalid-shape` and re-analysed up to three attempts; a valid later reply is accepted. |
 | SR-4 | `too-many-achievements` on attempt 1 triggers a second attempt with the identical request text; a valid reply on attempt 2 is accepted and saved. |
 | SR-5 | `too-many-achievements` on all three attempts saves an `incomplete` report and `run()` throws. |
-| SR-6 | Any other invalid issue (e.g. `unknown-evidence`) is not retried: one attempt only, saved `incomplete`, `run()` resolves. |
+| SR-6 | Any other invalid issue (e.g. `unknown-evidence`) is re-analysed up to three attempts; three invalid replies save `incomplete` and trigger provider fallback. |
 | SR-7 | No executable located → saved `unavailable`/`summary-unavailable`, `run()` throws. |
 | SR-8 | The process runner reports could-not-start, timed out, non-zero exit, or an unreadable/empty/oversized reply → same as SR-7 for each reason. |
 | SR-9 | The model and effort passed to the process match `models.effectiveSettings(provider)` for that provider; `undefined` omits the flag, matching the probe's convention. |

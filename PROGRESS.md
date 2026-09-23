@@ -848,4 +848,3 @@ this conversation, only this repo's files.
   - bring decisions one at a time with options and a recommendation;
   - run `npm run check` and verify before claiming tasks complete;
   - never transmit raw conversation data without saved consent.
-

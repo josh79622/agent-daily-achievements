@@ -1016,6 +1016,7 @@ export function ZenJournal() {
         language={language}
         t={t}
         selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
         isGenerating={isGenerating}
         onReportGenerated={() => void loadReport(selectedDate)}
       />
