@@ -121,3 +121,73 @@ describe("Today icon control (HIC-1, HIC-3 to HIC-5)", () => {
     );
   });
 });
+
+describe("Open window date boundary (W1-14, W1-15)", () => {
+  test("W1-14: given the selected date is the open window date (before 07:00), next day is disabled", () => {
+    vi.useFakeTimers();
+    try {
+      // 03:00 local time -> open window is previous calendar day
+      vi.setSystemTime(new Date(2026, 8, 19, 3, 0, 0));
+      const openWindowDate = getTodayDate();
+
+      render(
+        <DateSelector
+          selectedDate={openWindowDate}
+          onDateChange={vi.fn()}
+          t={en}
+        />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: en.header.dateNext }),
+      ).toBeDisabled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("W1-14: given the selected date is the open window date (after 07:00), next day is disabled", () => {
+    vi.useFakeTimers();
+    try {
+      // 10:00 local time -> open window is current calendar day
+      vi.setSystemTime(new Date(2026, 8, 19, 10, 0, 0));
+      const openWindowDate = getTodayDate();
+
+      render(
+        <DateSelector
+          selectedDate={openWindowDate}
+          onDateChange={vi.fn()}
+          t={en}
+        />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: en.header.dateNext }),
+      ).toBeDisabled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("W1-15: given the selected date is earlier than the open window date, next day is enabled", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 8, 19, 10, 0, 0));
+      const earlierDate = shiftDateString(getTodayDate(), -1);
+
+      render(
+        <DateSelector
+          selectedDate={earlierDate}
+          onDateChange={vi.fn()}
+          t={en}
+        />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: en.header.dateNext }),
+      ).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

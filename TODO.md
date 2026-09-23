@@ -467,8 +467,13 @@ regression to fix mid-task.
       - Softened empty report constraints to prevent models triggering empty array `{"achievements": []}` escape hatch.
       - Implemented `sanitizeCandidateEvidence` in `summary-run.ts` to defend against hallucinated message IDs or recordId mixups while preserving true source/record grounding.
       - Verified with real end-to-end report generation for 2026-09-21: produced 4 achievements spanning `agent-daily-achievements` and `Josh_JobHunt`.
-- [ ] `getYesterdayDate()` in `web/date-utils.ts` still assumes a midnight boundary; align the
+- [x] `getYesterdayDate()` in `web/date-utils.ts` still assumes a midnight boundary; align the
       page's default date with the 07:00 window.
+      - Extracted browser-safe date window logic into `src/report/date-window.ts` (pure TypeScript, zero Node.js built-ins).
+      - Re-exported from `src/collector/local-collector.ts` and `src/schedule/report-window.ts` to preserve backwards compatibility.
+      - `getYesterdayDate()` now returns the most recently finished window ($D-1$ after 07:00, $D-2$ before 07:00).
+      - `getTodayDate()` now returns the active open window ($D$ after 07:00, $D-1$ before 07:00) and clamps `DateSelector` forward stepping.
+      - 19 new tests added (W1-1 to W1-15); 625 tests passing.
 - [ ] Add a clickable macOS notification.
 
 ### Phase 7 — Release readiness

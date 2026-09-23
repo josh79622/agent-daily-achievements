@@ -2,15 +2,17 @@
 
 ## Handoff — 2026-09-23 (read first)
 
+- Task W1 (`feature/frontend-date-window`) is complete: frontend 07:00 report window alignment.
+  Extracted pure, browser-safe 07:00 window calculations into `src/report/date-window.ts`
+  (re-exported by `src/collector/local-collector.ts` and `src/schedule/report-window.ts`).
+  Aligned `web/date-utils.ts` (`getYesterdayDate()` returns most recent finished window,
+  `getTodayDate()` returns open window) and clamped `DateSelector` forward stepping.
+  625 tests in 69 files, format, lint, both TypeScript checks, and build all passed.
 - PR [#3](https://github.com/josh79622/agent-daily-achievements/pull/3) was merged into
   `master` as `9cbe65d`; the main checkout has been fast-forwarded to it.
   It adds same-date report version history and localizes the settings model
   badge/default-model option. The branch design and implementation plan are in
   `docs/plans/2026-09-23-report-version-history-*.md`.
-- The last full `npm run check` on the feature worktree passed: 606 tests in
-  68 files, format, lint, both TypeScript checks, and build. Both PR checks
-  passed before merge. No full gate was rerun on `master` after the merge;
-  the merged product code is the same reviewed code.
 - `http://127.0.0.1:4317/` is currently served from
   `.worktrees/report-version-history` (not the main checkout), with that
   worktree's `data` symlink pointing to this checkout's real `data/`.
@@ -879,5 +881,12 @@ this conversation, only this repo's files.
   Settings model badge/default option now follow the UI language. The content
   of each saved report stays in its original language. `npm run check` passed:
   606 tests across 68 files, format, lint, typecheck, and build. Changes are
-  are merged into `master`; the running 4317 server uses the feature worktree
+  merged into `master`; the running 4317 server uses the feature worktree
   with shared local data for Josh's UI verification.
+- **2026-09-23, Task W1 completed:** Frontend 07:00 report window alignment.
+  Extracted pure, browser-safe 07:00 window calculations into `src/report/date-window.ts`
+  (re-exported by `src/collector/local-collector.ts` and `src/schedule/report-window.ts`).
+  Aligned `web/date-utils.ts` (`getYesterdayDate()` returns most recent finished window,
+  `getTodayDate()` returns open window) and clamped `DateSelector` forward stepping.
+  Test cases W1-1 to W1-15 pass; `npm run check` passed with 625 tests across 69 test files,
+  format, lint, typecheck, and build.
