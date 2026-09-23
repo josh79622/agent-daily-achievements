@@ -2,6 +2,11 @@
 
 ## Handoff — 2026-09-24 (read first)
 
+- Native macOS report notification (`feature/macos-notification`):
+  - Implemented `src/schedule/notification.ts`: zero-dependency notification sender using macOS `/usr/bin/osascript`.
+  - Supports multi-language localization (`zh-TW`, `zh`, `es`, `en` fallback) for titles and messages, system sound chime, and embedded browser link (`http://127.0.0.1:4317/`).
+  - Integrated into `src/schedule/entry.ts` on report completion and failure with graceful non-fatal error handling.
+  - Added test cases N1-1 through N1-6 in `test/schedule/notification.test.ts`. 641 tests across 70 test files pass; `npm run check` and `npm run lint` pass cleanly.
 - Daily report schedule time updated to 09:00 AM (`feature/schedule-time-nine-am`):
   - `src/schedule/launchd-plist.ts`: parameterized `hour` (defaults to 9) and `minute` (defaults to 0) in `LaunchdJobConfig` and `buildLaunchdPlist`.
   - `scripts/install-launchd.mjs`: passes `hour`/`minute` to plist builder and logs dynamic schedule time.

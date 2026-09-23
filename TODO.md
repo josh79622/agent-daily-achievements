@@ -478,7 +478,10 @@ regression to fix mid-task.
       - Updated `src/schedule/launchd-plist.ts` to support configurable `hour` (defaults to 9) and `minute` (defaults to 0).
       - Updated `scripts/install-launchd.mjs` to pass `hour`/`minute` and report dynamic schedule time.
       - Unit tests in `test/schedule/launchd-plist.test.ts` and `test/schedule/run-scheduled-report.test.ts` pass; 635 tests passing.
-- [ ] Add a clickable macOS notification.
+- [x] Add a clickable macOS notification:
+      - Implemented `src/schedule/notification.ts` using native `osascript` with localized title, message, sound, and browser link (`http://127.0.0.1:4317/`).
+      - Integrated into `src/schedule/entry.ts` on report completion and failure with graceful non-fatal error handling.
+      - 6 unit tests in `test/schedule/notification.test.ts` (N1-1 to N1-6) passing; 641 tests passing across 70 test files.
 
 ### Phase 7 — Release readiness
 
