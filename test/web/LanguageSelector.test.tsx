@@ -32,10 +32,10 @@ afterEach(() => {
   buildLanguagePackMock.mockReset();
 });
 
-function renderSelector(onLanguageChange = vi.fn()) {
+function renderSelector(onLanguageChange = vi.fn(), language = "en") {
   render(
     <LanguageSelector
-      language="en"
+      language={language}
       onLanguageChange={onLanguageChange}
       t={en}
     />,
@@ -212,5 +212,30 @@ describe("Closing the dropdown (T5-10)", () => {
     fireEvent.keyDown(document, { key: "Escape" });
 
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+});
+
+describe("Language icon control (HIC-1, HIC-4 to HIC-6)", () => {
+  test("uses a globe-only trigger with the selected language in its localized tooltip", () => {
+    renderSelector(vi.fn(), "zh-TW");
+
+    const trigger = screen.getByRole("button", {
+      name: en.header.languageToggle,
+    });
+    expect(trigger).toHaveClass("header-icon-button");
+    expect(trigger).toHaveTextContent("🌐");
+    expect(trigger).not.toHaveTextContent("繁體中文");
+    expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("tooltip", { hidden: true })).toHaveTextContent(
+      "Language: 繁體中文",
+    );
+
+    fireEvent.focus(trigger);
+    expect(screen.getByRole("tooltip", { hidden: true })).toHaveClass(
+      "is-visible",
+    );
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 });

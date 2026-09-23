@@ -303,6 +303,7 @@ interface AchievementNodeData {
   title: string;
   detail: string;
   category?: string;
+  project?: string;
   evidence: EvidenceRef[];
   reportDate?: string;
   isExpanded: boolean;
@@ -467,6 +468,12 @@ function AchievementNode({ data }: NodeProps & { data: AchievementNodeData }) {
               <span className="category-chip">
                 {data.category ?? "ACHIEVEMENT"}
               </span>
+              {data.project ? (
+                <span className="project-badge" title={data.project}>
+                  <span className="project-badge-icon">📁</span>
+                  <span className="project-badge-name">{data.project}</span>
+                </span>
+              ) : null}
             </div>
             {data.reportDate ? (
               <span className="card-date">{data.reportDate}</span>
@@ -836,6 +843,7 @@ export function Constellation() {
           title: ach.title,
           detail: ach.detail,
           category: ach.category,
+          project: ach.project,
           evidence: ach.evidence,
           reportDate: report.date,
           isExpanded,

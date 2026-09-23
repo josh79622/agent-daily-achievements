@@ -97,8 +97,27 @@ describe("Disabled stepper (T5-15)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: en.header.datePrev }));
     fireEvent.click(screen.getByRole("button", { name: en.header.dateNext }));
-    fireEvent.click(screen.getByTitle(en.header.dateToday));
 
     expect(onDateChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("Today icon control (HIC-1, HIC-3 to HIC-5)", () => {
+  test("does not render a dedicated today button to preserve symmetrical stepper layout", () => {
+    render(
+      <DateSelector
+        selectedDate={selectedDate}
+        onDateChange={vi.fn()}
+        t={en}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: en.header.dateToday }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(en.header.selectDate)).toHaveAttribute(
+      "type",
+      "date",
+    );
   });
 });

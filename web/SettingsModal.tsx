@@ -31,6 +31,11 @@ interface ProviderStatus {
   readyVia?: string;
 }
 
+interface InstallerStatus {
+  installation: { status: "complete" | "pending" };
+  providerConnection: { state: "not-connected" | "configured" };
+}
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -52,6 +57,8 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const [models, setModels] = useState<ProviderModelView[]>([]);
   const [statuses, setStatuses] = useState<ProviderStatus[]>([]);
+  const [installerStatus, setInstallerStatus] =
+    useState<InstallerStatus | null>(null);
   const [preferredCli, setPreferredCli] = useState<SummaryProvider>("agy");
   const [sourceScope, setSourceScope] = useState<string[]>([
     "claude-code",
@@ -83,15 +90,21 @@ export function SettingsModal({
     async function loadData() {
       setLoading(true);
       try {
-        const [modelsRes, permRes, providersRes] = await Promise.all([
-          fetch("/api/summarizer/models").then((r) => (r.ok ? r.json() : null)),
-          fetch("/api/summarizer/permission").then((r) =>
-            r.ok ? r.json() : null,
-          ),
-          fetch("/api/summarizer/providers").then((r) =>
-            r.ok ? r.json() : null,
-          ),
-        ]);
+        const [modelsRes, permRes, providersRes, installerRes] =
+          await Promise.all([
+            fetch("/api/summarizer/models").then((r) =>
+              r.ok ? r.json() : null,
+            ),
+            fetch("/api/summarizer/permission").then((r) =>
+              r.ok ? r.json() : null,
+            ),
+            fetch("/api/summarizer/providers").then((r) =>
+              r.ok ? r.json() : null,
+            ),
+            fetch("/api/installer/status").then((r) =>
+              r.ok ? r.json() : null,
+            ),
+          ]);
 
         if (!active) return;
         if (modelsRes?.providers) {
@@ -107,6 +120,9 @@ export function SettingsModal({
         }
         if (providersRes?.providers) {
           setStatuses(providersRes.providers);
+        }
+        if (installerRes?.installation && installerRes?.providerConnection) {
+          setInstallerStatus(installerRes);
         }
       } catch (err) {
         console.error("Failed to load settings data", err);
@@ -236,6 +252,29 @@ export function SettingsModal({
     }
   };
 
+  const handleStartLogin = async (provider: SummaryProvider) => {
+    if (isBusy) return;
+    setCheckingProvider(provider);
+    try {
+      const res = await fetch(
+        `/api/summarizer/providers/${encodeURIComponent(provider)}/login`,
+        { method: "POST" },
+      );
+      if (res.ok) {
+        const body = (await res.json()) as { provider: ProviderStatus };
+        setStatuses((prev) =>
+          prev.map((status) =>
+            status.provider === provider ? body.provider : status,
+          ),
+        );
+      }
+    } catch {
+      // Provider command output and errors deliberately stay outside the UI.
+    } finally {
+      setCheckingProvider(null);
+    }
+  };
+
   const handleGenerateReport = async () => {
     if (isBusy) return;
     setGenerating(true);
@@ -306,135 +345,195 @@ export function SettingsModal({
             {loading ? (
               <p className="evidence-text-faint">{t.states.loading}</p>
             ) : (
-              <div className="providers-list">
-                {(["agy", "claude-code", "codex"] as SummaryProvider[]).map(
-                  (provider) => {
-                    const modelView = models.find(
-                      (m) => m.provider === provider,
-                    );
-                    const status = statuses.find(
-                      (s) => s.provider === provider,
-                    );
-                    const isPreferred = preferredCli === provider;
-                    const isChecking = checkingProvider === provider;
+              <>
+                {installerStatus?.installation.status === "complete" &&
+                  installerStatus.providerConnection.state ===
+                    "not-connected" && (
+                    <p className="action-message" role="status">
+                      {t.settings.noSummarizerConnected}
+                    </p>
+                  )}
+                <div className="providers-list">
+                  {(["agy", "claude-code", "codex"] as SummaryProvider[]).map(
+                    (provider) => {
+                      const modelView = models.find(
+                        (m) => m.provider === provider,
+                      );
+                      const status = statuses.find(
+                        (s) => s.provider === provider,
+                      );
+                      const isPreferred = preferredCli === provider;
+                      const isChecking = checkingProvider === provider;
 
-                    return (
-                      <div
-                        key={provider}
-                        className={`provider-card ${isPreferred ? "is-preferred" : ""}`}
-                      >
-                        <div className="provider-header">
-                          <label className="provider-radio-label">
-                            <input
-                              type="radio"
-                              name="preferredProvider"
-                              value={provider}
-                              checked={isPreferred}
-                              disabled={isBusy}
-                              onChange={() =>
-                                void handlePreferredChange(provider)
-                              }
-                            />
-                            <strong className="provider-name">
-                              {providerNames[provider]}
-                            </strong>
-                          </label>
-                          {isPreferred && (
-                            <span className="preferred-badge">
-                              ★ 首選 Preferred
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="provider-controls">
-                          {/* Model Select */}
-                          <div className="control-group">
-                            <label className="control-label">
-                              {t.settings.modelLabel}
+                      return (
+                        <div
+                          key={provider}
+                          className={`provider-card ${isPreferred ? "is-preferred" : ""}`}
+                        >
+                          <div className="provider-header">
+                            <label className="provider-radio-label">
+                              <input
+                                type="radio"
+                                name="preferredProvider"
+                                value={provider}
+                                checked={isPreferred}
+                                disabled={isBusy}
+                                onChange={() =>
+                                  void handlePreferredChange(provider)
+                                }
+                              />
+                              <strong className="provider-name">
+                                {providerNames[provider]}
+                              </strong>
                             </label>
-                            <select
-                              className="settings-select"
-                              value={modelView?.selected ?? "default"}
-                              disabled={isBusy}
-                              onChange={(e) =>
-                                void handleModelSelect(provider, e.target.value)
-                              }
-                            >
-                              <option value="default">
-                                預設模型 (Default)
-                              </option>
-                              {modelView?.options.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
+                            {isPreferred && (
+                              <span className="preferred-badge">
+                                ★ 首選 Preferred
+                              </span>
+                            )}
                           </div>
 
-                          {/* Effort Select (if available) */}
-                          {modelView && modelView.effortOptions.length > 0 && (
+                          <div className="provider-controls">
+                            {/* Model Select */}
                             <div className="control-group">
                               <label className="control-label">
-                                {t.settings.effortLabel}
+                                {t.settings.modelLabel}
                               </label>
                               <select
                                 className="settings-select"
-                                value={modelView.selectedEffort}
+                                value={modelView?.selected ?? "default"}
                                 disabled={isBusy}
                                 onChange={(e) =>
-                                  void handleEffortSelect(
+                                  void handleModelSelect(
                                     provider,
                                     e.target.value,
                                   )
                                 }
                               >
-                                <option value="default">Default</option>
-                                {modelView.effortOptions.map((eff) => (
-                                  <option key={eff} value={eff}>
-                                    {eff}
+                                <option value="default">
+                                  預設模型 (Default)
+                                </option>
+                                {modelView?.options.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
                                   </option>
                                 ))}
                               </select>
                             </div>
-                          )}
 
-                          {/* Status & Test */}
-                          <div className="provider-status-row">
-                            <div className="status-badge-wrap">
-                              <span className="control-label">
-                                {t.settings.statusLabel}:
-                              </span>
-                              <span
-                                className={`status-pill status-${status?.state || "unknown"}`}
+                            {/* Effort Select (if available) */}
+                            {modelView &&
+                              modelView.effortOptions.length > 0 && (
+                                <div className="control-group">
+                                  <label className="control-label">
+                                    {t.settings.effortLabel}
+                                  </label>
+                                  <select
+                                    className="settings-select"
+                                    value={modelView.selectedEffort}
+                                    disabled={isBusy}
+                                    onChange={(e) =>
+                                      void handleEffortSelect(
+                                        provider,
+                                        e.target.value,
+                                      )
+                                    }
+                                  >
+                                    <option value="default">Default</option>
+                                    {modelView.effortOptions.map((eff) => (
+                                      <option key={eff} value={eff}>
+                                        {eff}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )}
+
+                            {/* Status & Test */}
+                            <div className="provider-status-row">
+                              <div className="status-badge-wrap">
+                                <span className="control-label">
+                                  {t.settings.statusLabel}:
+                                </span>
+                                {status?.state === "ready" ? (
+                                  <span className="status-pill status-ready">
+                                    🟢 {t.settings.statusReady}
+                                  </span>
+                                ) : status?.signedIn ? (
+                                  <span className="status-pill status-signed-in">
+                                    🔵 {t.settings.statusSignedIn}
+                                  </span>
+                                ) : status?.state === "login-in-progress" ? (
+                                  <span
+                                    className="status-pill status-login-in-progress"
+                                    title={t.settings.checkStatus}
+                                  >
+                                    🟡 {t.settings.statusLoginInProgress}
+                                  </span>
+                                ) : status?.state === "sign-in-required" ? (
+                                  <span className="status-pill status-sign-in-required">
+                                    🟡 {t.settings.statusSignInRequired}
+                                  </span>
+                                ) : status?.state === "not-installed" ? (
+                                  <span className="status-pill status-not-installed">
+                                    ⚪️ {t.settings.statusNotInstalled}
+                                  </span>
+                                ) : status?.state === "probe-failed" ? (
+                                  <span className="status-pill status-probe-failed">
+                                    🔴 Check failed
+                                  </span>
+                                ) : (
+                                  <span
+                                    className={`status-pill status-${status?.state || "unknown"}`}
+                                  >
+                                    {status?.state || "Not checked"}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                className="btn btn-secondary check-btn"
+                                disabled={isBusy}
+                                onClick={() =>
+                                  void handleCheckReadiness(provider)
+                                }
                               >
-                                {status?.state === "ready"
-                                  ? "🟢 Ready"
-                                  : status?.state === "sign-in-required"
-                                    ? "🟡 Sign-in required"
-                                    : status?.state === "not-installed"
-                                      ? "⚪️ Not installed"
-                                      : status?.state || "Not checked"}
-                              </span>
+                                {isChecking
+                                  ? t.settings.checking
+                                  : t.settings.checkStatus}
+                              </button>
+                              {!status?.signedIn &&
+                                status?.state !== "ready" &&
+                                status?.state !== "not-installed" && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-secondary check-btn"
+                                    disabled={isBusy}
+                                    onClick={() =>
+                                      void handleStartLogin(provider)
+                                    }
+                                  >
+                                    {t.settings.signInProvider}
+                                  </button>
+                                )}
+                              {status?.state === "not-installed" && (
+                                <a
+                                  className="btn btn-secondary check-btn"
+                                  href={status.installUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  {t.settings.installProvider}
+                                </a>
+                              )}
                             </div>
-                            <button
-                              type="button"
-                              className="btn btn-secondary check-btn"
-                              disabled={isBusy}
-                              onClick={() =>
-                                void handleCheckReadiness(provider)
-                              }
-                            >
-                              {isChecking
-                                ? t.settings.checking
-                                : t.settings.checkStatus}
-                            </button>
                           </div>
                         </div>
-                      </div>
-                    );
-                  },
-                )}
-              </div>
+                      );
+                    },
+                  )}
+                </div>
+              </>
             )}
           </section>
 

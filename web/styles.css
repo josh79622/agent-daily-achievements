@@ -1005,6 +1005,7 @@ main,
     "Segoe UI",
     sans-serif;
   color: #f1f5f9;
+  overflow-x: hidden;
 }
 
 .zen-header {
@@ -1013,12 +1014,16 @@ main,
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 1rem;
   margin-bottom: 2rem;
   padding-bottom: 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .brand-badge {
+  display: inline-flex;
+  align-items: center;
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -1028,12 +1033,86 @@ main,
   padding: 0.35rem 0.8rem;
   border-radius: 9999px;
   box-shadow: 0 0 16px rgba(16, 185, 129, 0.15);
+  flex-shrink: 0;
 }
 
-.zen-nav-group {
-  display: flex;
+.header-utilities {
+  display: inline-flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 0.5rem;
+  min-width: 0;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.header-icon-control {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.header-icon-button {
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.header-icon-button:hover:not(:disabled),
+.header-icon-button:focus-visible,
+.header-icon-button[aria-expanded="true"],
+.header-icon-button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.header-icon-button:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 3px;
+}
+
+.header-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.header-icon-tooltip {
+  position: absolute;
+  z-index: 60;
+  inset-inline-start: 50%;
+  inset-block-start: calc(100% + 0.45rem);
+  transform: translateX(-50%);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+
+.header-icon-control:hover .header-icon-tooltip,
+.header-icon-control:focus-within .header-icon-tooltip,
+.header-icon-tooltip.is-visible {
+  visibility: visible;
+  opacity: 1;
 }
 
 .date-display {
@@ -1103,7 +1182,9 @@ main,
 .date-picker-wrap {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .zen-date-input {
@@ -1230,6 +1311,9 @@ main,
   align-items: center;
   gap: 0.75rem;
   flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+  row-gap: 0.35rem;
 }
 
 .status-dot {
@@ -1267,6 +1351,40 @@ main,
   letter-spacing: -0.015em;
   color: #ffffff;
   line-height: 1.4;
+  word-break: break-word;
+}
+
+.project-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.3;
+  max-width: 220px;
+  white-space: nowrap;
+  vertical-align: middle;
+  flex-shrink: 0;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.project-badge-icon {
+  font-size: 0.75rem;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.project-badge-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-actions {
@@ -1842,6 +1960,29 @@ body[data-theme="light"] {
   border-color: rgba(0, 0, 0, 0.2);
 }
 
+[data-theme="light"] .header-icon-button {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .header-icon-button:hover:not(:disabled),
+[data-theme="light"] .header-icon-button:focus-visible,
+[data-theme="light"] .header-icon-button[aria-expanded="true"],
+[data-theme="light"] .header-icon-button[aria-pressed="true"] {
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #0f172a;
+}
+
+[data-theme="light"] .header-icon-tooltip {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.16);
+  color: #0f172a;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
 [data-theme="light"] .concept-switcher-bar {
   background: rgba(241, 245, 249, 0.9);
   border-color: rgba(0, 0, 0, 0.08);
@@ -1904,6 +2045,12 @@ body[data-theme="light"] {
 
 [data-theme="light"] .card-title {
   color: #0f172a;
+}
+
+[data-theme="light"] .project-badge {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.75);
 }
 
 [data-theme="light"] .card-detail {
@@ -2418,7 +2565,17 @@ body[data-theme="light"] {
   color: #34d399;
 }
 
+.status-signed-in {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
 .status-sign-in-required {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.status-login-in-progress {
   background: rgba(245, 158, 11, 0.15);
   color: #fbbf24;
 }
@@ -2426,6 +2583,11 @@ body[data-theme="light"] {
 .status-not-installed {
   background: rgba(148, 163, 184, 0.12);
   color: #94a3b8;
+}
+
+.status-probe-failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
 }
 
 .check-btn {
@@ -2787,6 +2949,10 @@ body[data-theme="light"] {
   font-size: 0.82rem !important;
 }
 
+.header-icon-button.date-selector-btn {
+  padding: 0 !important;
+}
+
 .search-activity-btn {
   font-size: 0.82rem !important;
   padding: 0.35rem 0.85rem !important;
@@ -2802,8 +2968,28 @@ body[data-theme="light"] {
 }
 
 .language-selector-btn {
-  min-width: 7.5rem;
-  justify-content: center;
+  min-inline-size: 0;
+}
+
+@media (max-width: 620px) {
+  .zen-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .brand-badge {
+    align-self: center;
+  }
+
+  .date-picker-wrap {
+    overflow-x: auto;
+    justify-content: center;
+  }
+
+  .header-utilities {
+    justify-content: space-between;
+  }
 }
 
 .language-menu {

@@ -25,6 +25,7 @@ export interface Achievement {
   detail: string;
   evidence: EvidenceRef[];
   isPrimary?: boolean;
+  project?: string;
 }
 
 export type CoverageState =
@@ -47,6 +48,7 @@ export interface ReportCoverage {
 export type EvidenceManifest = ReadonlyArray<{
   source: ReportSource;
   recordId: string;
+  project?: string;
   messageIds: readonly string[];
 }>;
 
@@ -79,8 +81,12 @@ const requiredAchievementKeys = [
   "id",
   "title",
 ];
-const allowedAchievementKeys = [...requiredAchievementKeys, "isPrimary"];
-const limits = { id: 64, title: 120, detail: 500 } as const;
+const allowedAchievementKeys = [
+  ...requiredAchievementKeys,
+  "isPrimary",
+  "project",
+];
+const limits = { id: 64, title: 120, detail: 500, project: 100 } as const;
 
 class Invalid extends Error {
   constructor(readonly issue: ValidationIssue) {
@@ -132,26 +138,35 @@ function checkCandidate(
   );
   const ids = new Set<string>();
   const evidenceSets = new Set<string>();
+  const result: Achievement[] = [];
 
-  for (const achievement of achievements) {
+  for (const rawAchievement of achievements) {
     if (
-      !isPlainObject(achievement) ||
-      !hasOnlyKeys(achievement, allowedAchievementKeys) ||
-      !requiredAchievementKeys.every((key) => key in achievement)
+      !isPlainObject(rawAchievement) ||
+      !hasOnlyKeys(rawAchievement, allowedAchievementKeys) ||
+      !requiredAchievementKeys.every((key) => key in rawAchievement)
     )
       throw new Invalid("invalid-achievement");
     if (
-      "isPrimary" in achievement &&
-      typeof achievement.isPrimary !== "boolean"
+      "isPrimary" in rawAchievement &&
+      typeof rawAchievement.isPrimary !== "boolean"
     )
       throw new Invalid("invalid-achievement");
+    if ("project" in rawAchievement && rawAchievement.project !== undefined) {
+      if (
+        typeof rawAchievement.project !== "string" ||
+        rawAchievement.project.trim() === "" ||
+        rawAchievement.project.length > limits.project
+      )
+        throw new Invalid("invalid-achievement");
+    }
     if (
-      typeof achievement.category !== "string" ||
-      !categories.includes(achievement.category)
+      typeof rawAchievement.category !== "string" ||
+      !categories.includes(rawAchievement.category)
     )
       throw new Invalid("invalid-category");
     for (const field of ["id", "title", "detail"] as const) {
-      const value = achievement[field];
+      const value = rawAchievement[field];
       if (
         typeof value !== "string" ||
         value.trim() === "" ||
@@ -159,24 +174,53 @@ function checkCandidate(
       )
         throw new Invalid("invalid-achievement");
     }
-    const id = achievement.id as string;
+    const id = rawAchievement.id as string;
     if (ids.has(id)) throw new Invalid("duplicate-achievement-id");
     ids.add(id);
 
-    const keys = checkEvidence(achievement.evidence, manifest, included);
+    const keys = checkEvidence(rawAchievement.evidence, manifest, included);
     const evidenceSet = JSON.stringify([
-      achievement.category,
+      rawAchievement.category,
       [...keys].sort(),
     ]);
     if (evidenceSets.has(evidenceSet)) throw new Invalid("duplicate-evidence");
     evidenceSets.add(evidenceSet);
+
+    const validated: Achievement = {
+      id: rawAchievement.id as string,
+      category: rawAchievement.category as AchievementCategory,
+      title: rawAchievement.title as string,
+      detail: rawAchievement.detail as string,
+      evidence: rawAchievement.evidence as EvidenceRef[],
+      ...(rawAchievement.isPrimary !== undefined
+        ? { isPrimary: rawAchievement.isPrimary as boolean }
+        : {}),
+    };
+
+    const firstRef = (rawAchievement.evidence as EvidenceRef[])[0];
+    const entry = firstRef
+      ? manifest.find(
+          (m) =>
+            m.source === firstRef.source && m.recordId === firstRef.recordId,
+        )
+      : undefined;
+    const resolvedProject =
+      entry?.project ??
+      (typeof rawAchievement.project === "string" &&
+      rawAchievement.project.trim()
+        ? (rawAchievement.project as string).trim()
+        : undefined);
+    if (resolvedProject) {
+      validated.project = resolvedProject;
+    }
+
+    result.push(validated);
   }
-  const primaryCount = achievements.filter(
-    (achievement) =>
-      isPlainObject(achievement) && achievement.isPrimary === true,
+  const primaryCount = result.filter(
+    (achievement) => achievement.isPrimary === true,
   ).length;
   if (primaryCount > 1) throw new Invalid("invalid-achievement");
-  return achievements as Achievement[];
+  return result;
 }
 
 function checkEvidence(
@@ -333,7 +377,7 @@ export function assembleReport({
 }
 
 export type AchievementEdit = Partial<
-  Pick<Achievement, "title" | "detail" | "isPrimary">
+  Pick<Achievement, "title" | "detail" | "isPrimary" | "project">
 >;
 
 /**
@@ -350,7 +394,7 @@ export function isValidAchievementEdit(
   if (!isPlainObject(value)) return false;
   if (
     Object.keys(value).length === 0 ||
-    !hasOnlyKeys(value, ["title", "detail", "isPrimary"])
+    !hasOnlyKeys(value, ["title", "detail", "isPrimary", "project"])
   )
     return false;
   for (const field of ["title", "detail"] as const) {
@@ -365,6 +409,14 @@ export function isValidAchievementEdit(
   }
   if ("isPrimary" in value && typeof value.isPrimary !== "boolean") {
     return false;
+  }
+  if ("project" in value) {
+    if (
+      typeof value.project !== "string" ||
+      value.project.length > limits.project
+    ) {
+      return false;
+    }
   }
   return true;
 }

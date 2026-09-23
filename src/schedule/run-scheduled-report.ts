@@ -42,6 +42,12 @@ export interface ScheduledRunDeps {
   ) => Promise<ReportDayPayload>;
   availableSummaryProviders: SummaryProvider[];
   /**
+   * Optional update handoff. It is deliberately invoked only after a report
+   * has been saved successfully; update failures must not rewrite a completed
+   * report result.
+   */
+  checkForAutomaticUpdate?: () => Promise<void>;
+  /**
    * Builds a runner bound to a report store of the caller's choosing. Real
    * wiring passes `createSummaryRunner` a store that only actually reaches
    * disk once this function has decided the run succeeded (see
@@ -93,6 +99,14 @@ export async function runScheduledReport(
       await runner.run(provider, request);
       const report = capture.take();
       if (report) await deps.reportStore.save(report);
+      if (deps.checkForAutomaticUpdate) {
+        try {
+          await deps.checkForAutomaticUpdate();
+        } catch {
+          // The update service owns its safe error record. A completed report
+          // stays completed even if its follow-up update check fails.
+        }
+      }
       return { status: "generated", date, provider };
     } catch (error) {
       capture.take(); // discard anything the failed attempt captured

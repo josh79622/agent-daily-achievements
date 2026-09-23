@@ -126,23 +126,11 @@ test("RG-1: the route builds the payload from collected sessions with no injecte
 
   const request = app.calls[0];
   expect(request?.scheduled).toBe(true);
-  // Conversations follow the approved source scope order, not the clock: the
-  // 09:30 Codex session precedes the 09:12 Claude Code one.
+  // Conversations preserve chronological order by startedAt: the 09:12 Claude
+  // Code session precedes the 09:30 Codex one.
   expect(JSON.parse(request?.payload.payloadJson ?? "null")).toEqual({
     date: "2026-09-18",
     conversations: [
-      {
-        source: "codex",
-        recordId: "codex-session",
-        messages: [
-          {
-            id: "codex-session.jsonl:2",
-            role: "user",
-            time: "09:30",
-            text: "wrote the payload builder",
-          },
-        ],
-      },
       {
         source: "claude-code",
         recordId: "claude-session",
@@ -155,18 +143,30 @@ test("RG-1: the route builds the payload from collected sessions with no injecte
           },
         ],
       },
+      {
+        source: "codex",
+        recordId: "codex-session",
+        messages: [
+          {
+            id: "codex-session.jsonl:2",
+            role: "user",
+            time: "09:30",
+            text: "wrote the payload builder",
+          },
+        ],
+      },
     ],
   });
   expect(request?.payload.manifest).toEqual([
     {
-      source: "codex",
-      recordId: "codex-session",
-      messageIds: ["codex-session.jsonl:2"],
-    },
-    {
       source: "claude-code",
       recordId: "claude-session",
       messageIds: ["cc-1"],
+    },
+    {
+      source: "codex",
+      recordId: "codex-session",
+      messageIds: ["codex-session.jsonl:2"],
     },
   ]);
   expect(request?.payload.coverage).toEqual([

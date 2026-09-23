@@ -802,51 +802,50 @@ Two working-style points Josh set this session, both of which changed how I writ
 are written in **Given/When/Then**, in plain short English, preferring standard industry terms;
 and CSS/layout coverage is **deferred to a future end-to-end layer**, not forced into jsdom.
 
-**Update 2026-09-21 (read this first):** HEAD is `be95d91`, working tree clean, `npm run check` passes
-with 319 tests. The dev server (`npm run dev`, port 4317) was left running and serves the current
-build. Testing the language dropdown changes `summaryLanguage` in `data/summary-permission.json`
-(it was restored to `zh-TW`). Next work is Task L2 (see "Next" under the L1 entry above), starting
-with writing its test cases for Josh's approval. Josh's working style, unchanged: decisions one at a
-time, plain explanations, approve test cases before code, short answers led by one next action, and
-replies in English first then Traditional Chinese.
+**Update 2026-09-22 (read this first):** HEAD is `ddf0bb7`, working tree clean, `npm run check` passes
+with 559 tests across 64 test files. The dev server (`npm run dev`, port 4317) serves the current
+build on worktree branch `codex/macos-one-line-installer`.
 
+- Exact dev server command (user rule):
+  `cd /Users/joshtsai/Documents/agent-daily-achievements/.worktrees/macos-one-line-installer && npm run dev`
+  Server runs at `http://127.0.0.1:4317/`.
+- Merge verification rule (user rule): ALWAYS run `npm run lint` and verify
+  before merging any branches into `main`.
+- Accomplishments in this cycle:
+  1. **MacOS Bootstrapper & Portable Setup**:
+     - Added standalone `install.sh` shell script downloading managed Node 24 LTS and configuring local execution.
+     - Fixed scheduled launchd runner (`scripts/install-launchd.mjs` and `src/schedule/launchd-plist.ts`) to use the running/managed Node path instead of hardcoded `/opt/homebrew/opt/node@24/bin/node`.
+     - `setup` now installs default external summarization permission per BRIEF.md (`data/summary-permission.json`) alongside timezone.
+  2. **Header Layout & Compact Navigation**:
+     - Centered symmetrical DateStepper (Prev, Date Input, Next) between "Daily Proof" brand badge and utilities.
+     - Compact utility icon buttons (Local Activity, Settings, Language, Theme) with stable min-width to avoid flexbox jitter.
+  3. **Settings & Incomplete Report UX**:
+     - Login button in Settings automatically hides when provider is signed in or ready; status pills indicate `🟢 就緒`, `🟡 需登入`, `🟡 登入中…`, `⚪️ 未安裝`.
+     - Friendly localized callout in ZenJournal directing user to settings if summarizer permission is missing.
+     - Visible incomplete report error banner with a one-click "⚡ 重新產生摘要" (Regenerate Summary) button.
+  4. **Dynamic Multi-Project Attribution**:
+     - Collector extracts real project names from `cwd`, workspace URIs, and file paths. Added `projectFromCwd` and `findDirectoryFromSlug` to resolve temporary Claude scratchpad paths (e.g. `/private/tmp/claude-501/-Users-joshtsai-Documents-Josh-JobHunt/.../scratchpad/xreview`) back to enclosing real project (`Josh_JobHunt`) and blacklisted generic directory names (`xreview`, `scratchpad`, `tmp`).
+     - In `buildReportDayPayload`, grouped sessions by project and interleaved round-robin so single large sessions don't starve other projects.
+     - Added `project` property to `Achievement` and `EvidenceManifest`, strictly grounded in manifest evidence.
+  5. **Prompt Structure & Evidence Sanitization**:
+     - In `buildSummaryRequestText`, dynamically parses conversations to generate a `"Conversations by Project"` index mapping every conversation to its project, giving the model clear visibility of all active projects.
+     - Refined date guidance focusing on `HH:mm` for report-date accomplishments while treating `YYYY-MM-DD HH:mm` as background context.
+     - Solved the 0-achievement empty report bug (`{"achievements": []}`) by removing panic-inducing negative constraints.
+     - Added `sanitizeCandidateEvidence` in `summary-run.ts` to defend against hallucinated message IDs or recordId mixups while preserving true source/record grounding.
+  6. **Real End-to-End Verification (2026-09-21)**:
+     - Successfully generated 2026-09-21 daily report with `agy` (Gemini 3.8 Flash), producing 4 achievements spanning both `agent-daily-achievements` (including primary milestone) and `Josh_JobHunt`, with `status: "complete"` and valid evidence links.
 
-Written 2026-09-19 at a session boundary; Josh's next session may be with a
+Written 2026-09-22 at a session boundary; Josh's next session may be with a
 different agent CLI (Codex or "Antigravity"), so this assumes no memory of
 this conversation, only this repo's files.
 
-- Checkout: `/Users/joshtsai/Documents/agent-daily-achievements`, branch
-  `master`.
-- Exact dev server command (user rule):
-  `cd /Users/joshtsai/Documents/agent-daily-achievements && npm run dev`
-  Server runs at `http://127.0.0.1:4317/`.
-- Runtime: always put `/opt/homebrew/opt/node@24/bin` first on `PATH`; the
-  shell's default Node 25 fails to start (missing Homebrew library). Gate:
-  `npm run check` — runs format, lint, two `tsc` passes (server, then
-  `-p tsconfig.web.json` for the web app's JSX/DOM types), Vitest, then the
-  build (`tsc` + `vite build`).
-- Merge verification rule (user rule): ALWAYS run `npm run lint` and verify
-  before merging any branches into `main`.
-- Completed features:
-  - **Google Antigravity History Collector**: Added `"antigravity"` to `LocalSource` and `ReportSource`. Parses `~/.gemini/antigravity/brain/**/transcript.jsonl`, unwraps `<USER_REQUEST>`, maps tool calls and tool results, excludes thinking steps and system messages.
-  - **Date Picker & Default to Yesterday**: Web UI (`web/ZenJournal.tsx`) initializes `selectedDate` to yesterday (`getYesterdayDate()`), with intuitive quick controls (`←`, `Yesterday`, `Today`, `→`, and date input), plus on-demand summary generation for any date.
-  - **Stdin Streaming for Large Payloads**: Passed prompts to `agy` via `stdin` piping rather than CLI argument to permanently resolve OS `ARG_MAX` limitation on busy days with hundreds of messages.
-  - **Full Settings Modal & Unified Language**: Modal in ZenJournal with model select for `agy`, `claude-code`, and `codex`, Effort picker, readiness test, unified language toggle (`zh-TW` / `en`), and summary regeneration.
-  - **Real End-to-End Report Generation (2026-09-18)**: Successfully generated a complete daily report for 2026-09-18 using `agy` (Gemini 3.8 Flash), identifying 5 key achievements with "Complete local login flow and live verification" designated as the primary milestone (`isPrimary: true`).
-- Summarizer & Prompt:
-  - Universal concise prompt in `src/report/summary-prompt.ts`: strictly 3-5 punchy
-    items (<40 chars), 1-2 outcome sentences, negative decision credit, no audit jargon.
-  - Three first-class providers supported: `agy` (Google Antigravity / Gemini CLI),
-    `claude-code`, and `codex`.
-- Local state that already reflects real use, not synthetic data:
-  `data/local-sources.json`, `data/summary-permission.json`, and
-  `data/reports/2026-09-09.json`, `data/reports/2026-09-18.json`, and `data/reports/2026-09-19.json`.
 - Key documents for the current work:
-  `web/ZenJournal.tsx` (primary UI), `web/SettingsModal.tsx` (settings), `web/styles.css` (themes and layout styles),
-  `src/collector/local-collector.ts` (source collection), `src/summarizer/summary-run.ts`
-  (multi-provider execution runner).
+  `web/ZenJournal.tsx` (primary UI), `web/SettingsModal.tsx` (settings), `src/report/summary-prompt.ts` (prompting & project index),
+  `src/collector/local-collector.ts` (source collection & project extraction), `src/summarizer/summary-run.ts` (execution & sanitization),
+  `src/report/contract.ts` (report data contract & validation).
 - Working agreement observed with Josh:
   - follow `AGENTS.md` (canonical);
   - bring decisions one at a time with options and a recommendation;
   - run `npm run check` and verify before claiming tasks complete;
   - never transmit raw conversation data without saved consent.
+
