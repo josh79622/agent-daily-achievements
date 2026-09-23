@@ -87,7 +87,7 @@ export const en = {
     statusLabel: "Status",
     checkStatus: "Check Status",
     checking: "Checking…",
-    generateReportBtn: "⚡️ Generate Today's Summary",
+    generateReportBtn: "Regenerate Summary",
     generateSuccess: "Report generated successfully!",
     generateError: "Generation failed",
   },

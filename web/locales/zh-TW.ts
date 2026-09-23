@@ -83,7 +83,7 @@ export const zhTW: Translations = {
     statusLabel: "狀態",
     checkStatus: "檢查狀態",
     checking: "檢查中…",
-    generateReportBtn: "⚡️ 重新生成今日摘要",
+    generateReportBtn: "重新產生摘要",
     generateSuccess: "日報生成成功！",
     generateError: "生成失敗",
   },

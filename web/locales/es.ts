@@ -86,7 +86,7 @@ export const es: Translations = {
     statusLabel: "Estado",
     checkStatus: "Comprobar estado",
     checking: "Comprobando…",
-    generateReportBtn: "⚡️ Generar el resumen de hoy",
+    generateReportBtn: "Regenerar resumen",
     generateSuccess: "¡Informe generado correctamente!",
     generateError: "Error al generar",
   },
