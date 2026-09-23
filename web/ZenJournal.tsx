@@ -33,6 +33,7 @@ import { LanguageSelector } from "./LanguageSelector.js";
 import { SettingsModal } from "./SettingsModal.js";
 import { LocalActivityModal } from "./LocalActivityModal.js";
 import { DateSelector } from "./DateSelector.js";
+import { HeaderIconButton } from "./HeaderIconButton.js";
 import { getYesterdayDate } from "./date-utils.js";
 
 type ViewMode = "journal" | "bento" | "briefing";
@@ -165,6 +166,7 @@ function AchievementCard({
   const [isRemoving, setIsRemoving] = useState(false);
   const [editTitle, setEditTitle] = useState(achievement.title);
   const [editDetail, setEditDetail] = useState(achievement.detail);
+  const [editProject, setEditProject] = useState(achievement.project ?? "");
   const [editIsPrimary, setEditIsPrimary] = useState(
     achievement.isPrimary ?? false,
   );
@@ -176,8 +178,14 @@ function AchievementCard({
   useEffect(() => {
     setEditTitle(achievement.title);
     setEditDetail(achievement.detail);
+    setEditProject(achievement.project ?? "");
     setEditIsPrimary(achievement.isPrimary ?? false);
-  }, [achievement.title, achievement.detail, achievement.isPrimary]);
+  }, [
+    achievement.title,
+    achievement.detail,
+    achievement.project,
+    achievement.isPrimary,
+  ]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -192,6 +200,7 @@ function AchievementCard({
           body: JSON.stringify({
             title: editTitle,
             detail: editDetail,
+            project: editProject.trim() || undefined,
             isPrimary: editIsPrimary,
           }),
         },
@@ -271,6 +280,20 @@ function AchievementCard({
             />
           </div>
           <div className="form-group">
+            <label htmlFor={`edit-project-${achievement.id}`}>
+              {t.card.editProjectLabel}
+            </label>
+            <input
+              id={`edit-project-${achievement.id}`}
+              type="text"
+              maxLength={100}
+              value={editProject}
+              onChange={(e) => setEditProject(e.target.value)}
+              disabled={isSaving}
+              placeholder={t.card.editProjectLabel}
+            />
+          </div>
+          <div className="form-group">
             <label htmlFor={`edit-detail-${achievement.id}`}>
               {t.card.editDetailPlaceholder}
             </label>
@@ -313,6 +336,7 @@ function AchievementCard({
                 setEditError(undefined);
                 setEditTitle(achievement.title);
                 setEditDetail(achievement.detail);
+                setEditProject(achievement.project ?? "");
                 setEditIsPrimary(achievement.isPrimary ?? false);
               }}
             >
@@ -326,6 +350,14 @@ function AchievementCard({
             <div className="card-heading">
               <span className={`status-dot ${category}`} title={category} />
               <h3 className="card-title">{achievement.title}</h3>
+              {achievement.project ? (
+                <span className="project-badge" title={achievement.project}>
+                  <span className="project-badge-icon">📁</span>
+                  <span className="project-badge-name">
+                    {achievement.project}
+                  </span>
+                </span>
+              ) : null}
             </div>
             <div className="card-actions">
               {isRemoving ? (
@@ -432,6 +464,9 @@ export function ZenJournal() {
   const [generateMessage, setGenerateMessage] = useState<string | undefined>(
     undefined,
   );
+  const [generateErrorType, setGenerateErrorType] = useState<
+    "permission" | "generic" | undefined
+  >(undefined);
 
   const [language, setLanguage] = useState<Language>(() =>
     loadSavedLanguage(localStorage),
@@ -559,6 +594,7 @@ export function ZenJournal() {
     async (date?: string) => {
       setLoading(true);
       setGenerateMessage(undefined);
+      setGenerateErrorType(undefined);
       try {
         const url = date
           ? `/api/reports/${encodeURIComponent(date)}`
@@ -577,7 +613,7 @@ export function ZenJournal() {
         const body = (await response.json()) as { report: AchievementReportV1 };
         setReport(body.report);
 
-        const incomplete = describeIncomplete(body.report.incomplete);
+        const incomplete = describeIncomplete(body.report.incomplete, t);
         if (incomplete.length) {
           setStatus(incomplete.join(" "));
         } else if (body.report.achievements.length === 0) {
@@ -592,7 +628,7 @@ export function ZenJournal() {
         setLoading(false);
       }
     },
-    [t.states.emptyDesc],
+    [t],
   );
 
   useEffect(() => {
@@ -602,6 +638,7 @@ export function ZenJournal() {
   async function handleGenerateForSelectedDate() {
     setIsGenerating(true);
     setGenerateMessage(undefined);
+    setGenerateErrorType(undefined);
     try {
       const res = await fetch("/api/reports/generate", {
         method: "POST",
@@ -621,15 +658,32 @@ export function ZenJournal() {
         error?: { message?: string };
       };
       if (!res.ok) {
-        throw new Error(
-          data.report?.reason ?? data.error?.message ?? "Generation failed.",
-        );
+        const errorMsg =
+          data.report?.reason ?? data.error?.message ?? "Generation failed.";
+        const isPermissionError =
+          res.status === 403 ||
+          errorMsg.includes("Save external summarization permission first") ||
+          errorMsg.toLowerCase().includes("permission");
+        if (isPermissionError) {
+          setGenerateErrorType("permission");
+          setGenerateMessage(t.states.permissionRequired);
+          return;
+        }
+        throw new Error(errorMsg);
       }
       await loadReport(selectedDate);
     } catch (err) {
-      setGenerateMessage(
-        err instanceof Error ? err.message : "Generation failed.",
-      );
+      const msg = err instanceof Error ? err.message : "Generation failed.";
+      const isPermissionError =
+        msg.includes("Save external summarization permission first") ||
+        msg.toLowerCase().includes("permission");
+      if (isPermissionError) {
+        setGenerateErrorType("permission");
+        setGenerateMessage(t.states.permissionRequired);
+      } else {
+        setGenerateErrorType("generic");
+        setGenerateMessage(msg);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -651,40 +705,32 @@ export function ZenJournal() {
     <div className="zen-app-shell">
       <header className="zen-header">
         <div className="brand-badge">Daily Proof</div>
-        <div className="zen-nav-group">
-          <div className="date-picker-wrap">
-            <DateSelector
-              selectedDate={selectedDate}
-              onDateChange={setSelectedDate}
-              disabled={loading || isGenerating}
-              t={t}
-              direction={direction}
-            />
-          </div>
+        <div className="date-picker-wrap">
+          <DateSelector
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            disabled={loading || isGenerating}
+            t={t}
+            direction={direction}
+          />
+        </div>
 
-          <button
-            type="button"
-            className="zen-theme-btn"
+        <div className="header-utilities">
+          <HeaderIconButton
+            label={t.header.activity}
             onClick={() => setIsActivityOpen(true)}
             disabled={isGenerating}
-            title={t.header.activity}
-            aria-label={t.header.activity}
           >
-            <span>📂</span>
-            <span className="theme-btn-text">{t.header.activity}</span>
-          </button>
+            <span aria-hidden="true">📂</span>
+          </HeaderIconButton>
 
-          <button
-            type="button"
-            className="zen-theme-btn"
+          <HeaderIconButton
+            label={t.header.settings}
             onClick={() => setIsSettingsOpen(true)}
             disabled={isGenerating}
-            title={t.header.settings}
-            aria-label={t.header.settings}
           >
-            <span>⚙️</span>
-            <span className="theme-btn-text">{t.header.settings}</span>
-          </button>
+            <span aria-hidden="true">⚙️</span>
+          </HeaderIconButton>
 
           <LanguageSelector
             language={language}
@@ -693,19 +739,13 @@ export function ZenJournal() {
             t={t}
           />
 
-          <button
-            type="button"
-            className="zen-theme-btn"
+          <HeaderIconButton
+            label={t.header.themeToggle}
             onClick={toggleTheme}
             disabled={isGenerating}
-            title={t.header.themeToggle}
-            aria-label={t.header.themeToggle}
           >
-            <span>{theme === "dark" ? "☀️" : "🌙"}</span>
-            <span className="theme-btn-text">
-              {theme === "dark" ? t.header.themeLight : t.header.themeDark}
-            </span>
-          </button>
+            <span aria-hidden="true">{theme === "dark" ? "☀️" : "🌙"}</span>
+          </HeaderIconButton>
         </div>
       </header>
 
@@ -766,6 +806,32 @@ export function ZenJournal() {
                 <span>{status}</span>
               </div>
             ) : null}
+
+            {report?.status === "incomplete" && (
+              <div
+                className="incomplete-regenerate-bar"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: "8px",
+                  marginTop: "-0.75rem",
+                  marginBottom: "1.5rem",
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleGenerateForSelectedDate}
+                  disabled={isGenerating}
+                >
+                  ⚡ {t.states.regenerateReport}
+                </button>
+                {generateMessage && (
+                  <p className="action-message error">{generateMessage}</p>
+                )}
+              </div>
+            )}
 
             {/* View 1: Zen Journal (Vertical cards) */}
             {viewMode === "journal" && (
@@ -878,7 +944,35 @@ export function ZenJournal() {
             <p className="zen-state-text">
               {status || format(t.states.emptyDateDesc, { date: selectedDate })}
             </p>
-            {generateMessage ? (
+            {generateErrorType === "permission" ? (
+              <div
+                className="permission-error-callout"
+                style={{
+                  margin: "16px auto",
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(239, 68, 68, 0.1)",
+                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                  maxWidth: "480px",
+                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "10px",
+                }}
+              >
+                <p className="action-message error" style={{ margin: 0 }}>
+                  {t.states.permissionRequired}
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setIsSettingsOpen(true)}
+                >
+                  ⚙️ {t.states.openSettings}
+                </button>
+              </div>
+            ) : generateMessage ? (
               <p className="action-message error">{generateMessage}</p>
             ) : null}
             <div

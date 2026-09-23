@@ -151,6 +151,7 @@ function makeChunk(
       {
         source: entry.source,
         recordId: entry.recordId,
+        ...(entry.project === undefined ? {} : { project: entry.project }),
         messageIds: entry.messageIds.filter((id) => messageIds.has(id)),
       },
     ];

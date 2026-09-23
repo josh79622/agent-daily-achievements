@@ -227,3 +227,36 @@ test("S1-16: with an unreadable stored timezone, the job does not invent one", a
   expect(deps.calls.buildPayload).toBe(0);
   expect(deps.calls.createRunner).toBe(0);
 });
+
+test("automatic updates are checked once only after a scheduled report has finished", async () => {
+  let updateChecks = 0;
+  const deps = baseDeps({
+    checkForAutomaticUpdate: async () => {
+      updateChecks += 1;
+    },
+  });
+
+  await expect(runScheduledReport(deps)).resolves.toMatchObject({
+    status: "generated",
+  });
+  expect(updateChecks).toBe(1);
+});
+
+test("a failed scheduled report does not trigger an automatic update", async () => {
+  let updateChecks = 0;
+  const deps = baseDeps({
+    checkForAutomaticUpdate: async () => {
+      updateChecks += 1;
+    },
+    createRunner: (): SummaryRunner => ({
+      async run() {
+        throw new Error("report failed");
+      },
+    }),
+  });
+
+  await expect(runScheduledReport(deps)).resolves.toMatchObject({
+    status: "failed",
+  });
+  expect(updateChecks).toBe(0);
+});

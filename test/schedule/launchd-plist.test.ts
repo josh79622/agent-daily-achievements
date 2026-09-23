@@ -5,9 +5,11 @@ import { buildLaunchdPlist } from "../../src/schedule/launchd-plist.js";
 // Task S1, test case S1-17.
 
 test("S1-17: the generated .plist runs the job entry point at 07:00 daily, with the repository's Node runtime", () => {
+  const managedNodePath =
+    "/Users/example/Library/Application Support/Agent Daily Achievements/runtimes/node-v24.12.0/bin/node";
   const plist = buildLaunchdPlist({
     label: "com.dailyproof.scheduled-report",
-    nodePath: "/opt/homebrew/opt/node@24/bin/node",
+    nodePath: managedNodePath,
     scriptPath: "/repo/dist/src/schedule/entry.js",
     workingDirectory: "/repo",
   });
@@ -25,9 +27,8 @@ test("S1-17: the generated .plist runs the job entry point at 07:00 daily, with 
   const programArguments = plist
     .split("<key>ProgramArguments</key>")[1]
     ?.split("</array>")[0];
-  expect(programArguments).toContain(
-    "<string>/opt/homebrew/opt/node@24/bin/node</string>",
-  );
+  expect(programArguments).toContain(`<string>${managedNodePath}</string>`);
+  expect(programArguments).not.toContain("/opt/homebrew/opt/node@24/bin/node");
   expect(programArguments).toContain(
     "<string>/repo/dist/src/schedule/entry.js</string>",
   );
@@ -48,7 +49,8 @@ test("S1-17: the generated .plist runs the job entry point at 07:00 daily, with 
 
 test("S1-17: the default label is used when none is given", () => {
   const plist = buildLaunchdPlist({
-    nodePath: "/opt/homebrew/opt/node@24/bin/node",
+    nodePath:
+      "/Users/example/Library/Application Support/Agent Daily Achievements/runtimes/node-v24.12.0/bin/node",
     scriptPath: "/repo/dist/src/schedule/entry.js",
     workingDirectory: "/repo",
   });

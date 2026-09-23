@@ -3,6 +3,8 @@ import { findLanguage } from "../src/report/languages.js";
 import type { Translations } from "./i18n.js";
 import { searchLanguageOptions } from "./language-options.js";
 import { buildLanguagePack } from "./language-runtime.js";
+import { HeaderIconButton } from "./HeaderIconButton.js";
+import { format } from "./i18n.js";
 
 type BuildRowState = { kind: "preparing" } | { kind: "failed"; reason: string };
 
@@ -45,6 +47,9 @@ export function LanguageSelector({
 
   const current = findLanguage(language);
   const options = searchLanguageOptions(query);
+  const tooltip = format(t.header.languageCurrentTooltip, {
+    language: current?.native ?? language,
+  });
 
   const choose = (code: string) => {
     setIsOpen(false);
@@ -71,21 +76,17 @@ export function LanguageSelector({
 
   return (
     <div className="language-selector" ref={rootRef}>
-      <button
-        type="button"
-        className="zen-theme-btn language-selector-btn"
+      <HeaderIconButton
+        className="language-selector-btn"
         onClick={() => setIsOpen((open) => !open)}
         disabled={disabled}
-        title={t.header.languageToggle}
-        aria-label={t.header.languageToggle}
+        label={t.header.languageToggle}
+        tooltip={tooltip}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span>🌐</span>
-        <span className="theme-btn-text">
-          {current ? current.native : language}
-        </span>
-      </button>
+        <span aria-hidden="true">🌐</span>
+      </HeaderIconButton>
       {isOpen && (
         <div className="language-menu">
           <input

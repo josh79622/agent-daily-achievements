@@ -60,18 +60,7 @@ export function DateSelector({
         aria-label={t.header.selectDate}
       />
 
-      {/* 3. 本日 / Today */}
-      <button
-        type="button"
-        className={`zen-nav-btn date-selector-btn ${isToday ? "active" : ""}`}
-        onClick={() => !disabled && onDateChange(today)}
-        disabled={disabled}
-        title={t.header.dateToday}
-      >
-        {t.header.dateToday}
-      </button>
-
-      {/* 4. -> Next Day */}
+      {/* 3. -> Next Day */}
       <button
         type="button"
         className="zen-nav-btn date-selector-btn"

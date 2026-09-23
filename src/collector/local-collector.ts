@@ -1,6 +1,7 @@
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 export type LocalSource = "claude-code" | "codex" | "antigravity";
 
@@ -34,6 +35,7 @@ export interface CollectedSession {
   messageCount: number;
   issueCount: number;
   messages: CollectedMessage[];
+  project?: string;
 }
 
 export type SourceCoverageState =
@@ -281,6 +283,7 @@ async function parseFile(
   const messages: CollectedMessage[] = [];
   const lines = contents.replace(/^\uFEFF/, "").split("\n");
   let supported = false;
+  let project: string | undefined;
   for (const [index, line] of lines.entries()) {
     if (!line.trim()) continue;
     let record: Record<string, unknown>;
@@ -293,6 +296,9 @@ async function parseFile(
     supported ||= supportedRecord(source, record);
     if (isExcludedRecord(source, record)) continue;
     sessionId = sessionIdFrom(source, record) ?? sessionId;
+    if (!project) {
+      project = extractProjectFromRecord(source, record);
+    }
     if (
       hasConversationRole(source, record) &&
       !validTimestamp(recordTimestamp(source, record))
@@ -308,11 +314,15 @@ async function parseFile(
     if (message) messages.push(message);
     else if (unexplainedEmptyMessage(source, record)) issues += 1;
   }
+  if (!project) {
+    project = extractProjectFromPath(source, file);
+  }
   const partialWrite = !validJson(lastNonBlankLine(lines));
   return {
     file,
     issues,
     messages,
+    ...(project ? { project } : {}),
     reason: partialWrite
       ? "partial-write"
       : issues > 0
@@ -327,6 +337,7 @@ interface ParsedFile {
   file: string;
   issues: number;
   messages: CollectedMessage[];
+  project?: string;
   reason?: SourceCoverageReason;
   sessionId: string;
   supported: boolean;
@@ -377,6 +388,7 @@ function mergeSessions(
       continue;
     const first = messages[0];
     if (!first) continue;
+    const project = group.find((f) => f.project)?.project;
     sessions.push({
       id,
       source,
@@ -386,9 +398,251 @@ function mergeSessions(
       messageCount: messages.length,
       issueCount: group.reduce((total, fragment) => total + fragment.issues, 0),
       messages,
+      ...(project ? { project } : {}),
     });
   }
   return { conflicts, sessions };
+}
+
+function cleanProjectName(name: string | undefined): string | undefined {
+  if (!name) return undefined;
+  const unquoted = name
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .trim();
+  const base = basename(unquoted);
+  const cleaned = base.replace(/^["']|["']$/g, "").trim();
+  if (!cleaned || cleaned === "." || cleaned === "/") return undefined;
+  return cleaned;
+}
+
+const GENERIC_SCRATCHPAD_NAMES = new Set([
+  ".tmp",
+  "cache",
+  "scratch",
+  "scratchpad",
+  "temp",
+  "tmp",
+  "xreview",
+]);
+
+function findDirectoryFromSlug(slug: string): string | undefined {
+  if (!slug.startsWith("-")) return undefined;
+  let current = "/";
+  let remaining = slug.slice(1);
+
+  while (remaining.length > 0) {
+    const directPath = join(current, ...remaining.split("-"));
+    try {
+      if (existsSync(directPath) && statSync(directPath).isDirectory()) {
+        return directPath;
+      }
+    } catch {
+      // Ignore filesystem access errors
+    }
+
+    let entries: import("node:fs").Dirent[];
+    try {
+      entries = readdirSync(current, { withFileTypes: true });
+    } catch {
+      break;
+    }
+
+    const dirNames = entries
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort((a, b) => b.length - a.length);
+
+    let foundNext = false;
+    for (const dirName of dirNames) {
+      const dirSlug = dirName.replace(/[^a-zA-Z0-9]/g, "-");
+      if (remaining.toLowerCase() === dirSlug.toLowerCase()) {
+        return join(current, dirName);
+      }
+      if (remaining.toLowerCase().startsWith(dirSlug.toLowerCase() + "-")) {
+        current = join(current, dirName);
+        remaining = remaining.slice(dirSlug.length + 1);
+        foundNext = true;
+        break;
+      }
+    }
+
+    if (!foundNext) {
+      const nextHyphen = remaining.indexOf("-");
+      const token =
+        nextHyphen === -1 ? remaining : remaining.slice(0, nextHyphen);
+      if (token) {
+        const nextPath = join(current, token);
+        try {
+          if (existsSync(nextPath) && statSync(nextPath).isDirectory()) {
+            current = nextPath;
+            remaining =
+              nextHyphen === -1 ? "" : remaining.slice(nextHyphen + 1);
+            foundNext = true;
+          }
+        } catch {
+          // Ignore filesystem access errors
+        }
+      }
+    }
+
+    if (!foundNext) break;
+  }
+
+  return undefined;
+}
+
+export function projectFromCwd(cwd: string | undefined): string | undefined {
+  if (!cwd?.trim()) return undefined;
+  const trimmed = cwd.trim();
+
+  const claudeTmpMatch = trimmed.match(
+    /(?:\/private)?\/tmp\/claude-\d+\/(-[^/]+)/,
+  );
+  if (claudeTmpMatch?.[1]) {
+    const slug = claudeTmpMatch[1];
+    const candidate = findDirectoryFromSlug(slug);
+    if (candidate) {
+      const candidateBase = basename(candidate);
+      if (!GENERIC_SCRATCHPAD_NAMES.has(candidateBase.toLowerCase())) {
+        return cleanProjectName(candidateBase);
+      }
+      const parent = dirname(candidate);
+      if (parent && parent !== candidate && parent !== "/" && parent !== ".") {
+        return cleanProjectName(basename(parent));
+      }
+    }
+    const parts = slug.split("-").filter(Boolean);
+    const nonGenericParts = parts.filter(
+      (part) => !GENERIC_SCRATCHPAD_NAMES.has(part.toLowerCase()),
+    );
+    const lastPart = nonGenericParts.at(-1);
+    if (!lastPart) return undefined;
+    return cleanProjectName(lastPart);
+  }
+
+  let current = trimmed;
+  while (current) {
+    const base = basename(current);
+    if (!base || base === "/" || base === ".") {
+      return undefined;
+    }
+    if (
+      GENERIC_SCRATCHPAD_NAMES.has(base.toLowerCase()) ||
+      (base.toLowerCase() === "private" && dirname(current) === "/")
+    ) {
+      const parent = dirname(current);
+      if (
+        !parent ||
+        parent === current ||
+        parent === "/" ||
+        parent === "." ||
+        parent === "/private"
+      ) {
+        return undefined;
+      }
+      current = parent;
+      continue;
+    }
+    return cleanProjectName(base);
+  }
+
+  return undefined;
+}
+
+function extractProjectFromRecord(
+  source: LocalSource,
+  record: Record<string, unknown>,
+): string | undefined {
+  if (source === "claude-code") {
+    const cwd = stringAt(record.cwd);
+    const cwdProject = projectFromCwd(cwd);
+    if (cwdProject) return cwdProject;
+    const attachment = objectAt(record.attachment);
+    const snapshot = objectAt(attachment?.snapshot);
+    const workingDirectory = stringAt(snapshot?.workingDirectory);
+    const workDirProject = projectFromCwd(workingDirectory);
+    if (workDirProject) return workDirProject;
+    return undefined;
+  }
+  if (source === "codex") {
+    const payload = objectAt(record.payload);
+    const cwd = stringAt(payload?.cwd);
+    const cwdProject = projectFromCwd(cwd);
+    if (cwdProject) return cwdProject;
+    const git = objectAt(payload?.git);
+    const repoUrl =
+      stringAt(git?.repository_url) ?? stringAt(payload?.repository_url);
+    if (repoUrl?.trim()) {
+      return cleanProjectName(basename(repoUrl.trim().replace(/\.git$/, "")));
+    }
+    return undefined;
+  }
+  if (source === "antigravity") {
+    if (Array.isArray(record.tool_calls)) {
+      for (const call of record.tool_calls) {
+        const callObj = objectAt(call);
+        const args = objectAt(callObj?.args);
+        if (args) {
+          const cwd = stringAt(args.Cwd) ?? stringAt(args.cwd);
+          const cwdProject = projectFromCwd(cwd);
+          if (cwdProject) return cwdProject;
+          if (
+            Array.isArray(args.workspaceUris) &&
+            args.workspaceUris.length > 0
+          ) {
+            const uri = stringAt(args.workspaceUris[0]);
+            const uriProject = projectFromCwd(uri);
+            if (uriProject) return uriProject;
+          }
+        }
+      }
+    }
+    if (
+      Array.isArray(record.workspaceUris) &&
+      record.workspaceUris.length > 0
+    ) {
+      const uri = stringAt(record.workspaceUris[0]);
+      const uriProject = projectFromCwd(uri);
+      if (uriProject) return uriProject;
+    }
+    if (
+      typeof record.workspaceUris === "string" &&
+      record.workspaceUris.trim()
+    ) {
+      const uriProject = projectFromCwd(record.workspaceUris.trim());
+      if (uriProject) return uriProject;
+    }
+    if (
+      Array.isArray(record.workspace_uris) &&
+      record.workspace_uris.length > 0
+    ) {
+      const uri = stringAt(record.workspace_uris[0]);
+      const uriProject = projectFromCwd(uri);
+      if (uriProject) return uriProject;
+    }
+    return undefined;
+  }
+  return undefined;
+}
+
+function extractProjectFromPath(
+  source: LocalSource,
+  file: string,
+): string | undefined {
+  if (source === "claude-code") {
+    const match = file.match(/\.claude\/projects\/([^/]+)/);
+    if (match?.[1]) {
+      const dirName = match[1];
+      if (dirName.startsWith("-")) {
+        const parts = dirName.split("-").filter(Boolean);
+        const last = parts.at(-1);
+        if (last?.trim()) return cleanProjectName(last.trim());
+      }
+      return cleanProjectName(dirName);
+    }
+  }
+  return undefined;
 }
 
 function lastNonBlankLine(lines: string[]): string | undefined {

@@ -13,6 +13,7 @@ import type {
   IncompleteEntry,
   ReportSource,
 } from "../src/report/contract.js";
+import { format, type Translations } from "./i18n.js";
 
 export type NodeKind = "achievement" | "event" | "detail";
 
@@ -25,6 +26,7 @@ export interface ConstellationNode {
   evidence: EvidenceRef[];
   x: number;
   y: number;
+  project?: string;
 }
 
 /**
@@ -64,6 +66,9 @@ export function mapAchievementsToNodes(
     detail: achievement.detail,
     kind: "achievement",
     evidence: achievement.evidence,
+    ...(achievement.project !== undefined
+      ? { project: achievement.project }
+      : {}),
     ...layoutPosition(index, achievements.length),
   }));
 }
@@ -84,15 +89,24 @@ function sourceLabel(source: ReportSource): string {
 /** One line per incomplete reason, in the order the report lists them. */
 export function describeIncomplete(
   entries: readonly IncompleteEntry[],
+  t?: Translations,
 ): string[] {
   return entries.map((entry) => {
     switch (entry.reason) {
       case "source-incomplete":
-        return `${sourceLabel(entry.source)} data is incomplete.`;
+        return t
+          ? format(t.states.sourceIncomplete, {
+              source: sourceLabel(entry.source),
+            })
+          : `${sourceLabel(entry.source)} data is incomplete.`;
       case "summary-unavailable":
-        return "The summarizer did not produce a report.";
+        return t
+          ? t.states.summaryUnavailable
+          : "The summarizer did not produce a report.";
       case "summary-invalid":
-        return "The summarizer's output could not be used.";
+        return t
+          ? t.states.summaryInvalid
+          : "The summarizer's output could not be used.";
       case "summary-chunk-failed":
         return `One part of the day's summary could not be produced: ${entry.sessions
           .map(

@@ -113,3 +113,46 @@ export async function writeSummaryPermission(
     await rm(temporary, { force: true });
   }
 }
+
+export const DEFAULT_SUMMARY_PERMISSION: SummaryPermission = {
+  sourceScope: ["claude-code", "codex", "antigravity"],
+  preferredCli: "agy",
+  recipients: ["codex", "claude-code", "agy"],
+  summaryLanguage: "zh-TW",
+};
+
+export async function setupSummaryPermission({
+  path,
+  permission = DEFAULT_SUMMARY_PERMISSION,
+  force = false,
+}: {
+  path?: string;
+  permission?: SummaryPermission;
+  force?: boolean;
+}): Promise<{
+  status: "written" | "kept" | "write-failed";
+  permission: SummaryPermission;
+}> {
+  if (!force && path) {
+    try {
+      const existing = await readSummaryPermission(path);
+      if (
+        existing &&
+        Array.isArray(existing.sourceScope) &&
+        existing.sourceScope.length > 0
+      ) {
+        return { status: "kept", permission: existing };
+      }
+    } catch {
+      // If reading fails or file is corrupt, proceed to write
+    }
+  }
+
+  const targetPermission = permission ?? DEFAULT_SUMMARY_PERMISSION;
+  try {
+    await writeSummaryPermission(path, targetPermission);
+    return { status: "written", permission: targetPermission };
+  } catch {
+    return { status: "write-failed", permission: targetPermission };
+  }
+}

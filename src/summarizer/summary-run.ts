@@ -65,6 +65,66 @@ type ValidatedAttempts =
   | { kind: "unavailable" }
   | { kind: "invalid"; issue: ValidationIssue };
 
+export function sanitizeCandidateEvidence(
+  candidate: unknown,
+  manifest: EvidenceManifest,
+): unknown {
+  if (
+    typeof candidate !== "object" ||
+    candidate === null ||
+    Array.isArray(candidate)
+  ) {
+    return candidate;
+  }
+  const candidateObj = candidate as Record<string, unknown>;
+  if (!Array.isArray(candidateObj.achievements)) {
+    return candidate;
+  }
+  for (const achievement of candidateObj.achievements) {
+    if (
+      typeof achievement === "object" &&
+      achievement !== null &&
+      Array.isArray((achievement as Record<string, unknown>).evidence)
+    ) {
+      const evidence = (achievement as Record<string, unknown>)
+        .evidence as unknown[];
+      for (const ref of evidence) {
+        if (
+          typeof ref === "object" &&
+          ref !== null &&
+          typeof (ref as Record<string, unknown>).source === "string" &&
+          typeof (ref as Record<string, unknown>).recordId === "string"
+        ) {
+          const refObj = ref as Record<string, unknown>;
+          const match = manifest.find(
+            (m) => m.source === refObj.source && m.recordId === refObj.recordId,
+          );
+          if (
+            match &&
+            Array.isArray(match.messageIds) &&
+            match.messageIds.length > 0
+          ) {
+            if (Array.isArray(refObj.messageIds)) {
+              const valid = refObj.messageIds.filter(
+                (id): id is string =>
+                  typeof id === "string" && match.messageIds.includes(id),
+              );
+              if (valid.length > 0) {
+                refObj.messageIds = valid;
+              } else {
+                refObj.messageIds = [match.messageIds.at(-1)!];
+              }
+            } else {
+              refObj.messageIds = [match.messageIds.at(-1)!];
+            }
+          }
+        }
+      }
+    }
+  }
+  return candidate;
+}
+
 export function createSummaryRunner({
   locate,
   models,
@@ -231,8 +291,12 @@ export function createSummaryRunner({
             if (attempt === maxSummaryAttempts) return { kind: "unavailable" };
             continue;
           }
-          const validation: CandidateValidation = validateSummaryCandidate(
+          const candidateToValidate = sanitizeCandidateEvidence(
             outcome.candidate,
+            manifest,
+          );
+          const validation: CandidateValidation = validateSummaryCandidate(
+            candidateToValidate,
             {
               manifest,
               coverage: request.payload.coverage,
@@ -360,6 +424,9 @@ function compactCandidates(
     category: achievement.category,
     title: achievement.title,
     detail: achievement.detail,
+    ...(achievement.project === undefined
+      ? {}
+      : { project: achievement.project }),
     isPrimary: achievement.isPrimary === true,
     evidence: achievement.evidence.map((ref) => ({
       source: ref.source,
@@ -428,6 +495,9 @@ function mergeEvidenceManifest(
       entries.set(key, {
         source: evidence.source,
         recordId: evidence.recordId,
+        ...(existing?.project === undefined && candidate.project === undefined
+          ? {}
+          : { project: existing?.project ?? candidate.project }),
         messageIds: [...messageIds],
       });
     }

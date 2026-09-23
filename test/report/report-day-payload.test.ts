@@ -15,6 +15,7 @@ import {
 import { validateSummaryCandidate } from "../../src/report/contract.js";
 import {
   buildReportDayPayload,
+  messageTime,
   toolPartCap,
 } from "../../src/report/report-day-payload.js";
 
@@ -542,4 +543,148 @@ test("PB-17: identity survives truncation for both tool kinds", async () => {
   expect(sentText(result.payloadJson, 0)).toContain("[tool_result error]");
   expect(sentText(result.payloadJson, 1)).toContain("[tool_use Write");
   expect(sentText(result.payloadJson, 1)).toContain("/deep/path.ts");
+});
+
+test("PB-18: preserves project attribution in conversations and manifest when defined", async () => {
+  const sessionWithProject = {
+    ...session("session-proj", "codex", [message("m-1", "work on proj")]),
+    project: "alpha-repo",
+  };
+  const sessionWithoutProject = session("session-plain", "codex", [
+    message("m-2", "work on other"),
+  ]);
+
+  const result = await buildReportDayPayload({
+    collector: fakeCollector({
+      sessions: [sessionWithProject, sessionWithoutProject],
+    }),
+    date: "2026-09-18",
+    sourceScope: ["codex"],
+  });
+
+  const parsed = JSON.parse(result.payloadJson) as {
+    conversations: Array<{ recordId: string; project?: string }>;
+  };
+  expect(parsed.conversations[0]?.project).toBe("alpha-repo");
+  expect(parsed.conversations[1]).not.toHaveProperty("project");
+
+  expect(result.manifest[0]?.project).toBe("alpha-repo");
+  expect(result.manifest[1]).not.toHaveProperty("project");
+});
+
+test("PB-19: messageTime formats prior date messages with YYYY-MM-DD HH:MM and report date with HH:MM", () => {
+  const format = messageTime("UTC", "2026-09-18");
+  expect(format("2026-09-17T23:50:00Z")).toBe("2026-09-17 23:50");
+  expect(format("2026-09-18T09:12:00Z")).toBe("09:12");
+});
+
+test("PB-20: messages spanning prior dates include the date prefix in the payload", async () => {
+  const multiDaySession = session("session-multiday", "codex", [
+    {
+      id: "m-prior",
+      role: "user",
+      text: "yesterday work",
+      timestamp: "2026-09-17T23:50:00Z",
+      parts: [{ kind: "text", text: "yesterday work" }],
+    },
+    message("m-today", "today work", { minute: "15" }),
+  ]);
+
+  const result = await buildReportDayPayload({
+    collector: fakeCollector({ sessions: [multiDaySession] }),
+    date: "2026-09-18",
+    sourceScope: ["codex"],
+  });
+
+  const parsed = JSON.parse(result.payloadJson) as {
+    conversations: Array<{
+      messages: Array<{ id: string; time: string }>;
+    }>;
+  };
+  expect(
+    parsed.conversations[0]?.messages.map(({ id, time }) => ({ id, time })),
+  ).toEqual([
+    { id: "m-prior", time: "2026-09-17 23:50" },
+    { id: "m-today", time: "09:15" },
+  ]);
+});
+
+test("PB-21: interleaves sessions across multiple projects round-robin while preserving chronological order within each project", async () => {
+  const sessionAlpha1 = {
+    ...session("s-alpha-1", "codex", [message("m-a1", "alpha 1")]),
+    project: "project-alpha",
+    startedAt: "2026-09-18T09:00:00Z",
+  };
+  const sessionAlpha2 = {
+    ...session("s-alpha-2", "codex", [message("m-a2", "alpha 2")]),
+    project: "project-alpha",
+    startedAt: "2026-09-18T11:00:00Z",
+  };
+  const sessionAlpha3 = {
+    ...session("s-alpha-3", "codex", [message("m-a3", "alpha 3")]),
+    project: "project-alpha",
+    startedAt: "2026-09-18T13:00:00Z",
+  };
+  const sessionBeta1 = {
+    ...session("s-beta-1", "codex", [message("m-b1", "beta 1")]),
+    project: "project-beta",
+    startedAt: "2026-09-18T10:00:00Z",
+  };
+  const sessionBeta2 = {
+    ...session("s-beta-2", "codex", [message("m-b2", "beta 2")]),
+    project: "project-beta",
+    startedAt: "2026-09-18T12:00:00Z",
+  };
+  const sessionGamma1 = {
+    ...session("s-gamma-1", "codex", [message("m-g1", "gamma 1")]),
+    project: "project-gamma",
+    startedAt: "2026-09-18T09:30:00Z",
+  };
+  const sessionUnassigned = {
+    ...session("s-plain-1", "codex", [message("m-p1", "plain 1")]),
+    startedAt: "2026-09-18T10:30:00Z",
+  };
+
+  // Scrambled input order to ensure sorting by startedAt within each group works
+  const result = await buildReportDayPayload({
+    collector: fakeCollector({
+      sessions: [
+        sessionAlpha2,
+        sessionBeta2,
+        sessionUnassigned,
+        sessionAlpha1,
+        sessionGamma1,
+        sessionBeta1,
+        sessionAlpha3,
+      ],
+    }),
+    date: "2026-09-18",
+    sourceScope: ["codex"],
+  });
+
+  const expectedRecordIds = [
+    "s-alpha-1",
+    "s-beta-1",
+    "s-plain-1",
+    "s-gamma-1",
+    "s-alpha-2",
+    "s-beta-2",
+    "s-alpha-3",
+  ];
+
+  const parsed = JSON.parse(result.payloadJson) as {
+    conversations: Array<{ recordId: string; project?: string }>;
+  };
+  expect(parsed.conversations.map((c) => c.recordId)).toEqual(
+    expectedRecordIds,
+  );
+  expect(result.manifest.map((m) => m.recordId)).toEqual(expectedRecordIds);
+
+  expect(parsed.conversations[0]?.project).toBe("project-alpha");
+  expect(parsed.conversations[1]?.project).toBe("project-beta");
+  expect(parsed.conversations[2]).not.toHaveProperty("project");
+  expect(parsed.conversations[3]?.project).toBe("project-gamma");
+  expect(parsed.conversations[4]?.project).toBe("project-alpha");
+  expect(parsed.conversations[5]?.project).toBe("project-beta");
+  expect(parsed.conversations[6]?.project).toBe("project-alpha");
 });

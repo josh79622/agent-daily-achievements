@@ -11,6 +11,9 @@ import {
   mapAchievementsToNodes,
   pickEvidenceMessages,
 } from "../../web/report-view.js";
+import { en } from "../../web/locales/en.js";
+import { es } from "../../web/locales/es.js";
+import { zhTW } from "../../web/locales/zh-TW.js";
 
 // Test cases RV-1 to RV-5. Pure logic only — no DOM. The rendering these
 // feed (createNode/renderConstellation in web/app.ts) is verified manually
@@ -77,6 +80,16 @@ test("RV-2: mapAchievementsToNodes preserves id/title/detail with no parent", ()
   expect(nodes[1]).toMatchObject(layoutPosition(1, 3));
 });
 
+test("RV-2b: mapAchievementsToNodes preserves project attribution", () => {
+  const achievements = [
+    achievement("a1", { project: "project-x" }),
+    achievement("a2"),
+  ];
+  const nodes = mapAchievementsToNodes(achievements);
+  expect(nodes[0]?.project).toBe("project-x");
+  expect(nodes[1]).not.toHaveProperty("project");
+});
+
 test("RV-3: describeIncomplete produces one friendly line per reason", () => {
   expect(describeIncomplete([])).toEqual([]);
 
@@ -101,6 +114,36 @@ test("RV-3: describeIncomplete produces one friendly line per reason", () => {
     "The summarizer did not produce a report.",
     "The summarizer's output could not be used.",
     "One part of the day's summary could not be produced: Codex session session-201; Claude Code session session-202.",
+  ]);
+});
+
+test("RV-3b: describeIncomplete produces localized lines when t is provided", () => {
+  const entries: IncompleteEntry[] = [
+    { reason: "source-incomplete", source: "claude-code" },
+    { reason: "source-incomplete", source: "codex" },
+    { reason: "summary-unavailable" },
+    { reason: "summary-invalid", issue: "too-many-achievements" },
+  ];
+
+  expect(describeIncomplete(entries, zhTW)).toEqual([
+    "Claude Code 資料不完整。",
+    "Codex 資料不完整。",
+    "摘要工具未產生報告。",
+    "摘要結果未通過證據檢驗，無法採用。",
+  ]);
+
+  expect(describeIncomplete(entries, es)).toEqual([
+    "Los datos de Claude Code están incompletos.",
+    "Los datos de Codex están incompletos.",
+    "El generador de resúmenes no produjo ningún informe.",
+    "No se pudo utilizar el resultado del generador de resúmenes.",
+  ]);
+
+  expect(describeIncomplete(entries, en)).toEqual([
+    "Claude Code data is incomplete.",
+    "Codex data is incomplete.",
+    "The summarizer did not produce a report.",
+    "The summarizer's output could not be used.",
   ]);
 });
 

@@ -66,6 +66,35 @@ test("CH-1: a safe payload is one unchanged summary chunk", () => {
   ]);
 });
 
+test("CH-1b: chunk manifests retain each conversation's project attribution", () => {
+  const day: ReportDayPayload = {
+    ...payload([session("session-a", [message("m-1", "made progress")])]),
+    payloadJson: JSON.stringify({
+      date: "2026-09-23",
+      conversations: [
+        {
+          source: "codex",
+          recordId: "session-a",
+          project: "project-alpha",
+          messages: [message("m-1", "made progress")],
+        },
+      ],
+    }),
+    manifest: [
+      {
+        source: "codex",
+        recordId: "session-a",
+        project: "project-alpha",
+        messageIds: ["m-1"],
+      },
+    ],
+  };
+
+  const result = chunkReportDayPayload(day);
+
+  expect(chunksOf(result)[0]?.manifest).toEqual(day.manifest);
+});
+
 test("CH-1a: prompt and reply room is reserved below the total request budget", () => {
   const day = payload([
     session("session-a", [

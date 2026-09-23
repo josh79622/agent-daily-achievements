@@ -448,18 +448,33 @@ regression to fix mid-task.
       - Cases S2-1 to S2-10 approved by Josh. 444 tests pass; `npm run check` passes.
       - Run for real: stored `Australia/Sydney`, the machine's own zone, and kept it as the
         report timezone after checking the existing reports and session timestamps.
+- [x] Default external summarization permission during setup:
+      - `scripts/setup.mjs` calls `setupSummaryPermission` to provision default permission (`zh-TW`, `agy` preferred, fail-closed fallback) per BRIEF.md.
+      - Friendly localized guidance in `ZenJournal.tsx` directs user to Settings if permission is missing.
+- [x] Mark incomplete reports visibly and provide one-click regeneration:
+      - `ZenJournal.tsx` renders localized explanation when report status is `"incomplete"`.
+      - Provides an actionable `⚡ 重新產生摘要` button that triggers report regeneration immediately.
+- [x] Header controls refinement:
+      - Compact utility icon buttons (Local Activity, Settings, Language, Theme) in `web/ZenJournal.tsx`.
+      - Centered symmetrical DateStepper (Prev, Date Input, Next) between brand badge and utilities.
+- [x] Multi-project attribution & payload balancing:
+      - Collector extracts real project names from `cwd`, workspace URIs, and file paths. Resolves temporary Claude scratchpad paths (`/private/tmp/claude-501/.../scratchpad/xreview`) back to enclosing real project (`Josh_JobHunt`) and blacklists generic directory names.
+      - `buildReportDayPayload` groups sessions by project and interleaves them round-robin to ensure balanced representation.
+      - Ground-truth validation binds `Achievement.project` strictly to the cited manifest record's project.
+- [x] Multi-project prompting & evidence sanitization:
+      - Generates dynamic `"Conversations by Project"` index in `buildSummaryRequestText` so LLMs have bird's eye visibility across all active projects.
+      - Positive date guidance focusing on `HH:mm` for report date accomplishments.
+      - Softened empty report constraints to prevent models triggering empty array `{"achievements": []}` escape hatch.
+      - Implemented `sanitizeCandidateEvidence` in `summary-run.ts` to defend against hallucinated message IDs or recordId mixups while preserving true source/record grounding.
+      - Verified with real end-to-end report generation for 2026-09-21: produced 4 achievements spanning `agent-daily-achievements` and `Josh_JobHunt`.
 - [ ] `getYesterdayDate()` in `web/date-utils.ts` still assumes a midnight boundary; align the
       page's default date with the 07:00 window.
-- [ ] Mark incomplete reports visibly.
 - [ ] Add a clickable macOS notification.
 
 ### Phase 7 — Release readiness
 
-- [ ] One-command install: fold build, timezone and the launchd job into a single `npm run setup`,
-      and detect the Node path instead of hard-coding it. Discussed with Josh 2026-09-22; test
-      cases not written yet. `npx` publishing is a later follow-up; a `.pkg` is out of scope.
-- [ ] `scripts/install-launchd.mjs` hard-codes `/opt/homebrew/opt/node@24/bin/node`. On any other
-      Mac the scheduled job would point at a missing file and never run. Fix with the item above.
+- [x] One-command install: standalone macOS bootstrapper (`install.sh`), downloading managed Node 24 LTS and configuring local execution.
+- [x] `scripts/install-launchd.mjs` and `launchd-plist.ts`: detects running/managed Node path instead of hardcoded Homebrew path.
 - [ ] Document GitHub-source setup and failure guidance.
 - [ ] Verify setup on a fresh macOS user environment.
 - [ ] Design the optional Chrome add-on separately.
