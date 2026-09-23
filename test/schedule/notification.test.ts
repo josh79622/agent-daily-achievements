@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAppletScript,
   buildNotificationScript,
+  ensureNotifierApplet,
   escapeAppleScript,
   sendReportNotification,
 } from "../../src/schedule/notification.js";
@@ -282,5 +284,252 @@ describe("macOS native report notification", () => {
     expect(executedArgs[1]).toBe(
       'display notification "Could not generate report for 2026-09-23: Network error" with title "Report Generation Failed" sound name "default"',
     );
+  });
+
+  // N1-7: Applet script generation, compilation, and notification routing
+  describe("N1-7: DailyProofNotifier applet and click routing", () => {
+    it("builds applet script with custom and default paths", () => {
+      const script = buildAppletScript({
+        nodePath: "NODE_PATH",
+        scriptPath: "REPO_ROOT/scripts/open-app.mjs",
+      });
+
+      expect(script).toBe(
+        `on run argv
+  if (count of argv) > 0 then
+    set msg to item 1 of argv
+    set ttl to item 2 of argv
+    display notification msg with title ttl sound name "default"
+  else
+    do shell script "NODE_PATH REPO_ROOT/scripts/open-app.mjs"
+  end if
+end run
+
+on reopen
+  do shell script "NODE_PATH REPO_ROOT/scripts/open-app.mjs"
+end reopen`,
+      );
+
+      // Default paths
+      const defaultScript = buildAppletScript();
+      expect(defaultScript).toContain("on run argv");
+      expect(defaultScript).toContain("on reopen");
+      expect(defaultScript).toContain("scripts/open-app.mjs");
+    });
+
+    it("escapes and quotes paths with spaces in buildAppletScript", () => {
+      const script = buildAppletScript({
+        nodePath: "/Applications/Node JS/bin/node",
+        scriptPath: "/Users/test user/app/scripts/open-app.mjs",
+      });
+
+      expect(script).toContain(
+        'do shell script "\\"/Applications/Node JS/bin/node\\" \\"/Users/test user/app/scripts/open-app.mjs\\""',
+      );
+    });
+
+    it("ensureNotifierApplet compiles with osacompile and configures with plutil", async () => {
+      const executedCommands: Array<{
+        command: string;
+        args: readonly string[];
+      }> = [];
+      const appletDir = "/mock/path/dist/notifier/DailyProofNotifier.app";
+
+      const binaryPath = await ensureNotifierApplet({
+        platform: "darwin",
+        appletDir,
+        nodePath: "/usr/local/bin/node",
+        repositoryRoot: "/mock/repo",
+        force: true,
+        execCommand: async (command, args) => {
+          executedCommands.push({ command, args });
+          return { exitCode: 0 };
+        },
+      });
+
+      expect(binaryPath).toBe(
+        "/mock/path/dist/notifier/DailyProofNotifier.app/Contents/MacOS/applet",
+      );
+      expect(executedCommands).toHaveLength(4);
+
+      const [compileCmd, idCmd, nameCmd, uiCmd] = executedCommands;
+
+      // 1: osacompile
+      expect(compileCmd?.command).toBe("osacompile");
+      expect(compileCmd?.args[0]).toBe("-o");
+      expect(compileCmd?.args[1]).toBe(appletDir);
+      expect(compileCmd?.args[2]).toBe("-e");
+      expect(compileCmd?.args[3]).toContain("on run argv");
+
+      // 2: plutil CFBundleIdentifier
+      expect(idCmd?.command).toBe("plutil");
+      expect(idCmd?.args).toEqual([
+        "-replace",
+        "CFBundleIdentifier",
+        "-string",
+        "com.antigravity.agent-daily-achievements.notifier",
+        "/mock/path/dist/notifier/DailyProofNotifier.app/Contents/Info.plist",
+      ]);
+
+      // 3: plutil CFBundleName
+      expect(nameCmd?.command).toBe("plutil");
+      expect(nameCmd?.args).toEqual([
+        "-replace",
+        "CFBundleName",
+        "-string",
+        "DailyProofNotifier",
+        "/mock/path/dist/notifier/DailyProofNotifier.app/Contents/Info.plist",
+      ]);
+
+      // 4: plutil LSUIElement
+      expect(uiCmd?.command).toBe("plutil");
+      expect(uiCmd?.args).toEqual([
+        "-replace",
+        "LSUIElement",
+        "-bool",
+        "true",
+        "/mock/path/dist/notifier/DailyProofNotifier.app/Contents/Info.plist",
+      ]);
+    });
+
+    it("ensureNotifierApplet returns null on non-darwin platform", async () => {
+      const res = await ensureNotifierApplet({
+        platform: "linux",
+      });
+      expect(res).toBeNull();
+    });
+
+    it("ensureNotifierApplet returns null if osacompile fails", async () => {
+      const res = await ensureNotifierApplet({
+        platform: "darwin",
+        appletDir: "/mock/nonexistent/DailyProofNotifier.app",
+        force: true,
+        execCommand: async (cmd) => {
+          if (cmd === "osacompile") {
+            return { exitCode: 1, stderr: "compile error" };
+          }
+          return { exitCode: 0 };
+        },
+      });
+      expect(res).toBeNull();
+    });
+
+    it("ensureNotifierApplet returns null if plutil fails", async () => {
+      const res = await ensureNotifierApplet({
+        platform: "darwin",
+        appletDir: "/mock/nonexistent/DailyProofNotifier.app",
+        force: true,
+        execCommand: async (cmd) => {
+          if (cmd === "plutil") {
+            return { exitCode: 1, stderr: "plutil error" };
+          }
+          return { exitCode: 0 };
+        },
+      });
+      expect(res).toBeNull();
+    });
+
+    it("routes notification to applet binary when useApplet is true", async () => {
+      const executedCommands: Array<{
+        command: string;
+        args: readonly string[];
+      }> = [];
+      const appletDir = "/mock/notifier/DailyProofNotifier.app";
+
+      const success = await sendReportNotification(
+        {
+          status: "generated",
+          date: "2026-09-23",
+          url: "http://127.0.0.1:4317/",
+          language: "zh-TW",
+        },
+        {
+          platform: "darwin",
+          useApplet: true,
+          appletDir,
+          execCommand: async (command, args) => {
+            executedCommands.push({ command, args });
+            return { exitCode: 0 };
+          },
+        },
+      );
+
+      expect(success).toBe(true);
+      const lastCall = executedCommands.at(-1);
+      expect(lastCall?.command).toBe(
+        "/mock/notifier/DailyProofNotifier.app/Contents/MacOS/applet",
+      );
+      expect(lastCall?.args).toEqual([
+        "已為您整理好 2026-09-23 的成就日報 (http://127.0.0.1:4317/)",
+        "每日成就報告",
+      ]);
+    });
+
+    it("falls back to osascript -e when applet compilation fails", async () => {
+      const executedCommands: Array<{
+        command: string;
+        args: readonly string[];
+      }> = [];
+
+      const success = await sendReportNotification(
+        {
+          status: "generated",
+          date: "2026-09-23",
+          url: "http://127.0.0.1:4317/",
+          language: "en",
+        },
+        {
+          platform: "darwin",
+          useApplet: true,
+          appletDir: "/mock/fail-applet/DailyProofNotifier.app",
+          execCommand: async (command, args) => {
+            executedCommands.push({ command, args });
+            if (command === "osacompile") {
+              return { exitCode: 1, stderr: "compile error" };
+            }
+            return { exitCode: 0 };
+          },
+        },
+      );
+
+      expect(success).toBe(true);
+      const lastCall = executedCommands.at(-1);
+      expect(lastCall?.command).toBe("osascript");
+      expect(lastCall?.args?.[0]).toBe("-e");
+      expect(lastCall?.args?.[1]).toContain("display notification");
+    });
+
+    it("falls back to osascript -e when applet execution fails", async () => {
+      const executedCommands: Array<{
+        command: string;
+        args: readonly string[];
+      }> = [];
+
+      const success = await sendReportNotification(
+        {
+          status: "generated",
+          date: "2026-09-23",
+          url: "http://127.0.0.1:4317/",
+          language: "en",
+        },
+        {
+          platform: "darwin",
+          useApplet: true,
+          appletDir: "/mock/notifier/DailyProofNotifier.app",
+          execCommand: async (command, args) => {
+            executedCommands.push({ command, args });
+            if (command.includes("applet")) {
+              return { exitCode: 1, stderr: "applet crashed" };
+            }
+            return { exitCode: 0 };
+          },
+        },
+      );
+
+      expect(success).toBe(true);
+      const lastCall = executedCommands.at(-1);
+      expect(lastCall?.command).toBe("osascript");
+      expect(lastCall?.args?.[0]).toBe("-e");
+    });
   });
 });
