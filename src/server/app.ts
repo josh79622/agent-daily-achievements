@@ -11,7 +11,10 @@ import type {
   LocalCollector,
   LocalSource,
 } from "../collector/local-collector.js";
-import type { ReportStore } from "../storage/report-store.js";
+import type {
+  ReportStore,
+  ReportVersionStore,
+} from "../storage/report-store.js";
 
 import {
   readConsent,
@@ -28,7 +31,10 @@ import {
   buildReportDayPayload,
   type ReportDayPayload,
 } from "../report/report-day-payload.js";
-import { isValidAchievementEdit } from "../report/contract.js";
+import {
+  isValidAchievementEdit,
+  type AchievementEdit,
+} from "../report/contract.js";
 import { isSupportedSummaryLanguage } from "../report/languages.js";
 import type { SummarizerModelsService } from "../summarizer/model-settings.js";
 import {
@@ -704,6 +710,32 @@ export function createApp({
         return;
       }
 
+      const reportVersionsMatch = pathname.match(
+        /^\/api\/reports\/(\d{4}-\d{2}-\d{2})\/versions$/,
+      );
+      if (reportVersionsMatch) {
+        if (request.method !== "GET") {
+          sendJson(response, 405, {
+            error: {
+              code: "method_not_allowed",
+              message: "Method not allowed.",
+            },
+          });
+          return;
+        }
+        if (!isReportVersionStore(reportStore)) {
+          sendJson(response, 404, {
+            error: { code: "not_found", message: "Route not found." },
+          });
+          return;
+        }
+        const versions = await reportStore.listVersions(
+          reportVersionsMatch[1]!,
+        );
+        sendJson(response, 200, { versions });
+        return;
+      }
+
       const reportDateMatch = pathname.match(
         /^\/api\/reports\/(\d{4}-\d{2}-\d{2})$/,
       );
@@ -817,6 +849,109 @@ export function createApp({
         const updated = { ...existing.report, achievements };
         await reportStore.save(updated);
         sendJson(response, 200, { report: updated });
+        return;
+      }
+
+      const versionAchievementMatch = pathname.match(
+        /^\/api\/reports\/(\d{4}-\d{2}-\d{2})\/versions\/([^/]+)\/achievements\/([^/]+)$/,
+      );
+      if (versionAchievementMatch) {
+        const origin = localOrigin(request);
+        if (
+          !origin ||
+          (request.headers.origin && request.headers.origin !== origin) ||
+          request.headers["sec-fetch-site"] === "cross-site"
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Edit reports from the local app." },
+          });
+          return;
+        }
+        if (request.method !== "PATCH" && request.method !== "DELETE") {
+          sendJson(response, 405, {
+            error: {
+              code: "method_not_allowed",
+              message: "Method not allowed.",
+            },
+          });
+          return;
+        }
+        if (
+          request.headers.origin !== origin ||
+          (request.method === "PATCH" &&
+            request.headers["content-type"]?.split(";")[0] !==
+              "application/json")
+        ) {
+          sendJson(response, 403, {
+            error: { message: "Edit reports from the local app." },
+          });
+          return;
+        }
+        if (!isReportVersionStore(reportStore)) {
+          sendJson(response, 404, {
+            error: { code: "not_found", message: "Route not found." },
+          });
+          return;
+        }
+        const [, date, rawVersionId, rawAchievementId] =
+          versionAchievementMatch;
+        const versionId = decodeURIComponent(rawVersionId ?? "");
+        const achievementId = decodeURIComponent(rawAchievementId ?? "");
+        let edit: AchievementEdit | undefined;
+        if (request.method === "PATCH") {
+          const candidate = await parseJsonBody(request).catch(() => undefined);
+          if (!isValidAchievementEdit(candidate)) {
+            sendJson(response, 400, {
+              error: { message: "Provide a valid title and/or detail." },
+            });
+            return;
+          }
+          edit = candidate;
+        }
+
+        const achievementNotFound = new Error("Achievement not found.");
+        try {
+          const version = await reportStore.updateVersion(
+            date ?? "",
+            versionId,
+            (current) => {
+              const index = current.report.achievements.findIndex(
+                (achievement) => achievement.id === achievementId,
+              );
+              if (index === -1) throw achievementNotFound;
+              const achievements =
+                request.method === "DELETE"
+                  ? current.report.achievements.filter(
+                      (achievement) => achievement.id !== achievementId,
+                    )
+                  : current.report.achievements.map((achievement, position) => {
+                      if (position === index) {
+                        return { ...achievement, ...edit! };
+                      }
+                      if (edit?.isPrimary === true) {
+                        return { ...achievement, isPrimary: false };
+                      }
+                      return achievement;
+                    });
+              return { ...current.report, achievements };
+            },
+          );
+          sendJson(response, 200, { report: version.report });
+        } catch (error) {
+          if (error === achievementNotFound) {
+            sendJson(response, 404, {
+              error: { message: "That achievement was not found." },
+            });
+            return;
+          }
+          if (errorMessage(error).startsWith("Report version not found:")) {
+            sendJson(response, 404, {
+              error: { message: "That report version was not found." },
+            });
+            return;
+          }
+          throw error;
+        }
         return;
       }
 
@@ -1124,6 +1259,18 @@ function localOrigin(request: IncomingMessage): string | undefined {
     return undefined;
   return `http://${host}`;
 }
+
+function isReportVersionStore(
+  reportStore: ReportStore,
+): reportStore is ReportVersionStore {
+  return (
+    "listVersions" in reportStore &&
+    "updateVersion" in reportStore &&
+    typeof reportStore.listVersions === "function" &&
+    typeof reportStore.updateVersion === "function"
+  );
+}
+
 function consentRequired(response: ServerResponse): void {
   sendJson(response, 403, {
     error: {

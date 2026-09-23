@@ -269,3 +269,74 @@ test("RE-12: PATCH with isPrimary: true marks target achievement as primary and 
       stored.report.achievements.find((a) => a.id === "item-1")?.isPrimary,
   ).toBe(false);
 });
+
+test("a version-scoped PATCH changes only the selected version", async () => {
+  const { baseUrl, reportStore } = await setup();
+  await reportStore.save({
+    ...sampleReport(),
+    achievements: [
+      {
+        ...sampleReport().achievements[0]!,
+        title: "Sibling version title",
+      },
+    ],
+  });
+  const versions = await reportStore.listVersions("2026-09-09");
+  const selected = versions[1]!;
+  const sibling = versions[0]!;
+
+  const response = await fetch(
+    `${baseUrl}/api/reports/2026-09-09/versions/${selected.id}/achievements/item-1`,
+    {
+      method: "PATCH",
+      headers: { origin: baseUrl, "content-type": "application/json" },
+      body: JSON.stringify({ title: "Version specific title" }),
+    },
+  );
+
+  expect(response.status).toBe(200);
+  const body = (await response.json()) as { report: AchievementReportV1 };
+  expect(body.report.achievements).toContainEqual(
+    expect.objectContaining({ id: "item-1", title: "Version specific title" }),
+  );
+  const unchanged = await reportStore.readVersion("2026-09-09", sibling.id);
+  expect(
+    unchanged.found && unchanged.version.report.achievements,
+  ).toContainEqual(expect.objectContaining({ title: "Sibling version title" }));
+});
+
+test("a version-scoped change reports a missing version", async () => {
+  const { baseUrl } = await setup();
+
+  const response = await fetch(
+    `${baseUrl}/api/reports/2026-09-09/versions/missing-version/achievements/item-1`,
+    {
+      method: "DELETE",
+      headers: { origin: baseUrl },
+    },
+  );
+
+  expect(response.status).toBe(404);
+  expect(await response.json()).toEqual({
+    error: { message: "That report version was not found." },
+  });
+});
+
+test("a cross-site version-scoped change is refused", async () => {
+  const { baseUrl, reportStore } = await setup();
+  const version = (await reportStore.listVersions("2026-09-09"))[0]!;
+
+  const response = await fetch(
+    `${baseUrl}/api/reports/2026-09-09/versions/${version.id}/achievements/item-1`,
+    {
+      method: "DELETE",
+      headers: { origin: "https://evil.example" },
+    },
+  );
+
+  expect(response.status).toBe(403);
+  const unchanged = await reportStore.readVersion("2026-09-09", version.id);
+  expect(
+    unchanged.found && unchanged.version.report.achievements,
+  ).toContainEqual(expect.objectContaining({ id: "item-1" }));
+});

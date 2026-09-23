@@ -86,6 +86,49 @@ test("serves whatever the store holds, unchanged", async () => {
   expect(await response.json()).toEqual({ report });
 });
 
+test("lists generated report versions newest first", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "daily-report-versions-"));
+  const reportStore = createReportStore(directory);
+  const first = sampleReport();
+  const second = {
+    ...sampleReport(),
+    achievements: [
+      {
+        id: "newer-item",
+        category: "progress" as const,
+        title: "A regenerated report",
+        detail: "Contains a later result",
+        evidence: [],
+      },
+    ],
+  };
+  await reportStore.save(first);
+  await reportStore.save(second);
+  const server = createApp({ reportStore });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  cleanups.push(async () => {
+    server.close();
+    await once(server, "close");
+    await rm(directory, { force: true, recursive: true });
+  });
+  const address = server.address() as AddressInfo;
+
+  const response = await fetch(
+    `http://127.0.0.1:${address.port}/api/reports/2026-09-16/versions`,
+  );
+  const body = (await response.json()) as {
+    versions: Array<{ id: string; report: AchievementReportV1 }>;
+  };
+
+  expect(response.status).toBe(200);
+  expect(body.versions).toHaveLength(2);
+  expect(body.versions.map((version) => version.report)).toEqual([
+    second,
+    first,
+  ]);
+});
+
 test("returns a structured 404 for an unknown API route", async () => {
   const baseUrl = await startTestApp();
 
