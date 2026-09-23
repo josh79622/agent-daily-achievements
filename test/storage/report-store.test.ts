@@ -1,7 +1,14 @@
-import { mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 
 import type { AchievementReportV1 } from "../../src/report/contract.js";
 import {
@@ -12,6 +19,7 @@ import {
 const directories: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(
     directories
       .splice(0)
@@ -148,6 +156,73 @@ test("replaces a legacy version atomically in its flat file without affecting st
       }),
     ]),
   );
+});
+
+test("retains a legacy version's original display time and order when edited", async () => {
+  const store = await freshStore();
+  const legacy = sampleReport();
+  const legacyPath = join(directories.at(-1)!, `${legacy.date}.json`);
+  const legacyTime = new Date("2020-01-02T03:04:05.000Z");
+  const generated = {
+    ...sampleReport(),
+    achievements: [
+      { ...sampleReport().achievements[0]!, title: "Generated later" },
+    ],
+  };
+  const replacement = {
+    ...legacy,
+    achievements: [{ ...legacy.achievements[0]!, title: "Corrected legacy" }],
+  };
+
+  await writeFile(legacyPath, `${JSON.stringify(legacy)}\n`, "utf8");
+  await utimes(legacyPath, legacyTime, legacyTime);
+  await store.save(generated);
+  const legacyVersion = await store.readVersion(
+    legacy.date,
+    "legacy-2026-09-16",
+  );
+
+  await store.replaceVersion(legacy.date, "legacy-2026-09-16", replacement);
+
+  expect(await store.readVersion(legacy.date, "legacy-2026-09-16")).toEqual({
+    found: true,
+    version: expect.objectContaining({
+      generatedAt: legacyVersion.found
+        ? legacyVersion.version.generatedAt
+        : undefined,
+      report: replacement,
+    }),
+  });
+  expect((await store.listVersions(legacy.date))[0]!.report).toEqual(generated);
+});
+
+test("does not list an empty report-date directory as a saved report", async () => {
+  const store = await freshStore();
+  await mkdir(join(directories.at(-1)!, "2026-09-16"));
+
+  expect(await store.listDates()).toEqual([]);
+  expect(await store.readLatest()).toEqual({ found: false });
+});
+
+test("orders same-millisecond saves from separate stores deterministically", async () => {
+  const firstStore = await freshStore();
+  const secondStore = createReportStore(directories.at(-1)!);
+  vi.spyOn(Date, "now").mockReturnValue(1_789_000_000_000);
+  const first = sampleReport();
+  const second = {
+    ...sampleReport(),
+    achievements: [{ ...sampleReport().achievements[0]!, title: "Second" }],
+  };
+
+  await firstStore.save(first);
+  await secondStore.save(second);
+
+  const versions = await firstStore.listVersions(first.date);
+  expect(versions.map((version) => version.generatedAt)).toEqual([
+    new Date(1_789_000_000_000).toISOString(),
+    new Date(1_789_000_000_000).toISOString(),
+  ]);
+  expect(versions.map((version) => version.report)).toEqual([second, first]);
 });
 
 test("replaces only the named version without adding a new one", async () => {

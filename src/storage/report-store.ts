@@ -6,6 +6,7 @@ import {
   rename,
   rm,
   stat,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 import { join } from "node:path";
@@ -85,10 +86,12 @@ export function createReportStore(directory: string): ReportVersionStore {
   async function writeAtomically(
     targetPath: string,
     contents: string,
+    modifiedAt?: Date,
   ): Promise<void> {
     const temporaryPath = `${targetPath}.${randomUUID()}.tmp`;
     try {
       await writeFile(temporaryPath, contents, "utf8");
+      if (modifiedAt) await utimes(temporaryPath, modifiedAt, modifiedAt);
       await rename(temporaryPath, targetPath);
     } catch (error) {
       await rm(temporaryPath, { force: true });
@@ -145,8 +148,10 @@ export function createReportStore(directory: string): ReportVersionStore {
       readLegacyVersion(date),
       listStoredVersions(date),
     ]);
-    return (legacy ? [...stored, legacy] : stored).sort((left, right) =>
-      right.generatedAt.localeCompare(left.generatedAt),
+    return (legacy ? [...stored, legacy] : stored).sort(
+      (left, right) =>
+        right.generatedAt.localeCompare(left.generatedAt) ||
+        right.id.localeCompare(left.id),
     );
   }
 
@@ -173,7 +178,7 @@ export function createReportStore(directory: string): ReportVersionStore {
       if (isMissingFileError(error)) return [];
       throw error;
     }
-    return [
+    const candidates = [
       ...new Set(
         entries.flatMap((name) => {
           if (datePattern.test(name)) return [name];
@@ -184,12 +189,21 @@ export function createReportStore(directory: string): ReportVersionStore {
         }),
       ),
     ].sort();
+    const versions = await Promise.all(
+      candidates.map(async (date) => ({
+        date,
+        versions: await listVersions(date),
+      })),
+    );
+    return versions
+      .filter(({ versions }) => versions.length > 0)
+      .map(({ date }) => date);
   }
 
   return {
     async save(report) {
       assertDate(report.date);
-      const id = randomUUID();
+      const id = `${process.hrtime.bigint().toString().padStart(20, "0")}-${randomUUID()}`;
       const version: ReportVersion = {
         id,
         generatedAt: nextGeneratedAt(),
@@ -207,8 +221,11 @@ export function createReportStore(directory: string): ReportVersionStore {
 
     async readLatest() {
       const dates = await listDates();
-      const latest = dates.at(-1);
-      return latest ? readDate(latest) : { found: false };
+      for (const date of dates.toReversed()) {
+        const result = await readDate(date);
+        if (result.found) return result;
+      }
+      return { found: false };
     },
 
     listDates,
@@ -230,6 +247,7 @@ export function createReportStore(directory: string): ReportVersionStore {
         await writeAtomically(
           legacyPathFor(date),
           `${JSON.stringify(report, null, 2)}\n`,
+          new Date(found.version.generatedAt),
         );
         const updated = await readLegacyVersion(date);
         if (!updated) throw new Error(`Report version not found: ${id}`);
