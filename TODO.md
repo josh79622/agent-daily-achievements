@@ -478,3 +478,10 @@ regression to fix mid-task.
 - [ ] Document GitHub-source setup and failure guidance.
 - [ ] Verify setup on a fresh macOS user environment.
 - [ ] Design the optional Chrome add-on separately.
+- [x] Preserve and display all regenerated versions of the same report date;
+      keep legacy flat reports readable and edit the selected version only.
+      Implemented on `feature/report-version-history`; `npm run check` passed
+      with 606 tests on 2026-09-23. PR/merge and live browser verification
+      remain as integration steps.
+- [x] Localize the preferred-provider badge and default-model option for the
+      built-in languages, with English fallback for existing runtime packs.

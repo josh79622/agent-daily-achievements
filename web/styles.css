@@ -1279,6 +1279,23 @@ main,
   gap: 1.25rem;
 }
 
+.report-version {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: rgba(7, 12, 21, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+}
+
+.report-version-header {
+  color: var(--accent-text);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .journal-card {
   background: rgba(17, 24, 39, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
