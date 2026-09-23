@@ -38,6 +38,12 @@ import { getYesterdayDate } from "./date-utils.js";
 
 type ViewMode = "journal" | "bento" | "briefing";
 
+interface ReportVersion {
+  id: string;
+  generatedAt: string;
+  report: AchievementReportV1;
+}
+
 interface EvidenceDrawerProps {
   refData: EvidenceRef;
   reportDate?: string;
@@ -148,6 +154,7 @@ function EvidenceDrawer({ refData, reportDate, t }: EvidenceDrawerProps) {
 interface AchievementCardProps {
   achievement: Achievement;
   reportDate: string;
+  reportVersionId: string;
   onReportUpdated: (report: AchievementReportV1) => void;
   onError: (message: string) => void;
   isHero?: boolean;
@@ -157,6 +164,7 @@ interface AchievementCardProps {
 function AchievementCard({
   achievement,
   reportDate,
+  reportVersionId,
   onReportUpdated,
   onError,
   isHero = false,
@@ -193,7 +201,7 @@ function AchievementCard({
     setEditError(undefined);
     try {
       const response = await fetch(
-        `/api/reports/${encodeURIComponent(reportDate)}/achievements/${encodeURIComponent(achievement.id)}`,
+        `/api/reports/${encodeURIComponent(reportDate)}/versions/${encodeURIComponent(reportVersionId)}/achievements/${encodeURIComponent(achievement.id)}`,
         {
           method: "PATCH",
           headers: { "content-type": "application/json" },
@@ -226,7 +234,7 @@ function AchievementCard({
     setIsDeleting(true);
     try {
       const response = await fetch(
-        `/api/reports/${encodeURIComponent(reportDate)}/achievements/${encodeURIComponent(achievement.id)}`,
+        `/api/reports/${encodeURIComponent(reportDate)}/versions/${encodeURIComponent(reportVersionId)}/achievements/${encodeURIComponent(achievement.id)}`,
         { method: "DELETE" },
       );
       const body = (await response.json().catch(() => undefined)) as
@@ -451,10 +459,151 @@ function AchievementCard({
   );
 }
 
+interface ReportVersionContentProps {
+  version: ReportVersion;
+  language: Language;
+  viewMode: ViewMode;
+  t: Translations;
+  onReportUpdated: (report: AchievementReportV1) => void;
+  onError: (message: string) => void;
+}
+
+function formatGeneratedAt(generatedAt: string, language: Language): string {
+  const date = new Date(generatedAt);
+  if (Number.isNaN(date.getTime())) return generatedAt;
+  return new Intl.DateTimeFormat(language, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function ReportVersionContent({
+  version,
+  language,
+  viewMode,
+  t,
+  onReportUpdated,
+  onError,
+}: ReportVersionContentProps) {
+  const report = version.report;
+  const incomplete = describeIncomplete(report.incomplete, t);
+  const status = incomplete.length
+    ? incomplete.join(" ")
+    : report.achievements.length === 0
+      ? t.states.emptyDesc
+      : undefined;
+  const heroAchievement =
+    report.achievements.find((achievement) => achievement.isPrimary) ??
+    report.achievements[0];
+  const secondaryAchievements = report.achievements.filter(
+    (achievement) => achievement.id !== heroAchievement?.id,
+  );
+  const deliverables = report.achievements.filter(
+    (achievement) => achievement.category !== "decision",
+  );
+  const decisions = report.achievements.filter(
+    (achievement) => achievement.category === "decision",
+  );
+  const card = (achievement: Achievement, isHero = false) => (
+    <AchievementCard
+      key={achievement.id}
+      achievement={achievement}
+      reportDate={report.date}
+      reportVersionId={version.id}
+      onReportUpdated={onReportUpdated}
+      onError={onError}
+      isHero={isHero}
+      t={t}
+    />
+  );
+
+  return (
+    <section className="report-version" data-version-id={version.id}>
+      <header className="report-version-header">
+        <time dateTime={version.generatedAt}>
+          {format(t.states.versionGeneratedAt, {
+            time: formatGeneratedAt(version.generatedAt, language),
+          })}
+        </time>
+      </header>
+      <section className="zen-meta-bar">
+        <div className="meta-left">
+          <span className="meta-count">
+            {format(t.meta.count, { n: report.achievements.length })}
+          </span>
+          <span className="meta-divider">•</span>
+          <span className="meta-source">
+            {t.meta.sources}
+            {report.coverage
+              .map((coverage) => sourceLabel(coverage.source))
+              .join(", ")}
+          </span>
+        </div>
+      </section>
+
+      {status ? (
+        <div className="zen-status-alert">
+          <span className="alert-icon">ℹ️</span>
+          <span>{status}</span>
+        </div>
+      ) : null}
+
+      {viewMode === "journal" ? (
+        <section className="journal-cards-container">
+          {report.achievements.map((achievement) => card(achievement))}
+        </section>
+      ) : null}
+
+      {viewMode === "bento" ? (
+        <section className="bento-layout-container">
+          {heroAchievement ? card(heroAchievement, true) : null}
+          {secondaryAchievements.length > 0 ? (
+            <div className="bento-sub-grid">
+              {secondaryAchievements.map((achievement) => card(achievement))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {viewMode === "briefing" ? (
+        <section className="briefing-paper-view">
+          <div className="briefing-inner-paper">
+            <div className="briefing-section-header">
+              {t.states.briefingDeliverables}
+            </div>
+            <div className="briefing-items-group">
+              {deliverables.map((achievement) => card(achievement))}
+              {deliverables.length === 0 ? (
+                <p className="evidence-text-faint">{t.states.noDeliverables}</p>
+              ) : null}
+            </div>
+            {decisions.length > 0 ? (
+              <>
+                <div
+                  className="briefing-section-header"
+                  style={{ color: "#c084fc", marginTop: "2rem" }}
+                >
+                  {t.states.briefingDecisions}
+                </div>
+                <div className="briefing-items-group">
+                  {decisions.map((achievement) => card(achievement))}
+                </div>
+              </>
+            ) : null}
+            <div className="briefing-conclusion-callout">
+              {t.states.briefingConclusion}
+            </div>
+          </div>
+        </section>
+      ) : null}
+    </section>
+  );
+}
+
 type Theme = "dark" | "light";
 
 export function ZenJournal() {
-  const [report, setReport] = useState<AchievementReportV1 | null>(null);
+  const [versions, setVersions] = useState<ReportVersion[]>([]);
   const [status, setStatus] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -596,33 +745,37 @@ export function ZenJournal() {
       setGenerateMessage(undefined);
       setGenerateErrorType(undefined);
       try {
-        const url = date
-          ? `/api/reports/${encodeURIComponent(date)}`
-          : "/api/reports/latest";
+        const url = `/api/reports/${encodeURIComponent(date ?? selectedDate)}/versions`;
         const response = await fetch(url);
         if (response.status === 404) {
-          setReport(null);
+          setVersions([]);
           setStatus("No report has been generated yet.");
           return;
         }
         if (!response.ok) {
-          setReport(null);
+          setVersions([]);
           setStatus("The report could not be loaded.");
           return;
         }
-        const body = (await response.json()) as { report: AchievementReportV1 };
-        setReport(body.report);
-
-        const incomplete = describeIncomplete(body.report.incomplete, t);
-        if (incomplete.length) {
-          setStatus(incomplete.join(" "));
-        } else if (body.report.achievements.length === 0) {
-          setStatus(t.states.emptyDesc);
-        } else {
-          setStatus(undefined);
-        }
+        const body = (await response.json()) as {
+          versions?: ReportVersion[];
+          report?: AchievementReportV1;
+        };
+        const loadedVersions =
+          body.versions ??
+          (body.report
+            ? [{ id: "latest", generatedAt: "", report: body.report }]
+            : []);
+        setVersions(
+          [...loadedVersions].sort(
+            (left, right) =>
+              right.generatedAt.localeCompare(left.generatedAt) ||
+              right.id.localeCompare(left.id),
+          ),
+        );
+        setStatus(undefined);
       } catch {
-        setReport(null);
+        setVersions([]);
         setStatus("The report could not be loaded.");
       } finally {
         setLoading(false);
@@ -688,18 +841,6 @@ export function ZenJournal() {
       setIsGenerating(false);
     }
   }
-
-  // Bento separation: Hero is the primary milestone or first achievement
-  const heroAchievement =
-    report?.achievements.find((a) => a.isPrimary) ?? report?.achievements[0];
-  const secondaryAchievements =
-    report?.achievements.filter((a) => a.id !== heroAchievement?.id) ?? [];
-
-  // Briefing Categorization
-  const deliverables =
-    report?.achievements.filter((a) => a.category !== "decision") ?? [];
-  const decisions =
-    report?.achievements.filter((a) => a.category === "decision") ?? [];
 
   return (
     <div className="zen-app-shell">
@@ -785,29 +926,11 @@ export function ZenJournal() {
           <div className="zen-state-card">
             <p className="zen-state-text">{t.states.loading}</p>
           </div>
-        ) : report ? (
+        ) : versions.length > 0 ? (
           <>
-            <section className="zen-meta-bar">
-              <div className="meta-left">
-                <span className="meta-count">
-                  {format(t.meta.count, { n: report.achievements.length })}
-                </span>
-                <span className="meta-divider">•</span>
-                <span className="meta-source">
-                  {t.meta.sources}
-                  {report.coverage.map((c) => sourceLabel(c.source)).join(", ")}
-                </span>
-              </div>
-            </section>
-
-            {status ? (
-              <div className="zen-status-alert">
-                <span className="alert-icon">ℹ️</span>
-                <span>{status}</span>
-              </div>
-            ) : null}
-
-            {report?.status === "incomplete" && (
+            {versions.some(
+              (version) => version.report.status === "incomplete",
+            ) ? (
               <div
                 className="incomplete-regenerate-bar"
                 style={{
@@ -831,110 +954,32 @@ export function ZenJournal() {
                   <p className="action-message error">{generateMessage}</p>
                 )}
               </div>
-            )}
-
-            {/* View 1: Zen Journal (Vertical cards) */}
-            {viewMode === "journal" && (
-              <section className="journal-cards-container">
-                {report.achievements.map((ach) => (
-                  <AchievementCard
-                    key={ach.id}
-                    achievement={ach}
-                    reportDate={report.date}
-                    onReportUpdated={(updated) => setReport(updated)}
-                    onError={(err) => setStatus(err)}
-                    t={t}
-                  />
-                ))}
-              </section>
-            )}
-
-            {/* View 2: Bento Grid (Hero card + 2-col subcards) */}
-            {viewMode === "bento" && (
-              <section className="bento-layout-container">
-                {heroAchievement ? (
-                  <AchievementCard
-                    key={heroAchievement.id}
-                    achievement={heroAchievement}
-                    reportDate={report.date}
-                    onReportUpdated={(updated) => setReport(updated)}
-                    onError={(err) => setStatus(err)}
-                    isHero={true}
-                    t={t}
-                  />
-                ) : null}
-
-                {secondaryAchievements.length > 0 ? (
-                  <div className="bento-sub-grid">
-                    {secondaryAchievements.map((ach) => (
-                      <AchievementCard
-                        key={ach.id}
-                        achievement={ach}
-                        reportDate={report.date}
-                        onReportUpdated={(updated) => setReport(updated)}
-                        onError={(err) => setStatus(err)}
-                        t={t}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </section>
-            )}
-
-            {/* View 3: Executive Briefing (Editorial typography) */}
-            {viewMode === "briefing" && (
-              <section className="briefing-paper-view">
-                <div className="briefing-inner-paper">
-                  <div className="briefing-section-header">
-                    {t.states.briefingDeliverables}
-                  </div>
-                  <div className="briefing-items-group">
-                    {deliverables.map((ach) => (
-                      <AchievementCard
-                        key={ach.id}
-                        achievement={ach}
-                        reportDate={report.date}
-                        onReportUpdated={(updated) => setReport(updated)}
-                        onError={(err) => setStatus(err)}
-                        t={t}
-                      />
-                    ))}
-                    {deliverables.length === 0 ? (
-                      <p className="evidence-text-faint">
-                        {t.states.noDeliverables}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  {decisions.length > 0 ? (
-                    <>
-                      <div
-                        className="briefing-section-header"
-                        style={{ color: "#c084fc", marginTop: "2rem" }}
-                      >
-                        {t.states.briefingDecisions}
-                      </div>
-                      <div className="briefing-items-group">
-                        {decisions.map((ach) => (
-                          <AchievementCard
-                            key={ach.id}
-                            achievement={ach}
-                            reportDate={report.date}
-                            onReportUpdated={(updated) => setReport(updated)}
-                            onError={(err) => setStatus(err)}
-                            t={t}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
-
-                  <div className="briefing-conclusion-callout">
-                    {t.states.briefingConclusion}
-                  </div>
-                </div>
-              </section>
-            )}
+            ) : null}
+            {status ? (
+              <div className="zen-status-alert">
+                <span className="alert-icon">ℹ️</span>
+                <span>{status}</span>
+              </div>
+            ) : null}
+            {versions.map((version) => (
+              <ReportVersionContent
+                key={version.id}
+                version={version}
+                language={language}
+                viewMode={viewMode}
+                t={t}
+                onReportUpdated={(updated) =>
+                  setVersions((current) =>
+                    current.map((item) =>
+                      item.id === version.id
+                        ? { ...item, report: updated }
+                        : item,
+                    ),
+                  )
+                }
+                onError={setStatus}
+              />
+            ))}
           </>
         ) : (
           <div className="zen-state-card">

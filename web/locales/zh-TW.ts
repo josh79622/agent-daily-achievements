@@ -81,6 +81,7 @@ export const zhTW: Translations = {
     summaryUnavailable: "摘要工具未產生報告。",
     sourceIncomplete: "{source} 資料不完整。",
     regenerateReport: "重新產生摘要",
+    versionGeneratedAt: "產生於 {time}",
   },
   settings: {
     title: "偏好與摘要設定",

@@ -86,6 +86,7 @@ export const en = {
     summaryUnavailable: "The summarizer did not produce a report.",
     sourceIncomplete: "{source} data is incomplete.",
     regenerateReport: "Regenerate Summary",
+    versionGeneratedAt: "Generated {time}",
   },
   settings: {
     title: "Preferences & Model Settings",

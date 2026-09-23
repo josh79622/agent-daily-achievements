@@ -86,6 +86,7 @@ export const es: Translations = {
     summaryUnavailable: "El generador de resúmenes no produjo ningún informe.",
     sourceIncomplete: "Los datos de {source} están incompletos.",
     regenerateReport: "Regenerar resumen",
+    versionGeneratedAt: "Generado {time}",
   },
   settings: {
     title: "Preferencias y ajustes del modelo",
