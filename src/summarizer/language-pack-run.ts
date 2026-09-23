@@ -5,10 +5,12 @@
 
 import { join } from "node:path";
 
-import { isBuiltInLanguage, type Translations } from "../../web/i18n.js";
-import { validateLanguagePack } from "../report/language-pack.js";
+import {
+  validateLanguagePack,
+  type Translations,
+} from "../report/language-pack.js";
 import { buildLanguagePackPrompt } from "../report/language-pack-prompt.js";
-import { findLanguage } from "../report/languages.js";
+import { findLanguage, isBuiltInLanguage } from "../report/languages.js";
 import type { SummaryProvider } from "../storage/summary-permission.js";
 import type { LanguagePackStore } from "../storage/language-pack-store.js";
 import {

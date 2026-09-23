@@ -113,6 +113,16 @@ test("S1-9: at 07:00 on 19 Sep the job picks 18 Sep as the window to generate", 
   expect(result).toMatchObject({ status: "generated", date: "2026-09-18" });
 });
 
+test("at 09:00 on 19 Sep the job picks 18 Sep as the window to generate", async () => {
+  const deps = baseDeps({
+    now: () => new Date("2026-09-19T09:00:00Z"),
+  });
+
+  const result = await runScheduledReport(deps);
+
+  expect(result).toMatchObject({ status: "generated", date: "2026-09-18" });
+});
+
 test("S1-10: when the 18 Sep report already exists, the job generates nothing and calls no provider", async () => {
   const reportStore = fakeReportStore({
     "2026-09-18": fakeReport("2026-09-18"),

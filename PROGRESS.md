@@ -1,29 +1,36 @@
 # Progress
 
-## Handoff — 2026-09-23 (read first)
+## Handoff — 2026-09-24 (read first)
 
+- Auto-wake web server launcher and decoupled production build (`feature/auto-wake-server`):
+  - Fixed Vite build wiping `dist/web/i18n.js` (`emptyOutDir: false`) and extracted `isBuiltInLanguage` into `src/report/languages.ts`. Standalone `node dist/src/server/index.js` now boots cleanly without missing modules.
+  - Implemented cross-platform auto-wake launcher (`src/server/launcher.ts` and `scripts/open-app.mjs`) checking port 4317; if stopped, automatically spawns the server in the background and opens the default browser (`npm run open`).
+  - Implemented macOS web server LaunchAgent generator (`src/server/web-launchd-plist.ts`) and installer (`scripts/install-web-server.mjs`) with `KeepAlive: true` and `RunAtLoad: true`, ensuring auto-restart within 1 second if killed.
+  - Added unit test suites `test/server/launcher.test.ts` and `test/server/web-launchd-plist.test.ts`. All 654 tests in 72 test files pass; `npm run check` and `npm run lint` pass cleanly.
+- Native macOS report notification (`feature/macos-notification`):
+  - Implemented `src/schedule/notification.ts`: zero-dependency notification sender using macOS `/usr/bin/osascript`.
+  - Supports multi-language localization (`zh-TW`, `zh`, `es`, `en` fallback) for titles and messages, system sound chime, and embedded browser link (`http://127.0.0.1:4317/`).
+  - Integrated into `src/schedule/entry.ts` on report completion and failure with graceful non-fatal error handling.
+  - Added test cases N1-1 through N1-6 in `test/schedule/notification.test.ts`. 641 tests across 70 test files pass; `npm run check` and `npm run lint` pass cleanly.
+- Daily report schedule time updated to 09:00 AM (`feature/schedule-time-nine-am`):
+  - `src/schedule/launchd-plist.ts`: parameterized `hour` (defaults to 9) and `minute` (defaults to 0) in `LaunchdJobConfig` and `buildLaunchdPlist`.
+  - `scripts/install-launchd.mjs`: passes `hour`/`minute` to plist builder and logs dynamic schedule time.
+  - Tests in `test/schedule/launchd-plist.test.ts` and `test/schedule/run-scheduled-report.test.ts` verify the 09:00 default, custom hour/minute configuration, and that the 07:00-07:00 date window calculation remains unchanged.
+  - 635 tests in 69 files pass; `npm run check` and `npm run lint` pass cleanly.
+- Task M1 (`feature/latest-provider-models`) is complete: detect latest provider models (Codex bundled CLI & Claude Code versioned labels).
+  - Extended `createLocalCommandExecutor` in `src/summarizer/provider-login.ts` to locate Codex by first reading `CODEX_CLI_PATH` from `~/.codex/config.toml` (or `$CODEX_HOME/config.toml`) and checking `/Applications/ChatGPT.app/Contents/Resources/codex` before `$PATH`. This discovers the bundled CLI (0.155.0-alpha) which supports `GPT-6-Sol` and `GPT-6-Luna`.
+  - Updated `parseClaudeModels` in `src/summarizer/model-catalog.ts` to parse versioned labels from `model.description` (`description.split(" · ")[0]`) matching Claude Code CLI's interactive TUI menu (`Opus 5.5`, `Sonnet 5`, `Fable 5.1`, `Haiku 4.5`), falling back to `model.displayName`.
+  - Updated `builtInModels` in `src/summarizer/model-catalog.ts` with `gpt-6-sol`, `gpt-6-luna`, and versioned Claude names.
+  - Added unit test cases M1-1 through M1-6 in `test/summarizer/provider-login.test.ts` and `test/summarizer/model-catalog.test.ts`. All 633 tests in 69 files pass; `npm run check` and `npm run lint` pass cleanly.
+- Task W1 (`feature/frontend-date-window`) was merged into `master` as `f8444c1`:
+  frontend 07:00 report window alignment. Extracted pure, browser-safe 07:00 window calculations
+  into `src/report/date-window.ts` (re-exported by `src/collector/local-collector.ts` and
+  `src/schedule/report-window.ts`). Aligned `web/date-utils.ts` and clamped `DateSelector` forward stepping.
 - PR [#3](https://github.com/josh79622/agent-daily-achievements/pull/3) was merged into
-  `master` as `9cbe65d`; the main checkout has been fast-forwarded to it.
-  It adds same-date report version history and localizes the settings model
-  badge/default-model option. The branch design and implementation plan are in
-  `docs/plans/2026-09-23-report-version-history-*.md`.
-- The last full `npm run check` on the feature worktree passed: 606 tests in
-  68 files, format, lint, both TypeScript checks, and build. Both PR checks
-  passed before merge. No full gate was rerun on `master` after the merge;
-  the merged product code is the same reviewed code.
-- `http://127.0.0.1:4317/` is currently served from
-  `.worktrees/report-version-history` (not the main checkout), with that
-  worktree's `data` symlink pointing to this checkout's real `data/`.
-  The 4317 process was confirmed listening and its version API returned one
-  legacy version for 2026-09-18. Do not delete or commit the real `data/`.
-- Josh asked to verify the UI after the restart. Multiple versions have
-  component/API tests, but a second real 2026-09-18 version has not yet been
-  generated under the new storage format. Previously overwritten 9/18
-  reports are not recoverable from the current report file. The next step is
-  for Josh to inspect 4317; if he regenerates 9/18, the page should display
-  the legacy and new versions newest first. Regeneration sends that day's
-  full authorized conversations to the saved summarizer CLI, so do not
-  trigger it without Josh's current instruction.
+  `master` as `9cbe65d`: same-date report version history and localizes settings model badge.
+- `http://127.0.0.1:4317/` dev server: when testing on main checkout, run
+  `cd /Users/joshtsai/Documents/agent-daily-achievements && npm run dev`.
+  Do not trigger real report regeneration without Josh's current instruction.
 
 ## Current phase
 
@@ -879,5 +886,12 @@ this conversation, only this repo's files.
   Settings model badge/default option now follow the UI language. The content
   of each saved report stays in its original language. `npm run check` passed:
   606 tests across 68 files, format, lint, typecheck, and build. Changes are
-  are merged into `master`; the running 4317 server uses the feature worktree
+  merged into `master`; the running 4317 server uses the feature worktree
   with shared local data for Josh's UI verification.
+- **2026-09-23, Task W1 completed:** Frontend 07:00 report window alignment.
+  Extracted pure, browser-safe 07:00 window calculations into `src/report/date-window.ts`
+  (re-exported by `src/collector/local-collector.ts` and `src/schedule/report-window.ts`).
+  Aligned `web/date-utils.ts` (`getYesterdayDate()` returns most recent finished window,
+  `getTodayDate()` returns open window) and clamped `DateSelector` forward stepping.
+  Test cases W1-1 to W1-15 pass; `npm run check` passed with 625 tests across 69 test files,
+  format, lint, typecheck, and build.

@@ -37,6 +37,7 @@ import {
   sweepStaleTempDirs,
 } from "../summarizer/temp-dirs.js";
 import { runScheduledReport } from "./run-scheduled-report.js";
+import { sendReportNotification } from "./notification.js";
 
 async function main(): Promise<number> {
   const reportStore = createReportStore(resolve("data/reports"));
@@ -93,11 +94,22 @@ async function main(): Promise<number> {
   });
 
   switch (result.status) {
-    case "generated":
+    case "generated": {
       console.log(
         `Generated the report for ${result.date} with ${result.provider}.`,
       );
+      const permission = await readSummaryPermission(
+        resolve("data/summary-permission.json"),
+      ).catch(() => undefined);
+      await sendReportNotification({
+        status: "generated",
+        date: result.date,
+        provider: result.provider,
+        language: permission?.summaryLanguage,
+        url: "http://127.0.0.1:4317/",
+      }).catch(() => false);
       return 0;
+    }
     case "skipped":
       console.log(`${result.date} already has a report; nothing to do.`);
       return 0;
@@ -108,9 +120,19 @@ async function main(): Promise<number> {
           : "No summarization permission saved; not generating a report.",
       );
       return 1;
-    case "failed":
+    case "failed": {
       console.error(`Report for ${result.date} failed: ${result.reason}`);
+      const permission = await readSummaryPermission(
+        resolve("data/summary-permission.json"),
+      ).catch(() => undefined);
+      await sendReportNotification({
+        status: "failed",
+        date: result.date,
+        reason: result.reason,
+        language: permission?.summaryLanguage,
+      }).catch(() => false);
       return 1;
+    }
   }
 }
 

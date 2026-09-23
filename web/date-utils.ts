@@ -1,3 +1,7 @@
+import {
+  currentOpenWindow,
+  mostRecentFinishedWindow,
+} from "../src/report/date-window.js";
 import type { Direction } from "../src/report/languages.js";
 
 /**
@@ -22,23 +26,35 @@ export function formatLocalDate(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function getYesterdayDate(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return formatLocalDate(d);
+export function getDefaultTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
-export function getTodayDate(): string {
-  return formatLocalDate(new Date());
+export function getYesterdayDate(
+  now: Date = new Date(),
+  timeZone: string = getDefaultTimeZone(),
+): string {
+  return mostRecentFinishedWindow(now, timeZone);
 }
 
-export function shiftDateString(dateStr: string, offsetDays: number): string {
+export function getTodayDate(
+  now: Date = new Date(),
+  timeZone: string = getDefaultTimeZone(),
+): string {
+  return currentOpenWindow(now, timeZone);
+}
+
+export function shiftDateString(
+  dateStr: string,
+  offsetDays: number,
+  maxDate?: string,
+): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   if (!y || !m || !d) return dateStr;
   const current = new Date(Date.UTC(y, m - 1, d));
   current.setUTCDate(current.getUTCDate() + offsetDays);
   const nextDate = current.toISOString().slice(0, 10);
-  const today = getTodayDate();
-  if (nextDate > today) return today;
+  const max = maxDate ?? getTodayDate();
+  if (nextDate > max) return max;
   return nextDate;
 }

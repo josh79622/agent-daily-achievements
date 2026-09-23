@@ -1,9 +1,14 @@
 import { en, type Translations } from "./locales/en.js";
 import { es } from "./locales/es.js";
 import { zhTW } from "./locales/zh-TW.js";
+import {
+  builtInLanguageCodes,
+  type BuiltInLanguage,
+  isBuiltInLanguage,
+} from "../src/report/languages.js";
 
 export type { Translations };
-export { en };
+export { en, builtInLanguageCodes, type BuiltInLanguage, isBuiltInLanguage };
 
 /** A language code from `src/report/languages.ts`, e.g. "zh-TW". */
 export type Language = string;
@@ -16,13 +21,7 @@ export const translations = {
   en,
   "zh-TW": zhTW,
   es,
-} satisfies Record<string, Translations>;
-
-export type BuiltInLanguage = keyof typeof translations;
-
-export function isBuiltInLanguage(code: string): code is BuiltInLanguage {
-  return Object.hasOwn(translations, code);
-}
+} satisfies Record<BuiltInLanguage, Translations>;
 
 /** Fills each `{name}` in a template; a name with no value is left as written. */
 export function format(

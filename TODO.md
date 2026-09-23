@@ -467,9 +467,26 @@ regression to fix mid-task.
       - Softened empty report constraints to prevent models triggering empty array `{"achievements": []}` escape hatch.
       - Implemented `sanitizeCandidateEvidence` in `summary-run.ts` to defend against hallucinated message IDs or recordId mixups while preserving true source/record grounding.
       - Verified with real end-to-end report generation for 2026-09-21: produced 4 achievements spanning `agent-daily-achievements` and `Josh_JobHunt`.
-- [ ] `getYesterdayDate()` in `web/date-utils.ts` still assumes a midnight boundary; align the
+- [x] `getYesterdayDate()` in `web/date-utils.ts` still assumes a midnight boundary; align the
       page's default date with the 07:00 window.
-- [ ] Add a clickable macOS notification.
+      - Extracted browser-safe date window logic into `src/report/date-window.ts` (pure TypeScript, zero Node.js built-ins).
+      - Re-exported from `src/collector/local-collector.ts` and `src/schedule/report-window.ts` to preserve backwards compatibility.
+      - `getYesterdayDate()` now returns the most recently finished window ($D-1$ after 07:00, $D-2$ before 07:00).
+      - `getTodayDate()` now returns the active open window ($D$ after 07:00, $D-1$ before 07:00) and clamps `DateSelector` forward stepping.
+      - 19 new tests added (W1-1 to W1-15); 625 tests passing.
+- [x] Update daily report schedule time to 09:00 AM while keeping 07:00-07:00 window:
+      - Updated `src/schedule/launchd-plist.ts` to support configurable `hour` (defaults to 9) and `minute` (defaults to 0).
+      - Updated `scripts/install-launchd.mjs` to pass `hour`/`minute` and report dynamic schedule time.
+      - Unit tests in `test/schedule/launchd-plist.test.ts` and `test/schedule/run-scheduled-report.test.ts` pass; 635 tests passing.
+- [x] Add a clickable macOS notification:
+      - Implemented `src/schedule/notification.ts` using native `osascript` with localized title, message, sound, and browser link (`http://127.0.0.1:4317/`).
+      - Integrated into `src/schedule/entry.ts` on report completion and failure with graceful non-fatal error handling.
+      - 6 unit tests in `test/schedule/notification.test.ts` (N1-1 to N1-6) passing; 641 tests passing across 70 test files.
+- [x] Auto-wake web server launcher and decoupled production build:
+      - Fixed Vite build wiping `dist/web/i18n.js` (`emptyOutDir: false`) and decoupled server language imports to `src/report/languages.ts`.
+      - Added cross-platform auto-wake launcher (`src/server/launcher.ts` and `scripts/open-app.mjs`) to test port 4317, launch detached server, and open default browser.
+      - Added web server launchd plist builder (`src/server/web-launchd-plist.ts`) and installer (`scripts/install-web-server.mjs`) with `KeepAlive: true` and `RunAtLoad: true`.
+      - 13 new unit tests in `test/server/launcher.test.ts` and `test/server/web-launchd-plist.test.ts`; 654 tests passing across 72 files.
 
 ### Phase 7 — Release readiness
 
@@ -484,6 +501,10 @@ regression to fix mid-task.
       606 tests on 2026-09-23 before merge.
 - [x] Localize the preferred-provider badge and default-model option for the
       built-in languages, with English fallback for existing runtime packs.
+- [x] Detect latest provider models (Codex CLI app path & Claude Code versioned labels):
+      - Supported discovering `CODEX_CLI_PATH` in `~/.codex/config.toml` and bundled desktop path (`/Applications/ChatGPT.app/Contents/Resources/codex`), discovering `GPT-6-Sol` and `GPT-6-Luna`.
+      - Extracted versioned Claude model titles from `model.description` (`Opus 5.5`, `Sonnet 5`, `Fable 5.1`, `Haiku 4.5`).
+      - Updated built-in fallbacks; 633 unit and component tests passing.
 - [ ] Verify the merged version-history behavior in the live browser on 4317:
       one date must show both its legacy and newly regenerated report, newest
       first; editing one must leave the other unchanged. Josh is currently

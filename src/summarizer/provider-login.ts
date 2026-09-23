@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { constants } from "node:fs";
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { basename, delimiter, isAbsolute, join } from "node:path";
 
 import type { SummaryProvider } from "../storage/summary-permission.js";
@@ -375,21 +376,64 @@ export const spawnProcess: ProcessSpawner = (file, args, options) =>
     child.once("close", (exitCode) => resolve({ exitCode }));
   });
 
+export async function defaultReadCodexConfig(): Promise<string | undefined> {
+  const codexHome = process.env.CODEX_HOME?.trim();
+  const configPath = codexHome
+    ? join(codexHome, "config.toml")
+    : join(homedir(), ".codex", "config.toml");
+  try {
+    const text = await readFile(configPath, "utf-8");
+    const match = text.match(/^\s*CODEX_CLI_PATH\s*=\s*["']([^"']+)["']/m);
+    return match?.[1]?.trim();
+  } catch {
+    return undefined;
+  }
+}
+
 // Output is never captured: stdio is ignored and only the exit code returns.
 export function createLocalCommandExecutor({
   spawner = spawnProcess,
   searchPath = process.env.PATH ?? "",
+  readCodexConfig = defaultReadCodexConfig,
+  knownPaths = process.platform === "darwin"
+    ? { codex: ["/Applications/ChatGPT.app/Contents/Resources/codex"] }
+    : {},
+  checkAccess = access,
 }: {
   spawner?: ProcessSpawner;
   searchPath?: string;
+  readCodexConfig?: () => Promise<string | undefined>;
+  knownPaths?: Record<string, string[]>;
+  checkAccess?: (path: string, mode?: number) => Promise<void>;
 } = {}): CommandExecutor {
   return {
     async locate(executable) {
+      if (executable === "codex" && readCodexConfig) {
+        const configured = await readCodexConfig().catch(() => undefined);
+        if (configured && isAbsolute(configured)) {
+          try {
+            await checkAccess(configured, constants.X_OK);
+            return configured;
+          } catch {
+            // Not executable or not found, proceed
+          }
+        }
+      }
+      if (knownPaths?.[executable]) {
+        for (const candidate of knownPaths[executable]) {
+          try {
+            await checkAccess(candidate, constants.X_OK);
+            return candidate;
+          } catch {
+            // Not executable or not found, proceed
+          }
+        }
+      }
       for (const directory of searchPath.split(delimiter)) {
         if (!isAbsolute(directory)) continue;
         const candidate = join(directory, executable);
         try {
-          await access(candidate, constants.X_OK);
+          await checkAccess(candidate, constants.X_OK);
           return candidate;
         } catch {
           continue;
