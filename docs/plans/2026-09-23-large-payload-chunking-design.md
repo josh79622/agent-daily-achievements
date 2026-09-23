@@ -8,9 +8,11 @@ material.
 
 ## Decisions
 
-- Every provider uses the same conservative input budget: approximately 64k
-  tokens. The implementation must reserve room for the fixed prompt and a
-  reply instead of treating 64k as an exact payload allowance.
+- Every provider uses the same conservative prompt-input budget: approximately
+  64k tokens. Chunk record packing reserves room for the fixed prompt and a
+  conservative small structured-output allowance; a separate 512 KiB
+  transport safety cap protects provider replies and is not charged to that
+  prompt-input budget.
 - Pack complete sessions in chronological order. Only split a session when it
   alone exceeds the shared budget, and then split only between complete
   messages.
@@ -20,7 +22,9 @@ material.
   request receives compact chunk summaries, not the original full-day
   conversations.
 - The merge removes duplicate achievements, combines their evidence, and
-  produces the existing 0–5 achievement report contract.
+  produces the existing 0–5 achievement report contract. Its validation
+  manifest is derived only from the compact candidate evidence sent to its
+  prompt, never from records omitted during compaction.
 - The normal selected-provider, retry, and permitted-provider fallback rules
   apply to chunk and merge calls. Chunking never creates authority to send
   data to another provider.
@@ -90,6 +94,8 @@ Records and model replies are delimited JSON data, never instructions.
 | CH-10 | An achievement's message-ID list exceeds the merge budget | It is prepared for a merge | It falls back to a session-level evidence reference; the full session remains traceable locally. |
 | CH-11 | Compact chunk summaries still exceed one merge request | They are merged | The saved report is incomplete with a merge-too-large reason; no recursive merge runs. |
 | CH-12 | A record or candidate contains instruction-like text | It is placed in a prompt | It is explicitly delimited as untrusted JSON data, never as prompt instructions. |
+| CH-13 | A merge reply cites a full-day record omitted from compact candidates | The merge reply is validated | It is rejected and retried; it is never saved as a completed report. |
+| CH-14 | A valid evidence-heavy reply exceeds 8 KiB but is within 512 KiB | It is received | It is accepted; a reply beyond the transport cap remains unavailable. |
 
 ## Verification
 

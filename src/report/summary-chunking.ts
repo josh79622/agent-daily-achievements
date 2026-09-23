@@ -6,7 +6,7 @@ export const summaryChunkMaxPayloadBytes = 128 * 1024;
 
 /** Fixed prompt and CLI request/response wrapper allowance. */
 export const summaryChunkPromptAndWrapperBytes = 8 * 1024;
-/** Maximum structured summary reply read from a provider. */
+/** Conservative output reservation used only when sizing chunk records. */
 export const summaryChunkMaxReplyBytes = 8 * 1024;
 /** The remainder is the only space available to serialized source records. */
 export const summaryChunkRecordBudgetBytes =

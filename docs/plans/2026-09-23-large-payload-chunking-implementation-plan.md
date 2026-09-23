@@ -13,11 +13,12 @@ requests and one merge request, validating every model response against the
 evidence it was allowed to see.
 
 **Tech Stack:** TypeScript, Node built-ins, Vitest, existing local CLI runners.
-Use the shared 128 KiB request budget: a deliberately conservative 2
+Use the shared 128 KiB prompt-input budget: a deliberately conservative 2
 bytes/token approximation under the ~64k-token policy. Pack actual serialized
-data under its record allowance after fixed prompt/wrapper allowance. If
-message-ID evidence cannot fit, use a session-level reference rather than
-dropping source material. No tokenizer package is added.
+data under its record allowance after fixed prompt/wrapper allowance. The
+provider reply has a separate 512 KiB transport safety cap, not charged to the
+prompt-input budget. If message-ID evidence cannot fit, use a session-level
+reference rather than dropping source material. No tokenizer package is added.
 
 ---
 
@@ -140,10 +141,11 @@ Call `chunkReportDayPayload` before building a prompt. For `single`, retain
 the existing attempt/retry behavior. For `chunked`, run each chunk through the
 same provider/settings/attempt controls, collect only validated candidates,
 collapse oversized message-ID evidence to session-level references, and make
-one final merge request. If its exact prompt exceeds the shared budget, save
-an incomplete merge-too-large report; do not recursively merge. Validate the
-final reply against the full original manifest before saving. Save only the
-final report; attach typed incomplete entries on any unrecoverable chunk/merge
+one final merge request. If its exact prompt exceeds the shared prompt-input
+budget, save an incomplete merge-too-large report; do not recursively merge.
+Validate the final reply against a manifest derived only from compact evidence
+actually sent to the merge prompt before saving. Save only the final report;
+attach typed incomplete entries on any unrecoverable chunk/merge
 result. Throw only when the existing provider
 fallback contract requires it, so `app.ts` remains the sole owner of provider
 ordering and permission.

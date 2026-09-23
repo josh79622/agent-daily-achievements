@@ -5,7 +5,7 @@ import type { SummaryRequest } from "../../src/server/app.js";
 import {
   createSummaryRunner,
   parseCandidateJson,
-  summaryMaxReplyBytes,
+  summaryTransportMaxReplyBytes,
 } from "../../src/summarizer/summary-run.js";
 import type {
   ProbeRunRequest,
@@ -13,7 +13,6 @@ import type {
   ReplyFileResult,
 } from "../../src/summarizer/readiness-probe.js";
 import { buildSummaryRequestText } from "../../src/report/summary-prompt.js";
-import { summaryChunkMaxReplyBytes } from "../../src/report/summary-chunking.js";
 
 // Test cases SR-1 to SR-11 from docs/plans/2026-09-18-summary-run-design.md.
 // Every process, temp-dir, reply-file, and store dependency is a fake; no
@@ -540,6 +539,50 @@ test("CH-8: merge retries invalid output then saves its valid later reply", asyn
   expect(state.saved[0]!.status).toBe("complete");
 });
 
+test("CH-8b: merge rejects full-day evidence absent from compact candidates before saving", async () => {
+  const day = chunkedRequest();
+  const conversations = ["rec-1", "rec-2", "rec-3"].map((recordId, index) => ({
+    source: "codex" as const,
+    recordId,
+    messages: [
+      {
+        id: `m${index}`,
+        role: "user",
+        time: "09:00",
+        text: "x".repeat(70_000),
+      },
+    ],
+  }));
+  day.payload.payloadJson = JSON.stringify({
+    date: day.payload.date,
+    conversations,
+  });
+  day.payload.manifest = conversations.map((conversation) => ({
+    source: conversation.source,
+    recordId: conversation.recordId,
+    messageIds: conversation.messages.map((message) => message.id),
+  }));
+  day.payload.byteLength = Buffer.byteLength(day.payload.payloadJson);
+  const { runner, state } = harness({
+    runnerScript: [
+      claudeExit(candidateFor("rec-1", "m0")),
+      claudeExit(candidateFor("rec-2", "m1")),
+      claudeExit(JSON.stringify({ achievements: [] })),
+      claudeExit(candidateFor("rec-3", "m2")),
+      claudeExit(candidateFor("rec-1", "m0")),
+    ],
+  });
+
+  await runner.run("claude-code", day);
+
+  expect(state.runs).toHaveLength(5);
+  expect(state.runs[3]!.args).toEqual(state.runs[4]!.args);
+  expect(state.saved[0]!.status).toBe("complete");
+  expect(state.saved[0]!.achievements[0]!.evidence).toEqual([
+    { source: "codex", recordId: "rec-1", messageIds: ["m0"] },
+  ]);
+});
+
 test("CH-8a: unavailable merge retries three times, saves typed incomplete, and throws", async () => {
   const { runner, state } = harness({
     runnerScript: [
@@ -672,15 +715,67 @@ test("CH-10: an exact merge prompt over budget saves incomplete without a merge 
   ]);
 });
 
-test("summary runner enforces the shared bounded reply allowance", async () => {
+test("summary runner accepts a valid reply over 8 KiB within its 512 KiB transport cap", async () => {
+  const req = request();
+  const messageIds = Array.from({ length: 300 }, (_, index) => `m-${index}`);
+  const evidenceHeavyRequest: SummaryRequest = {
+    ...req,
+    payload: {
+      ...req.payload,
+      manifest: [{ source: "codex", recordId: "rec-1", messageIds }],
+    },
+  };
+  const oversizedChunkReply = JSON.stringify({
+    achievements: [
+      {
+        id: "evidence-heavy",
+        category: "progress",
+        title: "Evidence-heavy summary",
+        detail: "A valid structured summary with every supplied message cited.",
+        evidence: messageIds.map((messageId) => ({
+          source: "codex",
+          recordId: "rec-1",
+          messageIds: [messageId],
+        })),
+      },
+    ],
+  });
+  expect(Buffer.byteLength(oversizedChunkReply)).toBeGreaterThan(8 * 1024);
   const { runner, state } = harness({
-    runnerScript: [claudeExit(candidate(1))],
+    runnerScript: [claudeExit(oversizedChunkReply)],
   });
 
-  await runner.run("claude-code", request());
+  await runner.run("claude-code", evidenceHeavyRequest);
 
-  expect(summaryMaxReplyBytes).toBe(summaryChunkMaxReplyBytes);
-  expect(state.runs[0]?.maxStdoutBytes).toBe(summaryChunkMaxReplyBytes);
+  expect(summaryTransportMaxReplyBytes).toBe(512 * 1024);
+  expect(state.runs[0]?.maxStdoutBytes).toBe(summaryTransportMaxReplyBytes);
+  expect(state.saved[0]?.status).toBe("complete");
+});
+
+test("summary runner treats a reply over the transport cap as unavailable", async () => {
+  const transportOverflow = "x".repeat(summaryTransportMaxReplyBytes + 1);
+  const tooLarge: ProbeRunResult = {
+    kind: "exited",
+    exitCode: 0,
+    stdout: transportOverflow,
+    stdoutTooLarge: true,
+  };
+  const { runner, state } = harness({
+    runnerScript: [tooLarge],
+  });
+
+  await expect(runner.run("claude-code", request())).rejects.toThrow();
+
+  expect(Buffer.byteLength(transportOverflow)).toBeGreaterThan(
+    summaryTransportMaxReplyBytes,
+  );
+  expect(state.runs).toHaveLength(3);
+  expect(state.runs.every((run) => run.maxStdoutBytes === 512 * 1024)).toBe(
+    true,
+  );
+  expect(state.saved[0]?.incomplete).toEqual([
+    { reason: "summary-unavailable" },
+  ]);
 });
 
 test("SR: agy invokes agy CLI without -p and pipes prompt to stdin", async () => {

@@ -21,7 +21,6 @@ import {
 import {
   chunkReportDayPayload,
   summaryChunkMaxPayloadBytes,
-  summaryChunkMaxReplyBytes,
 } from "../report/summary-chunking.js";
 import {
   buildChunkSummaryRequestText,
@@ -46,7 +45,12 @@ import type { SummarizerModelsService } from "./model-settings.js";
 // A real day's prompt and reply are larger than the readiness probe's one-word
 // exchange, and up to three attempts run in sequence.
 export const summaryAttemptTimeoutMs = 10 * 60_000;
-export const summaryMaxReplyBytes = summaryChunkMaxReplyBytes;
+/**
+ * Provider output needs a safety limit independent of the conservative
+ * 64k-token prompt-input budget. Evidence-heavy valid JSON can exceed the
+ * chunk prompt's 8 KiB reply reservation.
+ */
+export const summaryTransportMaxReplyBytes = 512 * 1024;
 
 export type SummaryLocator = (
   provider: SummaryProvider,
@@ -105,7 +109,7 @@ export function createSummaryRunner({
           cwd: directory,
           captureStdout: provider === "claude-code" || provider === "agy",
           timeoutMs: summaryAttemptTimeoutMs,
-          maxStdoutBytes: summaryMaxReplyBytes,
+          maxStdoutBytes: summaryTransportMaxReplyBytes,
           stdin: provider === "agy" ? promptText : undefined,
         });
       } catch {
@@ -194,7 +198,7 @@ export function createSummaryRunner({
       }
       const merged = await runValidated(
         buildMergeSummaryRequestText(mergeCandidates, options),
-        request.payload.manifest,
+        mergeEvidenceManifest(mergeCandidates),
       );
       if (merged.kind === "valid") {
         await save(request, {
@@ -311,7 +315,7 @@ export function agyReplyText(
 export async function codexReplyText(
   readReplyFile: ReplyFileReader,
   replyFile: string,
-  maxReplyBytes = summaryMaxReplyBytes,
+  maxReplyBytes = summaryTransportMaxReplyBytes,
 ): Promise<string | undefined> {
   let reply: ReplyFileResult;
   try {
@@ -399,8 +403,34 @@ function mergeFits(
   options: { language?: string } | undefined,
 ): boolean {
   return (
-    Buffer.byteLength(buildMergeSummaryRequestText(candidates, options)) +
-      summaryMaxReplyBytes <=
+    Buffer.byteLength(buildMergeSummaryRequestText(candidates, options)) <=
     summaryChunkMaxPayloadBytes
   );
+}
+
+/**
+ * The final model sees only compact candidate evidence, so its validation
+ * manifest must be constructed from exactly those references—not the full
+ * day's records. Session-level references deliberately contribute no message
+ * IDs, preventing a merge reply from introducing IDs that were compacted out.
+ */
+function mergeEvidenceManifest(
+  candidates: readonly IntermediateCandidate[],
+): EvidenceManifest {
+  const entries = new Map<string, EvidenceManifest[number]>();
+  for (const candidate of candidates) {
+    for (const evidence of candidate.evidence) {
+      const key = `${evidence.source}\u0000${evidence.recordId}`;
+      const existing = entries.get(key);
+      const messageIds = new Set(existing?.messageIds ?? []);
+      for (const messageId of evidence.messageIds ?? [])
+        messageIds.add(messageId);
+      entries.set(key, {
+        source: evidence.source,
+        recordId: evidence.recordId,
+        messageIds: [...messageIds],
+      });
+    }
+  }
+  return [...entries.values()];
 }
