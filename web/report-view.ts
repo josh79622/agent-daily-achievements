@@ -94,7 +94,12 @@ export function describeIncomplete(
       case "summary-invalid":
         return "The summarizer's output could not be used.";
       case "summary-chunk-failed":
-        return "One part of the day's summary could not be produced.";
+        return `One part of the day's summary could not be produced: ${entry.sessions
+          .map(
+            ({ source, recordId }) =>
+              `${sourceLabel(source)} session ${recordId}`,
+          )
+          .join("; ")}.`;
       case "summary-merge-unavailable":
         return "The final summary merge did not produce a report.";
       case "summary-merge-invalid":

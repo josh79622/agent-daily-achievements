@@ -18,6 +18,8 @@ export interface EvidenceRef {
   messageIds?: string[];
 }
 
+export type SessionIdentity = Pick<EvidenceRef, "source" | "recordId">;
+
 export interface Achievement {
   id: string;
   category: AchievementCategory;
@@ -264,6 +266,7 @@ export type IncompleteEntry =
   | {
       reason: "summary-chunk-failed";
       chunkIndex: number;
+      sessions: readonly SessionIdentity[];
       issue?: ValidationIssue;
     }
   | { reason: "summary-merge-unavailable" }
@@ -291,7 +294,12 @@ export type SummaryOutcome =
   | { kind: "candidate"; candidate: unknown }
   | { kind: "unavailable" }
   | { kind: "invalid"; issue: ValidationIssue }
-  | { kind: "chunk-failed"; chunkIndex: number; issue?: ValidationIssue }
+  | {
+      kind: "chunk-failed";
+      chunkIndex: number;
+      sessions: readonly SessionIdentity[];
+      issue?: ValidationIssue;
+    }
   | { kind: "merge-unavailable" }
   | { kind: "merge-invalid"; issue: ValidationIssue }
   | { kind: "merge-too-large" }
@@ -344,6 +352,10 @@ export function assembleReport({
     incomplete.push({
       reason: "summary-chunk-failed",
       chunkIndex: summary.chunkIndex,
+      sessions: summary.sessions.map(({ source, recordId }) => ({
+        source,
+        recordId,
+      })),
       ...(summary.issue === undefined ? {} : { issue: summary.issue }),
     });
   } else if (summary.kind === "merge-unavailable") {

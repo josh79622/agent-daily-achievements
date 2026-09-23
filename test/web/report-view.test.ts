@@ -85,6 +85,14 @@ test("RV-3: describeIncomplete produces one friendly line per reason", () => {
     { reason: "source-incomplete", source: "codex" },
     { reason: "summary-unavailable" },
     { reason: "summary-invalid", issue: "too-many-achievements" },
+    {
+      reason: "summary-chunk-failed",
+      chunkIndex: 0,
+      sessions: [
+        { source: "codex", recordId: "session-201" },
+        { source: "claude-code", recordId: "session-202" },
+      ],
+    },
   ];
 
   expect(describeIncomplete(entries)).toEqual([
@@ -92,6 +100,7 @@ test("RV-3: describeIncomplete produces one friendly line per reason", () => {
     "Codex data is incomplete.",
     "The summarizer did not produce a report.",
     "The summarizer's output could not be used.",
+    "One part of the day's summary could not be produced: Codex session session-201; Claude Code session session-202.",
   ]);
 });
 

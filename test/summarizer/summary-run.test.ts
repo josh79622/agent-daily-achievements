@@ -185,6 +185,37 @@ function chunkedRequest(): SummaryRequest {
   };
 }
 
+function multiSessionChunkedRequest(): SummaryRequest {
+  const conversations = ["rec-1", "rec-2", "rec-3"].map((recordId, index) => ({
+    source: "codex" as const,
+    recordId,
+    messages: [
+      {
+        id: `m${index}`,
+        role: "user",
+        time: "09:00",
+        text: "x".repeat(50_000),
+      },
+    ],
+  }));
+  const payloadJson = JSON.stringify({ date: "2026-09-18", conversations });
+  return {
+    scheduled: false,
+    payload: {
+      date: "2026-09-18",
+      timeZone: "Australia/Sydney",
+      payloadJson,
+      manifest: conversations.map((conversation) => ({
+        source: conversation.source,
+        recordId: conversation.recordId,
+        messageIds: conversation.messages.map((message) => message.id),
+      })),
+      coverage: [{ source: "codex", state: "included" }],
+      byteLength: Buffer.byteLength(payloadJson),
+    },
+  };
+}
+
 function candidateFor(recordId: string, messageId?: string): string {
   return JSON.stringify({
     achievements: [
@@ -458,8 +489,38 @@ test("CH-7: a failed chunk stops before merge, saves a safe failure, and throws"
 
   expect(state.runs).toHaveLength(3);
   expect(state.saved[0]!.incomplete).toEqual([
-    { reason: "summary-chunk-failed", chunkIndex: 0, issue: "invalid-shape" },
+    {
+      reason: "summary-chunk-failed",
+      chunkIndex: 0,
+      issue: "invalid-shape",
+      sessions: [{ source: "codex", recordId: "rec-1" }],
+    },
   ]);
+});
+
+test("CH-7a: a failed multi-session chunk saves only affected source and session identities", async () => {
+  const { runner, state } = harness({
+    runnerScript: [claudeExit("bad")],
+  });
+
+  await expect(
+    runner.run("claude-code", multiSessionChunkedRequest()),
+  ).rejects.toThrow();
+
+  expect(state.saved[0]!.incomplete).toEqual([
+    {
+      reason: "summary-chunk-failed",
+      chunkIndex: 0,
+      issue: "invalid-shape",
+      sessions: [
+        { source: "codex", recordId: "rec-1" },
+        { source: "codex", recordId: "rec-2" },
+      ],
+    },
+  ]);
+  expect(JSON.stringify(state.saved[0]!.incomplete)).not.toContain(
+    "x".repeat(50),
+  );
 });
 
 test("CH-8: merge retries invalid output then saves its valid later reply", async () => {

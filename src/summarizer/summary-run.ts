@@ -178,6 +178,10 @@ export function createSummaryRunner({
         await save(request, {
           kind: "chunk-failed",
           chunkIndex: chunk.index,
+          sessions: chunk.manifest.map(({ source, recordId }) => ({
+            source,
+            recordId,
+          })),
           ...(result.kind === "invalid" ? { issue: result.issue } : {}),
         });
         throw new Error(`${provider} failed chunk ${chunk.index}.`);
