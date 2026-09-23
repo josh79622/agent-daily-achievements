@@ -11,7 +11,13 @@ describe("Fresh Install Verification Script (Phase 7)", () => {
     const result = await execFile(process.execPath, [scriptPath]);
 
     expect(result.stdout).toContain("[PASS] Node.js version >= 24");
-    expect(result.stdout).toContain("[PASS] macOS system utilities exist");
+    if (process.platform === "darwin") {
+      expect(result.stdout).toContain("[PASS] macOS system utilities exist");
+    } else {
+      expect(result.stdout).toContain(
+        `[PASS] macOS system utilities check skipped on ${process.platform}`,
+      );
+    }
     expect(result.stdout).toContain(
       "[PASS] Isolated report timezone and summary permission setup",
     );
