@@ -1,10 +1,13 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
 
 import type { AchievementReportV1 } from "../../src/report/contract.js";
-import { createReportStore } from "../../src/storage/report-store.js";
+import {
+  createReportStore,
+  type ReportVersion,
+} from "../../src/storage/report-store.js";
 
 const directories: string[] = [];
 
@@ -60,6 +63,120 @@ test("writes and reads back the same report", async () => {
 
   expect(await store.readLatest()).toEqual({ found: true, report });
   expect(await store.read(report.date)).toEqual({ found: true, report });
+});
+
+test("retains every regenerated version and reads the newest one by default", async () => {
+  const store = await freshStore();
+  const first = sampleReport();
+  const achievement = sampleReport().achievements[0]!;
+  const regenerated = {
+    ...sampleReport(),
+    achievements: [{ ...achievement, title: "Regenerated" }],
+  };
+
+  await store.save(first);
+  const firstVersion = (await store.listVersions(first.date))[0]!;
+  await store.save(regenerated);
+  const regeneratedVersion = (await store.listVersions(first.date))[0]!;
+
+  const versions = await store.listVersions(first.date);
+  expect(versions).toHaveLength(2);
+  expect(versions.map((version) => version.id)).toEqual([
+    regeneratedVersion.id,
+    firstVersion.id,
+  ]);
+  expect(versions.map((version) => version.report)).toEqual([
+    regenerated,
+    first,
+  ]);
+  expect(await store.read(first.date)).toEqual({
+    found: true,
+    report: regenerated,
+  });
+});
+
+test("preserves a flat legacy report as a stable synthetic version", async () => {
+  const store = await freshStore();
+  const legacy = sampleReport();
+  const legacyPath = join(directories.at(-1)!, `${legacy.date}.json`);
+  const modifiedAt = new Date("2026-09-17T03:04:05.000Z");
+
+  await writeFile(legacyPath, `${JSON.stringify(legacy)}\n`, "utf8");
+  await utimes(legacyPath, modifiedAt, modifiedAt);
+
+  const versions = await store.listVersions(legacy.date);
+  expect(versions).toEqual<ReportVersion[]>([
+    {
+      id: "legacy-2026-09-16",
+      generatedAt: modifiedAt.toISOString(),
+      report: legacy,
+    },
+  ]);
+  expect(await store.readVersion(legacy.date, "legacy-2026-09-16")).toEqual({
+    found: true,
+    version: versions[0],
+  });
+});
+
+test("replaces a legacy version atomically in its flat file without affecting stored versions", async () => {
+  const store = await freshStore();
+  const generatedReport = sampleReport();
+  await store.save(generatedReport);
+  const generated = (await store.listVersions(generatedReport.date))[0]!;
+  const achievement = sampleReport().achievements[0]!;
+  const legacy = {
+    ...sampleReport(),
+    achievements: [{ ...achievement, title: "Legacy" }],
+  };
+  const replacement = {
+    ...legacy,
+    achievements: [{ ...legacy.achievements[0]!, title: "Corrected legacy" }],
+  };
+  const directory = directories.at(-1)!;
+  const legacyPath = join(directory, `${legacy.date}.json`);
+
+  await writeFile(legacyPath, `${JSON.stringify(legacy)}\n`, "utf8");
+  await store.replaceVersion(legacy.date, "legacy-2026-09-16", replacement);
+
+  expect(JSON.parse(await readFile(legacyPath, "utf8"))).toEqual(replacement);
+  expect(await store.listVersions(legacy.date)).toEqual(
+    expect.arrayContaining([
+      generated,
+      expect.objectContaining({
+        id: "legacy-2026-09-16",
+        report: replacement,
+      }),
+    ]),
+  );
+});
+
+test("replaces only the named version without adding a new one", async () => {
+  const store = await freshStore();
+  const firstReport = sampleReport();
+  const achievement = sampleReport().achievements[0]!;
+  await store.save(firstReport);
+  const first = (await store.listVersions(firstReport.date))[0]!;
+  await store.save({
+    ...sampleReport(),
+    achievements: [{ ...achievement, title: "Second" }],
+  });
+  const second = (await store.listVersions(firstReport.date))[0]!;
+  const replacement = {
+    ...first.report,
+    achievements: [{ ...first.report.achievements[0]!, title: "Corrected" }],
+  };
+
+  const replaced = await store.replaceVersion(
+    first.report.date,
+    first.id,
+    replacement,
+  );
+
+  expect(replaced).toEqual({ ...first, report: replacement });
+  expect(await store.listVersions(first.report.date)).toEqual([
+    second,
+    { ...first, report: replacement },
+  ]);
 });
 
 test("retention: saving a later date keeps the earlier one, not just the latest", async () => {
