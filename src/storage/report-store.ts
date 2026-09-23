@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Dirent } from "node:fs";
 import {
   mkdir,
   readdir,
@@ -25,6 +26,10 @@ export type ReadReportResult =
 export type ReadReportVersionResult =
   { found: false } | { found: true; version: ReportVersion };
 
+export type ReportVersionUpdater = (
+  version: ReportVersion,
+) => AchievementReportV1 | Promise<AchievementReportV1>;
+
 export interface ReportStore {
   save(report: AchievementReportV1): Promise<void>;
   read(date: string): Promise<ReadReportResult>;
@@ -35,6 +40,11 @@ export interface ReportStore {
 export interface ReportVersionStore extends ReportStore {
   listVersions(date: string): Promise<ReportVersion[]>;
   readVersion(date: string, id: string): Promise<ReadReportVersionResult>;
+  updateVersion(
+    date: string,
+    id: string,
+    updater: ReportVersionUpdater,
+  ): Promise<ReportVersion>;
   replaceVersion(
     date: string,
     id: string,
@@ -47,6 +57,7 @@ const versionIdPattern = /^[a-zA-Z0-9-]+$/;
 
 export function createReportStore(directory: string): ReportVersionStore {
   let lastGeneratedAtMillis = 0;
+  const versionLocks = new Map<string, Promise<void>>();
 
   function assertDate(date: string): void {
     if (!datePattern.test(date))
@@ -170,34 +181,111 @@ export function createReportStore(directory: string): ReportVersionStore {
     return newest ? { found: true, report: newest.report } : { found: false };
   }
 
-  async function listDates(): Promise<string[]> {
-    let entries: string[];
+  async function withVersionLock<T>(
+    date: string,
+    id: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const key = `${date}:${id}`;
+    const previous = versionLocks.get(key) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    versionLocks.set(key, current);
+    await previous;
     try {
-      entries = await readdir(directory);
+      return await operation();
+    } finally {
+      release();
+      if (versionLocks.get(key) === current) versionLocks.delete(key);
+    }
+  }
+
+  async function hasStoredVersion(date: string): Promise<boolean> {
+    try {
+      const entries = await readdir(versionsDirectoryFor(date), {
+        withFileTypes: true,
+      });
+      return entries.some(
+        (entry) => entry.isFile() && entry.name.endsWith(".json"),
+      );
+    } catch (error) {
+      if (isMissingFileError(error)) return false;
+      throw error;
+    }
+  }
+
+  async function listDates(): Promise<string[]> {
+    let entries: Dirent[];
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
     } catch (error) {
       if (isMissingFileError(error)) return [];
       throw error;
     }
     const candidates = [
       ...new Set(
-        entries.flatMap((name) => {
-          if (datePattern.test(name)) return [name];
-          const date = name.slice(0, -".json".length);
-          return datePattern.test(date) && name === `${date}.json`
+        entries.flatMap((entry) => {
+          if (entry.isDirectory() && datePattern.test(entry.name)) {
+            return [entry.name];
+          }
+          const date = entry.name.slice(0, -".json".length);
+          return entry.isFile() &&
+            datePattern.test(date) &&
+            entry.name === `${date}.json`
             ? [date]
             : [];
         }),
       ),
     ].sort();
-    const versions = await Promise.all(
-      candidates.map(async (date) => ({
-        date,
-        versions: await listVersions(date),
-      })),
+    const dates = await Promise.all(
+      candidates.map(async (date) => {
+        const hasLegacy = entries.some(
+          (entry) => entry.isFile() && entry.name === `${date}.json`,
+        );
+        return hasLegacy || (await hasStoredVersion(date)) ? date : undefined;
+      }),
     );
-    return versions
-      .filter(({ versions }) => versions.length > 0)
-      .map(({ date }) => date);
+    return dates.filter((date): date is string => date !== undefined);
+  }
+
+  async function updateVersion(
+    date: string,
+    id: string,
+    updater: ReportVersionUpdater,
+  ): Promise<ReportVersion> {
+    assertDate(date);
+    assertVersionId(id);
+    return withVersionLock(date, id, async () => {
+      const found = await readVersion(date, id);
+      if (!found.found) throw new Error(`Report version not found: ${id}`);
+
+      const report = await updater(found.version);
+      if (report.date !== date) {
+        throw new Error("Replacement report date must match the version date.");
+      }
+
+      const replacement = { ...found.version, report };
+      if (id === legacyIdFor(date)) {
+        await writeAtomically(
+          legacyPathFor(date),
+          `${JSON.stringify(report, null, 2)}\n`,
+          new Date(found.version.generatedAt),
+        );
+        const updated = await readLegacyVersion(date);
+        if (!updated) throw new Error(`Report version not found: ${id}`);
+        return updated;
+      }
+
+      const versionsDirectory = versionsDirectoryFor(date);
+      await mkdir(versionsDirectory, { recursive: true });
+      await writeAtomically(
+        versionPathFor(date, id),
+        `${JSON.stringify(replacement, null, 2)}\n`,
+      );
+      return replacement;
+    });
   }
 
   return {
@@ -231,36 +319,10 @@ export function createReportStore(directory: string): ReportVersionStore {
     listDates,
     listVersions,
     readVersion,
+    updateVersion,
 
     async replaceVersion(date, id, report) {
-      assertDate(date);
-      assertVersionId(id);
-      if (report.date !== date) {
-        throw new Error("Replacement report date must match the version date.");
-      }
-
-      const found = await readVersion(date, id);
-      if (!found.found) throw new Error(`Report version not found: ${id}`);
-
-      const replacement = { ...found.version, report };
-      if (id === legacyIdFor(date)) {
-        await writeAtomically(
-          legacyPathFor(date),
-          `${JSON.stringify(report, null, 2)}\n`,
-          new Date(found.version.generatedAt),
-        );
-        const updated = await readLegacyVersion(date);
-        if (!updated) throw new Error(`Report version not found: ${id}`);
-        return updated;
-      }
-
-      const versionsDirectory = versionsDirectoryFor(date);
-      await mkdir(versionsDirectory, { recursive: true });
-      await writeAtomically(
-        versionPathFor(date, id),
-        `${JSON.stringify(replacement, null, 2)}\n`,
-      );
-      return replacement;
+      return updateVersion(date, id, () => report);
     },
   };
 }

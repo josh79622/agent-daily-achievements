@@ -225,6 +225,78 @@ test("orders same-millisecond saves from separate stores deterministically", asy
   expect(versions.map((version) => version.report)).toEqual([second, first]);
 });
 
+test("serializes updateVersion read-modify-write operations for one version", async () => {
+  const store = await freshStore();
+  await store.save(sampleReport());
+  const version = (await store.listVersions("2026-09-16"))[0]!;
+  let allowFirstUpdate!: () => void;
+  const firstMayFinish = new Promise<void>((resolve) => {
+    allowFirstUpdate = resolve;
+  });
+  let firstStarted!: () => void;
+  const firstHasStarted = new Promise<void>((resolve) => {
+    firstStarted = resolve;
+  });
+
+  const first = store.updateVersion(
+    "2026-09-16",
+    version.id,
+    async (current) => {
+      firstStarted();
+      await firstMayFinish;
+      return {
+        ...current.report,
+        achievements: [
+          { ...current.report.achievements[0]!, title: "First correction" },
+        ],
+      };
+    },
+  );
+  await firstHasStarted;
+  const second = store.updateVersion("2026-09-16", version.id, (current) => ({
+    ...current.report,
+    achievements: [
+      {
+        ...current.report.achievements[0]!,
+        title: `${current.report.achievements[0]!.title} then second`,
+      },
+    ],
+  }));
+  allowFirstUpdate();
+
+  await Promise.all([first, second]);
+
+  expect((await store.readVersion("2026-09-16", version.id)).found).toBe(true);
+  const current = await store.readVersion("2026-09-16", version.id);
+  expect(current).toEqual({
+    found: true,
+    version: expect.objectContaining({
+      report: expect.objectContaining({
+        achievements: [
+          expect.objectContaining({ title: "First correction then second" }),
+        ],
+      }),
+    }),
+  });
+});
+
+test("lists report dates without parsing unrelated historical versions", async () => {
+  const store = await freshStore();
+  const directory = directories.at(-1)!;
+  await mkdir(join(directory, "2026-09-04"));
+  await writeFile(
+    join(directory, "2026-09-04", "corrupt.json"),
+    "not json",
+    "utf8",
+  );
+  const later = sampleReport("2026-09-09");
+  await store.save(later);
+
+  expect(await store.listDates()).toEqual(["2026-09-04", "2026-09-09"]);
+  expect(await store.readLatest()).toEqual({ found: true, report: later });
+  await expect(store.read("2026-09-04")).rejects.toThrow(SyntaxError);
+});
+
 test("replaces only the named version without adding a new one", async () => {
   const store = await freshStore();
   const firstReport = sampleReport();
