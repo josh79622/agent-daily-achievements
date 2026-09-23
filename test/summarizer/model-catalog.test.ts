@@ -473,6 +473,13 @@ test("M1-5: Claude model label falls back to displayName when description is mis
 
   expect(
     claudeModelLabel({
+      displayName: "Opus 5.5",
+      description: "Most capable for ambitious work",
+    }),
+  ).toBe("Opus 5.5");
+
+  expect(
+    claudeModelLabel({
       displayName: "Opus",
       description: 123,
     }),

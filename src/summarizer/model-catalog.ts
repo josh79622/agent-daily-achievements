@@ -431,7 +431,10 @@ function initializeResponse(
 }
 
 export function claudeModelLabel(model: Record<string, unknown>): unknown {
-  if (typeof model.description === "string") {
+  if (
+    typeof model.description === "string" &&
+    model.description.includes(" · ")
+  ) {
     const prefix = model.description.split(" · ")[0]?.trim();
     if (prefix) return prefix;
   }
