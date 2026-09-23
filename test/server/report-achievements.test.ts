@@ -270,6 +270,58 @@ test("RE-12: PATCH with isPrimary: true marks target achievement as primary and 
   ).toBe(false);
 });
 
+test("the date-scoped PATCH updates the newest version without appending one", async () => {
+  const { patch, reportStore } = await setup();
+  await reportStore.save({
+    ...sampleReport(),
+    achievements: [
+      {
+        ...sampleReport().achievements[0]!,
+        title: "Newest title",
+      },
+    ],
+  });
+  const before = await reportStore.listVersions("2026-09-09");
+
+  const response = await patch("item-1", { title: "Edited newest title" });
+  const after = await reportStore.listVersions("2026-09-09");
+
+  expect(response.status).toBe(200);
+  expect(after).toHaveLength(before.length);
+  expect(after[0]!.id).toBe(before[0]!.id);
+  expect(after[0]!.report.achievements[0]!.title).toBe("Edited newest title");
+  expect(after[1]!.report.achievements[0]!.title).toBe("Original title");
+});
+
+test("the date-scoped DELETE updates the newest version without appending one", async () => {
+  const { del, reportStore } = await setup();
+  await reportStore.save({
+    ...sampleReport(),
+    achievements: [
+      {
+        ...sampleReport().achievements[0]!,
+        title: "Newest title",
+      },
+      sampleReport().achievements[1]!,
+    ],
+  });
+  const before = await reportStore.listVersions("2026-09-09");
+
+  const response = await del("item-1");
+  const after = await reportStore.listVersions("2026-09-09");
+
+  expect(response.status).toBe(200);
+  expect(after).toHaveLength(before.length);
+  expect(after[0]!.id).toBe(before[0]!.id);
+  expect(after[0]!.report.achievements.map((item) => item.id)).toEqual([
+    "item-2",
+  ]);
+  expect(after[1]!.report.achievements.map((item) => item.id)).toEqual([
+    "item-1",
+    "item-2",
+  ]);
+});
+
 test("a version-scoped PATCH changes only the selected version", async () => {
   const { baseUrl, reportStore } = await setup();
   await reportStore.save({
