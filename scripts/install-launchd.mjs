@@ -1,4 +1,4 @@
-// Installs the daily 07:00 report job as a launchd LaunchAgent. The
+// Installs the daily report job as a launchd LaunchAgent. The
 // installer supplies the managed absolute Node path; this script never falls
 // back to a developer's shell PATH or Homebrew runtime.
 
@@ -16,7 +16,7 @@ import {
 
 /**
  * @typedef {{ status: number | null }} LaunchctlResult
- * @typedef {{ nodePath: string, repositoryRoot: string, plistPath: string, uid: number, label?: string }} LaunchdJobConfiguration
+ * @typedef {{ nodePath: string, repositoryRoot: string, plistPath: string, uid: number, label?: string, hour?: number, minute?: number }} LaunchdJobConfiguration
  * @typedef {{
  *   launchctl: (arguments_: string[]) => LaunchctlResult,
  *   writeLaunchdJob: (request: { plistPath: string, content: string }) => Promise<{ replaced: boolean }>,
@@ -56,6 +56,8 @@ export async function installLaunchdJob(configuration, adapter) {
       configuration.repositoryRoot,
       "data/logs/scheduled-report.log",
     ),
+    hour: configuration.hour,
+    minute: configuration.minute,
   });
   const { replaced } = await adapter.writeLaunchdJob({
     plistPath: configuration.plistPath,
@@ -78,8 +80,11 @@ export async function installLaunchdJob(configuration, adapter) {
     return { status: "failed", exitCode };
   }
 
+  const hour = configuration.hour ?? 9;
+  const minute = configuration.minute ?? 0;
+  const formattedTime = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
   adapter.report(
-    `${replaced ? "Replaced" : "Installed"} the launchd job at ${configuration.plistPath}, running ${scriptPath} daily at 07:00.`,
+    `${replaced ? "Replaced" : "Installed"} the launchd job at ${configuration.plistPath}, running ${scriptPath} daily at ${formattedTime}.`,
   );
   return { status: "ready", replaced };
 }

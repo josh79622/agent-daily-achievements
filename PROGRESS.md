@@ -2,6 +2,11 @@
 
 ## Handoff — 2026-09-24 (read first)
 
+- Daily report schedule time updated to 09:00 AM (`feature/schedule-time-nine-am`):
+  - `src/schedule/launchd-plist.ts`: parameterized `hour` (defaults to 9) and `minute` (defaults to 0) in `LaunchdJobConfig` and `buildLaunchdPlist`.
+  - `scripts/install-launchd.mjs`: passes `hour`/`minute` to plist builder and logs dynamic schedule time.
+  - Tests in `test/schedule/launchd-plist.test.ts` and `test/schedule/run-scheduled-report.test.ts` verify the 09:00 default, custom hour/minute configuration, and that the 07:00-07:00 date window calculation remains unchanged.
+  - 635 tests in 69 files pass; `npm run check` and `npm run lint` pass cleanly.
 - Task M1 (`feature/latest-provider-models`) is complete: detect latest provider models (Codex bundled CLI & Claude Code versioned labels).
   - Extended `createLocalCommandExecutor` in `src/summarizer/provider-login.ts` to locate Codex by first reading `CODEX_CLI_PATH` from `~/.codex/config.toml` (or `$CODEX_HOME/config.toml`) and checking `/Applications/ChatGPT.app/Contents/Resources/codex` before `$PATH`. This discovers the bundled CLI (0.155.0-alpha) which supports `GPT-6-Sol` and `GPT-6-Luna`.
   - Updated `parseClaudeModels` in `src/summarizer/model-catalog.ts` to parse versioned labels from `model.description` (`description.split(" · ")[0]`) matching Claude Code CLI's interactive TUI menu (`Opus 5.5`, `Sonnet 5`, `Fable 5.1`, `Haiku 4.5`), falling back to `model.displayName`.

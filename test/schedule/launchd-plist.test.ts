@@ -4,7 +4,7 @@ import { buildLaunchdPlist } from "../../src/schedule/launchd-plist.js";
 
 // Task S1, test case S1-17.
 
-test("S1-17: the generated .plist runs the job entry point at 07:00 daily, with the repository's Node runtime", () => {
+test("S1-17: the generated .plist runs the job entry point at 09:00 daily, with the repository's Node runtime", () => {
   const managedNodePath =
     "/Users/example/Library/Application Support/Agent Daily Achievements/runtimes/node-v24.12.0/bin/node";
   const plist = buildLaunchdPlist({
@@ -33,13 +33,13 @@ test("S1-17: the generated .plist runs the job entry point at 07:00 daily, with 
     "<string>/repo/dist/src/schedule/entry.js</string>",
   );
 
-  // Daily at 07:00:00 local time: StartCalendarInterval with only Hour and
+  // Daily at 09:00:00 local time: StartCalendarInterval with only Hour and
   // Minute set (no Day/Weekday/Month key would narrow it to less than daily).
   const interval = plist
     .split("<key>StartCalendarInterval</key>")[1]
     ?.split("</dict>")[0];
   expect(interval).toContain("<key>Hour</key>");
-  expect(interval).toContain("<integer>7</integer>");
+  expect(interval).toContain("<integer>9</integer>");
   expect(interval).toContain("<key>Minute</key>");
   expect(interval).toContain("<integer>0</integer>");
   expect(interval).not.toContain("<key>Day</key>");
@@ -56,4 +56,23 @@ test("S1-17: the default label is used when none is given", () => {
   });
 
   expect(plist).toContain("<string>com.dailyproof.scheduled-report</string>");
+});
+
+test("buildLaunchdPlist supports custom scheduled hour and minute", () => {
+  const plist = buildLaunchdPlist({
+    nodePath:
+      "/Users/example/Library/Application Support/Agent Daily Achievements/runtimes/node-v24.12.0/bin/node",
+    scriptPath: "/repo/dist/src/schedule/entry.js",
+    workingDirectory: "/repo",
+    hour: 10,
+    minute: 30,
+  });
+
+  const interval = plist
+    .split("<key>StartCalendarInterval</key>")[1]
+    ?.split("</dict>")[0];
+  expect(interval).toContain("<key>Hour</key>");
+  expect(interval).toContain("<integer>10</integer>");
+  expect(interval).toContain("<key>Minute</key>");
+  expect(interval).toContain("<integer>30</integer>");
 });

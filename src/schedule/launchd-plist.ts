@@ -1,4 +1,4 @@
-// Generates the launchd .plist that runs the job entry point at 07:00 daily
+// Generates the launchd .plist that runs the job entry point at 09:00 daily
 // (S1-17). A pure string builder: nothing here touches the filesystem or
 // calls launchctl (docs/plans/2026-09-21-task-s1-seven-am-window-and-schedule-test-cases.md:
 // "generate the launchd .plist from code").
@@ -17,11 +17,17 @@ export interface LaunchdJobConfig {
   /** Where launchd appends the job's stdout/stderr; optional. */
   standardOutPath?: string;
   standardErrorPath?: string;
+  /** Scheduled hour in local time, defaults to 9. */
+  hour?: number;
+  /** Scheduled minute in local time, defaults to 0. */
+  minute?: number;
 }
 
-/** Builds the `.plist` XML content. Runs daily at local 07:00:00. */
+/** Builds the `.plist` XML content. Runs daily at local 09:00:00 by default. */
 export function buildLaunchdPlist(config: LaunchdJobConfig): string {
   const label = config.label ?? defaultLaunchdJobLabel;
+  const hour = config.hour ?? 9;
+  const minute = config.minute ?? 0;
   const lines = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
@@ -39,9 +45,9 @@ export function buildLaunchdPlist(config: LaunchdJobConfig): string {
     "  <key>StartCalendarInterval</key>",
     "  <dict>",
     "    <key>Hour</key>",
-    "    <integer>7</integer>",
+    `    <integer>${hour}</integer>`,
     "    <key>Minute</key>",
-    "    <integer>0</integer>",
+    `    <integer>${minute}</integer>`,
     "  </dict>",
     "  <key>RunAtLoad</key>",
     "  <false/>",

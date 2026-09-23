@@ -474,6 +474,10 @@ regression to fix mid-task.
       - `getYesterdayDate()` now returns the most recently finished window ($D-1$ after 07:00, $D-2$ before 07:00).
       - `getTodayDate()` now returns the active open window ($D$ after 07:00, $D-1$ before 07:00) and clamps `DateSelector` forward stepping.
       - 19 new tests added (W1-1 to W1-15); 625 tests passing.
+- [x] Update daily report schedule time to 09:00 AM while keeping 07:00-07:00 window:
+      - Updated `src/schedule/launchd-plist.ts` to support configurable `hour` (defaults to 9) and `minute` (defaults to 0).
+      - Updated `scripts/install-launchd.mjs` to pass `hour`/`minute` and report dynamic schedule time.
+      - Unit tests in `test/schedule/launchd-plist.test.ts` and `test/schedule/run-scheduled-report.test.ts` pass; 635 tests passing.
 - [ ] Add a clickable macOS notification.
 
 ### Phase 7 — Release readiness
