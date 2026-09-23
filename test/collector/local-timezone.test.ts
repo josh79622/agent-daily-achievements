@@ -50,11 +50,20 @@ function computerDate(timestamp: string): string {
   }).format(new Date(timestamp));
 }
 
+function computerReportDate(timestamp: string): string {
+  // A report day starts at 07:00 local time. This September instant is not
+  // near a daylight-saving transition, so shifting seven hours gives the
+  // preceding local calendar date exactly when it falls before that boundary.
+  return computerDate(
+    new Date(new Date(timestamp).getTime() - 7 * 60 * 60 * 1000).toISOString(),
+  );
+}
+
 test("TZ-1: uses the computer's current timezone when none is configured", async () => {
   const timestamp = "2026-09-16T00:30:00Z";
   const collector = await collectorWithClaudeMessages([timestamp]);
 
-  const result = await collector.collect(computerDate(timestamp), [
+  const result = await collector.collect(computerReportDate(timestamp), [
     "claude-code",
   ]);
 
