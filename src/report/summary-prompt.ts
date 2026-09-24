@@ -130,18 +130,42 @@ export function buildMergeSummaryRequestText(
       ),
     }),
   );
-  const projects = [
+  const candidateProjects = [
     ...new Set(
       compactCandidates
         .map((candidate) => candidate.project)
         .filter((project): project is string => project !== undefined),
     ),
   ];
-  const prompt = buildPromptText(options?.language, {
-    projects: options?.projects ?? projects,
-  });
-  const reminder = buildReminder(options?.projects ?? projects);
-  return `${prompt}${reminder}\n\nThese are compact candidate achievements from chunks of one day. Merge duplicates and return 0 to 5 final achievements using the established output schema above; this merge-specific count overrides the usual minimum. Cite only evidence identifiers in the compact candidates, never invent an identifier. Omit messageIds only when the supplied compact evidence omits them; a session-level evidence entry is {"source":"<source from the input>","recordId":"<recordId from the input>"} with no messageIds.\n\n${frameUntrustedJsonData("compact candidate achievements", JSON.stringify(compactCandidates))}`;
+  const projects = options?.projects ?? candidateProjects;
+  const languageInstruction = getLanguageInstruction(options?.language);
+
+  const projectRule =
+    projects.length > 1
+      ? `Cross-project balance: When candidates span multiple projects (${projects.join(", ")}), ensure balanced representation across each active project. Do not let one project monopolize the report.`
+      : "When candidates cover multiple distinct projects (indicated by the 'project' field), ensure balanced representation across each active project. Do not let one project monopolize the report.";
+
+  const prompt = `You are given candidate achievements synthesized from chunks of a developer's day records. The candidates are verified candidate achievements from chunks of the day's records. Merge duplicates, consolidate related work, and synthesize them into a concise final daily report.
+
+Rules:
+1. ${projectRule}
+2. Return 3 to 5 final achievements (never more than ${maxAchievements}, and strictly at least 1 when candidates are provided; if fewer than 3 unique candidates are provided, return all of them). NEVER return an empty array {"achievements":[]} when candidate achievements exist in the input.
+3. Pick exactly one primary achievement with "isPrimary": true, all others "isPrimary": false.
+4. Readability & Cognitive Clarity:
+   - title: A concise, punchy phrase or short sentence (strictly under 40 characters / 10 words). State what was achieved or decided plainly and directly. DO NOT include commit hashes, raw file paths, or parenthetical notes in the title.
+   - detail: 1 to 2 clean, natural sentences explaining the core outcome or reasoning. Write for the developer to review their own day with clarity and closure. Focus on the net outcome, not chronological trial-and-error.
+   - project: The project name this achievement belongs to, matching the candidate's project. Never invent or hallucinate a project name not present in the input.
+   - Strictly avoid audit-log jargon: DO NOT say "the user", "使用者", "git log shows", or narrate prompt back-and-forth.
+   - DO NOT put raw file paths or commit hashes in the detail; evidence references belong strictly in the "evidence" array.
+5. Retain exact evidence identifiers (source, recordId, and messageIds if present) from the input candidates. Never invent identifiers. Merge evidence references for achievements that combine multiple candidates. Omit messageIds only when the supplied compact evidence omits them; a session-level evidence entry is {"source":"<source from the input>","recordId":"<recordId from the input>"} with no messageIds.
+6. Language: ${languageInstruction}
+
+Do not use or attempt to call any tools or commands. Output strictly this JSON and nothing else. No prose, no explanation, no markdown fences:
+
+{"achievements":[{"id":"short-kebab-id","category":"progress|decision|clarification|learning","title":"short punchy title","detail":"1-2 clean sentences","project":"<project name from input>","isPrimary":true,"evidence":[{"source":"<source from the input>","recordId":"<recordId from the input>","messageIds":["<ids from that record>"]}] <- one entry per record about this activity, in every source; a record that only mentions or confirms it belongs here too}]}`;
+
+  const reminder = buildReminder(projects);
+  return `${prompt}${reminder}\n\n${frameUntrustedJsonData("compact candidate achievements", JSON.stringify(compactCandidates))}`;
 }
 
 function buildPromptContext(

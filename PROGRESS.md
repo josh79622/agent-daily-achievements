@@ -2,6 +2,17 @@
 
 ## Handoff — 2026-09-24 (read first)
 
+- Notification removal per user request (`太麻煩了，跳通知這個功能整個砍掉。`):
+  - Completely removed notification popup feature, helper applet (`DailyProofNotifier.app`), `src/schedule/notification.ts`, and notification test suite (`test/schedule/notification.test.ts`).
+  - Removed notification sending from `src/schedule/entry.ts`; scheduled reports now generate cleanly to local JSON reports on disk for viewing in the web interface.
+  - Removed notification build step from `scripts/build.mjs` and updated `README.md`, `install.sh`, `scripts/open-app.mjs`, and `src/server/launcher.ts`.
+- Fix for 2026-09-23 zero-achievements scheduled report:
+  - Root cause: `buildMergeSummaryRequestText` previously prepended raw-conversation `buildPromptText`, which instructed models to look for `HH:mm` message timestamps (absent in compact candidate objects) and explicitly permitted `0 to 5 final achievements` and `{"achievements":[]}`. Codex therefore output an empty array, which passed schema validation.
+  - Dedicated candidate synthesis prompt: refactored `buildMergeSummaryRequestText` in `src/report/summary-prompt.ts` to require 3 to 5 achievements (never 0 when candidates exist), enforce cross-project balance, pick exactly one primary achievement, and preserve exact candidate evidence identifiers.
+  - Empty-merge rejection: hardened `src/summarizer/summary-run.ts` to short-circuit empty candidate lists without LLM calls and reject merge runs returning 0 achievements (`empty-merge-result`) when candidates exist.
+  - Successful regeneration: regenerated 2026-09-23 report with 5 balanced achievements across `agent-daily-achievements`, `Josh_JobHunt`, and `sitemate-mock`, now active on `http://127.0.0.1:4317/`.
+- Current dev command: `cd /Users/joshtsai/Documents/agent-daily-achievements && npm run dev`
+
 - Phase 7: Release Readiness complete (`feature/phase-7-release-readiness`):
   - Rewrote `README.md` completely into a comprehensive, production-grade documentation covering project vision ("Daily cognitive relief with evidence-backed achievements from local AI agent conversations"), 100% local privacy architecture, supported platforms (macOS Apple Silicon & Intel, Node 24 LTS), supported agent sources (`claude`, `codex`, `agy`), quick start with one-command bootstrap (`./install.sh`) and manual GitHub setup, macOS background automation LaunchAgents (`schedule:install`, `server:install`, uninstallation), daily UI operations (Zen Journal, Focus Bento, Executive Briefing, source trace-back, safe edits/deletions, version history, dynamic language packs), troubleshooting & failure guidance, and quality gate.
   - Created `install.sh`: clean, executable bash installer verifying macOS (`Darwin`), Node.js >= 24 LTS, npm, running `npm install`, `npm run setup`, `npm run build`, prompting interactively for LaunchAgent installation (`server:install`, `schedule:install`), and launching `npm run open`.

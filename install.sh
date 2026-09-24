@@ -65,7 +65,7 @@ if [ -t 0 ]; then
   echo "=== macOS Background Automation Setup ==="
   echo "Daily Proof can run in the background using macOS LaunchAgents:"
   echo "  1. Web Server Daemon (auto-starts on login, port 4317 always ready)"
-  echo "  2. Daily 09:00 AM Scheduler (auto-generates daily achievements with notification)"
+  echo "  2. Daily 09:00 AM Scheduler (auto-generates daily achievement reports)"
   echo ""
   read -r -p "Install background web server LaunchAgent? [y/N] " install_server
   if [[ "$install_server" =~ ^([yY][eE][sS]|[yY])$ ]]; then

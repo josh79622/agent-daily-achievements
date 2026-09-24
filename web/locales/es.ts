@@ -51,6 +51,8 @@ export const es: Translations = {
     save: "Guardar",
     saving: "Guardando…",
     evidenceCount: "{n} registros de respaldo",
+    viewEvidence: "Ver Respaldo",
+    evidenceModalTitle: "Registros de Respaldo",
     setAsPrimary: "🌟 Marcar como hito clave",
     editProjectLabel: "Proyecto",
     project: "Proyecto",

@@ -36,3 +36,5 @@ if (result.serverStarted) {
 } else {
   console.log("Daily Proof web server is active at http://127.0.0.1:4317/");
 }
+
+process.exit(0);

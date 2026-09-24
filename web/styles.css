@@ -1315,6 +1315,17 @@ main,
     0 0 20px rgba(16, 185, 129, 0.05);
 }
 
+.journal-card.is-clickable {
+  cursor: pointer;
+}
+
+.journal-card.is-clickable:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow:
+    0 14px 35px rgba(0, 0, 0, 0.45),
+    0 0 25px rgba(16, 185, 129, 0.12);
+}
+
 .card-top-row {
   display: flex;
   align-items: flex-start;
@@ -1468,6 +1479,32 @@ main,
   margin-top: 0.5rem;
 }
 
+.card-evidence-summary {
+  margin-inline-start: 1.35rem;
+  margin-top: 0.75rem;
+}
+
+.evidence-summary-btn {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #10b981;
+  padding: 0.38rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.evidence-summary-btn:hover {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.45);
+  transform: translateY(-1px);
+}
+
 .evidence-pills-row {
   display: flex;
   flex-wrap: wrap;
@@ -1587,6 +1624,124 @@ main,
   color: #94a3b8;
   font-style: italic;
   margin: 0;
+}
+
+/* Evidence Modal */
+.evidence-modal {
+  width: min(720px, 96vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.8),
+    0 0 35px rgba(16, 185, 129, 0.12);
+  overflow: hidden;
+  color: #f8fafc;
+  animation: fadeIn 0.18s ease-out;
+}
+
+.evidence-modal-header {
+  padding: 1.1rem 1.4rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.evidence-modal-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.evidence-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.evidence-modal-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: inherit;
+  line-height: 1.4;
+}
+
+.evidence-modal-body {
+  padding: 1.25rem 1.4rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.evidence-modal-detail {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: #cbd5e1;
+}
+
+.evidence-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.evidence-section-header-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #34d399;
+}
+
+.evidence-pills-scroll-container {
+  height: 120px;
+  overflow-y: auto;
+  padding: 0.65rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.evidence-pills-scroll-container .evidence-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.evidence-drawer-fixed-container {
+  height: 320px;
+  overflow-y: auto;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.evidence-drawer-fixed-container .evidence-drawer {
+  margin-top: 0;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.evidence-drawer-fixed-container .evidence-drawer-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #0a0f1a;
+}
+
+.evidence-drawer-fixed-container .evidence-messages-list {
+  max-height: none;
+  overflow-y: visible;
 }
 
 /* Edit Form */
@@ -2060,6 +2215,13 @@ body[data-theme="light"] {
     0 0 16px rgba(16, 185, 129, 0.08);
 }
 
+[data-theme="light"] .journal-card.is-clickable:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow:
+    0 14px 35px rgba(0, 0, 0, 0.1),
+    0 0 25px rgba(16, 185, 129, 0.15);
+}
+
 [data-theme="light"] .card-title {
   color: #0f172a;
 }
@@ -2098,6 +2260,17 @@ body[data-theme="light"] {
   background: rgba(16, 185, 129, 0.1);
 }
 
+[data-theme="light"] .evidence-summary-btn {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #059669;
+}
+
+[data-theme="light"] .evidence-summary-btn:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
 [data-theme="light"] .evidence-drawer {
   background: #f8fafc;
   border-color: rgba(16, 185, 129, 0.25);
@@ -2119,6 +2292,37 @@ body[data-theme="light"] {
 
 [data-theme="light"] .msg-text {
   color: #1e293b;
+}
+
+[data-theme="light"] .evidence-modal {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.15),
+    0 0 30px rgba(16, 185, 129, 0.1);
+  color: #0f172a;
+}
+
+[data-theme="light"] .evidence-modal-header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .evidence-modal-detail {
+  color: #334155;
+}
+
+[data-theme="light"] .evidence-section-header-label {
+  color: #059669;
+}
+
+[data-theme="light"] .evidence-pills-scroll-container {
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .evidence-drawer-fixed-container .evidence-drawer-header {
+  background: #f8fafc;
 }
 
 [data-theme="light"] .hero-card {

@@ -97,13 +97,13 @@ describe("ZenJournal report versions", () => {
     fireEvent.click(screen.getByRole("button", { name: "切換語言" }));
     fireEvent.click(screen.getByRole("option", { name: /English/ }));
 
-    expect(
-      screen.getByText(newest.report.achievements[0]!.title),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(older.report.achievements[0]!.title),
-    ).toBeInTheDocument();
     await waitFor(() => {
+      expect(
+        screen.getByText(newest.report.achievements[0]!.title),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(older.report.achievements[0]!.title),
+      ).toBeInTheDocument();
       expect(screen.getAllByText(/Generated/)).toHaveLength(2);
     });
   });
