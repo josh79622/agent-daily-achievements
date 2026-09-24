@@ -53,6 +53,8 @@ export const en = {
     save: "Save",
     saving: "Saving…",
     evidenceCount: "{n} evidence refs",
+    viewEvidence: "View Evidence",
+    evidenceModalTitle: "Evidence Records",
     setAsPrimary: "🌟 Set as Key Milestone",
     editProjectLabel: "Project",
     project: "Project",

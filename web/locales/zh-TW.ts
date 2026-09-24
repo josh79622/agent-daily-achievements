@@ -50,6 +50,8 @@ export const zhTW: Translations = {
     save: "儲存",
     saving: "儲存中…",
     evidenceCount: "{n} 條紀錄佐證",
+    viewEvidence: "查看紀錄佐證",
+    evidenceModalTitle: "紀錄佐證",
     setAsPrimary: "🌟 設為今日核心里程碑",
     editProjectLabel: "所屬專案",
     project: "專案",

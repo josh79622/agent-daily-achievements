@@ -2,15 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   Achievement,
   AchievementReportV1,
-  EvidenceRef,
 } from "../src/report/contract.js";
-import {
-  describeIncomplete,
-  isLocallyTraceable,
-  pickEvidenceMessages,
-  sourceLabel,
-  type EvidenceMessage,
-} from "./report-view.js";
+import { describeIncomplete, sourceLabel } from "./report-view.js";
 import {
   format,
   getTranslations,
@@ -35,6 +28,7 @@ import { LocalActivityModal } from "./LocalActivityModal.js";
 import { DateSelector } from "./DateSelector.js";
 import { HeaderIconButton } from "./HeaderIconButton.js";
 import { getYesterdayDate } from "./date-utils.js";
+import { EvidenceModal } from "./EvidenceModal.js";
 
 type ViewMode = "journal" | "bento" | "briefing";
 
@@ -42,113 +36,6 @@ interface ReportVersion {
   id: string;
   generatedAt: string;
   report: AchievementReportV1;
-}
-
-interface EvidenceDrawerProps {
-  refData: EvidenceRef;
-  reportDate?: string;
-  t: Translations;
-}
-
-function EvidenceDrawer({ refData, reportDate, t }: EvidenceDrawerProps) {
-  const [messages, setMessages] = useState<EvidenceMessage[]>([]);
-  const [missingIds, setMissingIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadSession() {
-      if (!isLocallyTraceable(refData.source)) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError(undefined);
-      try {
-        const dateQuery = reportDate
-          ? `&date=${encodeURIComponent(reportDate)}`
-          : "";
-        const response = await fetch(
-          `/api/collector/sessions/${encodeURIComponent(refData.recordId)}?source=${encodeURIComponent(refData.source)}${dateQuery}`,
-        );
-        if (!response.ok) {
-          const body = (await response.json().catch(() => undefined)) as
-            { error?: { message?: string } } | undefined;
-          throw new Error(
-            body?.error?.message ?? "Source session unavailable.",
-          );
-        }
-        const body = (await response.json()) as {
-          session: { messages: EvidenceMessage[] };
-        };
-        if (!active) return;
-        const { found, missingIds: missing } = pickEvidenceMessages(
-          body.session.messages,
-          refData.messageIds,
-        );
-        setMessages(found);
-        setMissingIds(missing);
-      } catch (err) {
-        if (!active) return;
-        setError(
-          err instanceof Error ? err.message : "Source session unavailable.",
-        );
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-
-    void loadSession();
-    return () => {
-      active = false;
-    };
-  }, [refData, reportDate]);
-
-  if (!isLocallyTraceable(refData.source)) {
-    return (
-      <div className="evidence-drawer">
-        <p className="evidence-text-faint">
-          {sourceLabel(refData.source)} (Online history is not directly
-          previewable locally).
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="evidence-drawer">
-      <div className="evidence-drawer-header">
-        <span className="evidence-drawer-title">
-          {sourceLabel(refData.source)}
-        </span>
-        <span className="evidence-drawer-id">{refData.recordId}</span>
-      </div>
-      {loading ? (
-        <p className="evidence-text-faint">{t.states.loading}</p>
-      ) : error ? (
-        <p className="evidence-error">{error}</p>
-      ) : (
-        <div className="evidence-messages-list">
-          {messages.length === 0 && missingIds.length === 0 ? (
-            <p className="evidence-text-faint">No messages in this session.</p>
-          ) : null}
-          {messages.map((m) => (
-            <div key={m.id} className="evidence-msg-item">
-              <span className={`msg-role-badge ${m.role}`}>{m.role}</span>
-              <div className="msg-text">{m.text}</div>
-            </div>
-          ))}
-          {missingIds.map((id) => (
-            <p key={id} className="evidence-stale-id">
-              Message {id} is no longer present in this session.
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 interface AchievementCardProps {
@@ -181,7 +68,7 @@ function AchievementCard({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editError, setEditError] = useState<string | undefined>(undefined);
-  const [expandedEvidence, setExpandedEvidence] = useState<number | null>(null);
+  const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false);
 
   useEffect(() => {
     setEditTitle(achievement.title);
@@ -259,10 +146,36 @@ function AchievementCard({
 
   const isPrimary = achievement.isPrimary === true;
   const category = achievement.category || "progress";
-  const cardClassName = `journal-card category-${category} ${isHero ? "hero-card" : ""} ${isPrimary ? "is-primary-card" : ""}`;
+  const hasEvidence = Boolean(
+    achievement.evidence && achievement.evidence.length > 0,
+  );
+  const cardClassName = `journal-card category-${category} ${isHero ? "hero-card" : ""} ${isPrimary ? "is-primary-card" : ""}${hasEvidence ? " is-clickable" : ""}`;
+
+  const handleCardClick = () => {
+    if (hasEvidence && !isEditing && !isRemoving) {
+      setIsEvidenceModalOpen(true);
+    }
+  };
+
+  const handleCardKeyDown = (e: React.KeyboardEvent) => {
+    if (
+      hasEvidence &&
+      !isEditing &&
+      !isRemoving &&
+      (e.key === "Enter" || e.key === " ")
+    ) {
+      e.preventDefault();
+      setIsEvidenceModalOpen(true);
+    }
+  };
 
   return (
-    <article className={cardClassName}>
+    <article
+      className={cardClassName}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      tabIndex={hasEvidence && !isEditing ? 0 : undefined}
+    >
       {isPrimary ? (
         <div className="hero-badge-tag primary-badge-tag">
           {t.badges.primary}
@@ -272,7 +185,11 @@ function AchievementCard({
       ) : null}
 
       {isEditing ? (
-        <form className="journal-edit-form" onSubmit={handleSave}>
+        <form
+          className="journal-edit-form"
+          onSubmit={handleSave}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="form-group">
             <label htmlFor={`edit-title-${achievement.id}`}>
               {t.card.editTitlePlaceholder}
@@ -369,13 +286,19 @@ function AchievementCard({
             </div>
             <div className="card-actions">
               {isRemoving ? (
-                <div className="remove-confirm-group">
+                <div
+                  className="remove-confirm-group"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <span className="remove-prompt">{t.card.confirmDelete}</span>
                   <button
                     type="button"
                     className="action-btn action-danger"
                     disabled={isDeleting}
-                    onClick={handleConfirmRemove}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleConfirmRemove();
+                    }}
                   >
                     {isDeleting ? t.card.deleting : t.card.delete}
                   </button>
@@ -383,7 +306,10 @@ function AchievementCard({
                     type="button"
                     className="action-btn"
                     disabled={isDeleting}
-                    onClick={() => setIsRemoving(false)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsRemoving(false);
+                    }}
                   >
                     {t.card.cancel}
                   </button>
@@ -394,7 +320,10 @@ function AchievementCard({
                     type="button"
                     className="action-btn"
                     disabled={isSaving || isDeleting}
-                    onClick={() => setIsEditing(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditing(true);
+                    }}
                     title={t.card.edit}
                   >
                     {t.card.edit}
@@ -403,7 +332,10 @@ function AchievementCard({
                     type="button"
                     className="action-btn"
                     disabled={isSaving || isDeleting}
-                    onClick={() => setIsRemoving(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsRemoving(true);
+                    }}
                     title={t.card.delete}
                   >
                     {t.card.delete}
@@ -415,43 +347,35 @@ function AchievementCard({
 
           <p className="card-detail">{achievement.detail}</p>
 
-          {achievement.evidence && achievement.evidence.length > 0 ? (
-            <div className="card-evidence-section">
-              <div className="evidence-pills-row">
-                {achievement.evidence.map((ref, idx) => {
-                  const isExpanded = expandedEvidence === idx;
-                  const count = ref.messageIds?.length ?? 1;
-                  return (
-                    <button
-                      key={`${ref.recordId}-${idx}`}
-                      type="button"
-                      className={`evidence-pill ${isExpanded ? "active" : ""}`}
-                      onClick={() =>
-                        setExpandedEvidence(isExpanded ? null : idx)
-                      }
-                    >
-                      <span>📎</span>
-                      <span>
-                        {sourceLabel(ref.source)} ·{" "}
-                        {format(t.card.evidenceCount, { n: count })}
-                      </span>
-                      <span className="pill-arrow">
-                        {isExpanded ? "▴" : "▾"}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {expandedEvidence !== null &&
-              achievement.evidence[expandedEvidence] ? (
-                <EvidenceDrawer
-                  refData={achievement.evidence[expandedEvidence]!}
-                  reportDate={reportDate}
-                  t={t}
-                />
-              ) : null}
+          {hasEvidence ? (
+            <div className="card-evidence-summary">
+              <button
+                type="button"
+                className="evidence-summary-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEvidenceModalOpen(true);
+                }}
+              >
+                <span>📎</span>
+                <span>
+                  {format(t.card.evidenceCount, {
+                    n: achievement.evidence!.length,
+                  })}{" "}
+                  · {t.card.viewEvidence} ↗
+                </span>
+              </button>
             </div>
+          ) : null}
+
+          {hasEvidence && isEvidenceModalOpen ? (
+            <EvidenceModal
+              isOpen={isEvidenceModalOpen}
+              onClose={() => setIsEvidenceModalOpen(false)}
+              achievement={achievement}
+              reportDate={reportDate}
+              t={t}
+            />
           ) : null}
         </>
       )}
