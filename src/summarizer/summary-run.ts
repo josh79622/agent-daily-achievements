@@ -256,9 +256,17 @@ export function createSummaryRunner({
         await save(request, { kind: "merge-too-large" });
         return;
       }
+      if (mergeCandidates.length === 0) {
+        await save(request, {
+          kind: "candidate",
+          candidate: { achievements: [] },
+        });
+        return;
+      }
       const merged = await runValidated(
         buildMergeSummaryRequestText(mergeCandidates, options),
         mergeEvidenceManifest(mergeCandidates),
+        { rejectEmpty: true },
       );
       if (merged.kind === "valid") {
         await save(request, {
@@ -278,6 +286,7 @@ export function createSummaryRunner({
       async function runValidated(
         promptText: string,
         manifest: EvidenceManifest,
+        options?: { rejectEmpty?: boolean },
       ): Promise<ValidatedAttempts> {
         for (let attempt = 1; attempt <= maxSummaryAttempts; attempt++) {
           const outcome = await runAttempt(
@@ -295,13 +304,24 @@ export function createSummaryRunner({
             outcome.candidate,
             manifest,
           );
-          const validation: CandidateValidation = validateSummaryCandidate(
+          let validation: CandidateValidation = validateSummaryCandidate(
             candidateToValidate,
             {
               manifest,
               coverage: request.payload.coverage,
             },
           );
+          if (
+            options?.rejectEmpty &&
+            validation.ok &&
+            validation.achievements.length === 0
+          ) {
+            validation = {
+              ok: false,
+              issue: "empty-merge-result",
+              retryable: false,
+            };
+          }
           const decision = decideAfterAttempt({ attempt, validation });
           if (decision.action === "accept")
             return { kind: "valid", achievements: decision.achievements };

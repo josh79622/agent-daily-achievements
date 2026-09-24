@@ -138,7 +138,7 @@ Daily Proof includes native macOS background automation via `launchd`:
 
 ### Daily 09:00 AM Report Scheduler
 
-Generates yesterday's daily achievement report automatically every morning at 09:00 AM using the 07:00-to-07:00 date window. Upon completion or issue, it sends a native macOS notification with a system chime and a direct link to `http://127.0.0.1:4317/`.
+Generates yesterday's daily achievement report automatically every morning at 09:00 AM using the 07:00-to-07:00 date window. Reports are generated directly and saved to disk for viewing in the web interface at `http://127.0.0.1:4317/`.
 
 To install:
 

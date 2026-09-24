@@ -62,7 +62,8 @@ export type ValidationIssue =
   | "duplicate-achievement-id"
   | "unknown-evidence"
   | "duplicate-evidence"
-  | "evidence-source-not-included";
+  | "evidence-source-not-included"
+  | "empty-merge-result";
 
 export type CandidateValidation =
   | { ok: true; achievements: Achievement[] }

@@ -149,9 +149,26 @@ export async function openBrowser(
   return new Promise((resolve) => {
     try {
       const child = spawn(file, args, { stdio: "ignore", detached: true });
-      child.on("error", () => resolve(false));
-      child.on("exit", (code) => resolve(code === 0));
-      child.unref();
+      let settled = false;
+      child.on("error", () => {
+        if (!settled) {
+          settled = true;
+          resolve(false);
+        }
+      });
+      child.once("spawn", () => {
+        if (!settled) {
+          settled = true;
+          child.unref();
+          resolve(true);
+        }
+      });
+      child.once("exit", (code) => {
+        if (!settled) {
+          settled = true;
+          resolve(code === 0);
+        }
+      });
     } catch {
       resolve(false);
     }

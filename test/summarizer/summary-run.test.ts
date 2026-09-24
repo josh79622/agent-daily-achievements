@@ -587,6 +587,40 @@ test("CH-8b: merge rejects full-day evidence absent from compact candidates befo
   ]);
 });
 
+test("CH-8c: merge retries empty achievements when candidates exist, then saves non-empty reply", async () => {
+  const { runner, state } = harness({
+    runnerScript: [
+      claudeExit(candidateFor("rec-1", "m0")),
+      claudeExit(candidateFor("rec-2", "m1")),
+      claudeExit(JSON.stringify({ achievements: [] })),
+      claudeExit(candidateFor("rec-1", "m0")),
+    ],
+  });
+
+  await runner.run("claude-code", chunkedRequest());
+
+  expect(state.runs).toHaveLength(4);
+  expect(state.runs[2]!.args).toEqual(state.runs[3]!.args);
+  expect(state.saved[0]!.status).toBe("complete");
+  expect(state.saved[0]!.achievements).toHaveLength(1);
+  expect(state.saved[0]!.achievements[0]!.id).toBe("item-rec-1");
+});
+
+test("CH-8d: when chunks produce no candidates, merge completes with empty achievements without CLI call", async () => {
+  const { runner, state } = harness({
+    runnerScript: [
+      claudeExit(JSON.stringify({ achievements: [] })),
+      claudeExit(JSON.stringify({ achievements: [] })),
+    ],
+  });
+
+  await runner.run("claude-code", chunkedRequest());
+
+  expect(state.runs).toHaveLength(2);
+  expect(state.saved[0]!.status).toBe("complete");
+  expect(state.saved[0]!.achievements).toEqual([]);
+});
+
 test("CH-8a: unavailable merge retries three times, saves typed incomplete, and throws", async () => {
   const { runner, state } = harness({
     runnerScript: [

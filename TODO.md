@@ -478,10 +478,10 @@ regression to fix mid-task.
       - Updated `src/schedule/launchd-plist.ts` to support configurable `hour` (defaults to 9) and `minute` (defaults to 0).
       - Updated `scripts/install-launchd.mjs` to pass `hour`/`minute` and report dynamic schedule time.
       - Unit tests in `test/schedule/launchd-plist.test.ts` and `test/schedule/run-scheduled-report.test.ts` pass; 635 tests passing.
-- [x] Add a clickable macOS notification:
-      - Implemented `src/schedule/notification.ts` using native `osascript` with localized title, message, sound, and browser link (`http://127.0.0.1:4317/`).
-      - Integrated into `src/schedule/entry.ts` on report completion and failure with graceful non-fatal error handling.
-      - 6 unit tests in `test/schedule/notification.test.ts` (N1-1 to N1-6) passing; 641 tests passing across 70 test files.
+- [x] Remove notification popup feature entirely per user request:
+      - Removed helper applet (`DailyProofNotifier.app`), `src/schedule/notification.ts`, and notification test suite.
+      - Removed notification sending from `src/schedule/entry.ts`; scheduled reports now generate cleanly to local JSON reports on disk for viewing in the web interface.
+      - Removed notification build step from `scripts/build.mjs` and updated `README.md` and `install.sh`.
 - [x] Auto-wake web server launcher and decoupled production build:
       - Fixed Vite build wiping `dist/web/i18n.js` (`emptyOutDir: false`) and decoupled server language imports to `src/report/languages.ts`.
       - Added cross-platform auto-wake launcher (`src/server/launcher.ts` and `scripts/open-app.mjs`) to test port 4317, launch detached server, and open default browser.
@@ -508,3 +508,8 @@ regression to fix mid-task.
 - [x] Verify the merged version-history behavior in the live browser on 4317:
       one date must show both its legacy and newly regenerated report, newest
       first; editing one must leave the other unchanged. Verified end-to-end.
+- [x] Fix large payload chunked merge zero-achievements defect:
+      - Root cause: `buildMergeSummaryRequestText` was prepending raw-conversation `buildPromptText`, which searched for `HH:mm` message timestamps (absent in compact candidate objects) and explicitly permitted `0 to 5 final achievements` and `{"achievements":[]}`. Codex therefore output empty array, which passed validation.
+      - Refactored `buildMergeSummaryRequestText` in `src/report/summary-prompt.ts` with a dedicated candidate synthesis prompt: requires 3 to 5 achievements (never 0 if candidates exist), enforces cross-project balance, picks exactly one primary achievement, and preserves exact candidate evidence identifiers.
+      - Hardened `src/summarizer/summary-run.ts`: short-circuits empty candidates without CLI call, and rejects merge attempts returning 0 achievements (`empty-merge-result`) when candidates exist.
+      - Regenerated 2026-09-23 report successfully with 5 concrete achievements across `agent-daily-achievements`, `Josh_JobHunt`, and `sitemate-mock`.

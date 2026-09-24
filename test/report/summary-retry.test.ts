@@ -35,6 +35,7 @@ const otherIssues: ValidationIssue[] = [
   "unknown-evidence",
   "duplicate-evidence",
   "evidence-source-not-included",
+  "empty-merge-result",
 ];
 
 test("the approved limit is three attempts in total", () => {
