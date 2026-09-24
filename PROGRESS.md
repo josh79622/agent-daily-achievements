@@ -2,6 +2,15 @@
 
 ## Handoff — 2026-09-24 (read first)
 
+- Concise prompt guidelines & model tracking badge (`95f032f`):
+  - Refined prompt Rule 2 and Rule 4 in `src/report/summary-prompt.ts`: titles strictly < 20-30 chars, details strictly 40-70 Chinese chars (1-2 natural sentences) focusing on net outcomes and cognitive relief, strictly banning endless comma-spliced clauses, test counts (e.g. "通過 585 個測試"), and retry narration.
+  - Stored `summaryModel` and `summaryProvider` on `AchievementReportV1` and `ReportVersion`.
+  - Rendered `🤖 模型：{provider} ({model})` in `.zen-meta-bar` with full multi-language support.
+  - Regenerated 2026-09-23 report via Claude Code (`opus`): verified concise, fluent phrasing and model badge display.
+- Compact card evidence pill and fixed-height evidence modal (`cedbeb0`, `3e5f43d`):
+  - Replaced inline 20+ evidence pills on cards with a single sleek summary button (`📎 {n} 條紀錄佐證 · 查看紀錄佐證 ↗`).
+  - Added dedicated `EvidenceModal` with a fixed-height scrollable evidence pills area (120px) and a fixed-height scrollable dialogue drawer (320px).
+  - Portaled modal to `document.body` via `createPortal`, fixing the stacking context and Containing Block overlap caused by `.journal-card`'s `backdrop-filter` and `transform`.
 - Notification removal per user request (`太麻煩了，跳通知這個功能整個砍掉。`):
   - Completely removed notification popup feature, helper applet (`DailyProofNotifier.app`), `src/schedule/notification.ts`, and notification test suite (`test/schedule/notification.test.ts`).
   - Removed notification sending from `src/schedule/entry.ts`; scheduled reports now generate cleanly to local JSON reports on disk for viewing in the web interface.

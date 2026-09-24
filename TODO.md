@@ -513,3 +513,12 @@ regression to fix mid-task.
       - Refactored `buildMergeSummaryRequestText` in `src/report/summary-prompt.ts` with a dedicated candidate synthesis prompt: requires 3 to 5 achievements (never 0 if candidates exist), enforces cross-project balance, picks exactly one primary achievement, and preserves exact candidate evidence identifiers.
       - Hardened `src/summarizer/summary-run.ts`: short-circuits empty candidates without CLI call, and rejects merge attempts returning 0 achievements (`empty-merge-result`) when candidates exist.
       - Regenerated 2026-09-23 report successfully with 5 concrete achievements across `agent-daily-achievements`, `Josh_JobHunt`, and `sitemate-mock`.
+- [x] Compact card evidence pill and fixed-height evidence modal (`cedbeb0`, `3e5f43d`):
+      - Replaced 20+ inline evidence pill buttons on cards with a single sleek summary button (`📎 {n} 條紀錄佐證 · 查看紀錄佐證 ↗`).
+      - Created `EvidenceModal` with a fixed-height scrollable evidence pills area (120px) and a fixed-height scrollable dialogue drawer (320px).
+      - Rendered via `createPortal(..., document.body)` to escape `.journal-card`'s `backdrop-filter` and `transform` Containing Block and stacking context trap, eliminating overlapping layout glitches.
+- [x] Refined concise prompt guidelines & model tracking badge (`95f032f`):
+      - Refined Rule 2 (`buildPromptText`) and Rule 4 (`buildMergeSummaryRequestText`) with strict conciseness constraints: title strictly < 20-30 chars, detail strictly 40-70 Chinese chars (1-2 natural sentences) focusing on net outcome and cognitive relief, strictly banning endless comma-spliced clauses, test counts (e.g. "通過 585 個測試"), and retry narration.
+      - Stored `summaryModel` and `summaryProvider` in `AchievementReportV1` and `ReportVersion`.
+      - Displayed `🤖 模型：{provider} ({model})` in `.zen-meta-bar` with full localization (`en`, `zh-TW`, `es`).
+      - Regenerated 2026-09-23 report with Claude Code (`opus`): verified concise, fluent phrasing and model badge display.
