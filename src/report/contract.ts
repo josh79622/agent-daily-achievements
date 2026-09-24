@@ -10,7 +10,8 @@ export type ReportSource =
   | "claude-web"
   | "chatgpt-web"
   | "gemini-web"
-  | "antigravity";
+  | "antigravity"
+  | "agy";
 
 export interface EvidenceRef {
   source: ReportSource;
@@ -332,6 +333,8 @@ export interface AchievementReportV1 {
   achievements: Achievement[];
   coverage: ReportCoverage[];
   incomplete: IncompleteEntry[];
+  summaryModel?: string;
+  summaryProvider?: ReportSource;
 }
 
 /** What the summarizer run produced; `unavailable` covers no run or a failed run. */
@@ -377,12 +380,16 @@ export function assembleReport({
   manifest,
   coverage,
   summary,
+  summaryModel,
+  summaryProvider,
 }: {
   date: string;
   timezone: string;
   manifest: EvidenceManifest;
   coverage: readonly ReportCoverage[];
   summary: SummaryOutcome;
+  summaryModel?: string;
+  summaryProvider?: ReportSource;
 }): AchievementReportV1 {
   const incomplete: IncompleteEntry[] = coverage
     .filter((entry) => entry.state === "incomplete")
@@ -433,6 +440,8 @@ export function assembleReport({
     achievements,
     coverage: structuredClone([...coverage]),
     incomplete,
+    ...(summaryModel !== undefined ? { summaryModel } : {}),
+    ...(summaryProvider !== undefined ? { summaryProvider } : {}),
   };
 }
 

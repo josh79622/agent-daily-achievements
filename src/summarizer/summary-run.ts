@@ -12,6 +12,7 @@ import {
   type AchievementReportV1,
   type CandidateValidation,
   type EvidenceManifest,
+  type ReportSource,
   type ValidationIssue,
 } from "../report/contract.js";
 import {
@@ -193,18 +194,27 @@ export function createSummaryRunner({
   return {
     async run(provider, request) {
       const executablePath = await locate(provider);
+      const settings = await models.effectiveSettings(provider);
+      const summaryModel =
+        settings.model ??
+        (provider === "codex"
+          ? "gpt-6-luna"
+          : provider === "claude-code"
+            ? "opus"
+            : "gemini-3.8-flash-medium");
+      const meta = { summaryModel, summaryProvider: provider };
+
       if (!executablePath) {
-        await save(request, { kind: "unavailable" });
+        await save(request, { kind: "unavailable" }, meta);
         throw new Error(`${provider} is not available.`);
       }
       const executable = executablePath;
-      const settings = await models.effectiveSettings(provider);
       const options = request.language
         ? { language: request.language }
         : undefined;
       const chunking = chunkReportDayPayload(request.payload);
       if (chunking.kind === "message-too-large") {
-        await save(request, chunking);
+        await save(request, chunking, meta);
         return;
       }
 
@@ -214,10 +224,14 @@ export function createSummaryRunner({
           request.payload.manifest,
         );
         if (result.kind === "valid") {
-          await save(request, {
-            kind: "candidate",
-            candidate: { achievements: result.achievements },
-          });
+          await save(
+            request,
+            {
+              kind: "candidate",
+              candidate: { achievements: result.achievements },
+            },
+            meta,
+          );
           return;
         }
         await save(
@@ -225,6 +239,7 @@ export function createSummaryRunner({
           result.kind === "unavailable"
             ? { kind: "unavailable" }
             : { kind: "invalid", issue: result.issue },
+          meta,
         );
         throw new Error(`${provider} produced no valid summary.`);
       }
@@ -239,28 +254,36 @@ export function createSummaryRunner({
           candidates.push(...result.achievements);
           continue;
         }
-        await save(request, {
-          kind: "chunk-failed",
-          chunkIndex: chunk.index,
-          sessions: chunk.manifest.map(({ source, recordId }) => ({
-            source,
-            recordId,
-          })),
-          ...(result.kind === "invalid" ? { issue: result.issue } : {}),
-        });
+        await save(
+          request,
+          {
+            kind: "chunk-failed",
+            chunkIndex: chunk.index,
+            sessions: chunk.manifest.map(({ source, recordId }) => ({
+              source,
+              recordId,
+            })),
+            ...(result.kind === "invalid" ? { issue: result.issue } : {}),
+          },
+          meta,
+        );
         throw new Error(`${provider} failed chunk ${chunk.index}.`);
       }
 
       const mergeCandidates = compactCandidates(candidates, options);
       if (mergeCandidates === undefined) {
-        await save(request, { kind: "merge-too-large" });
+        await save(request, { kind: "merge-too-large" }, meta);
         return;
       }
       if (mergeCandidates.length === 0) {
-        await save(request, {
-          kind: "candidate",
-          candidate: { achievements: [] },
-        });
+        await save(
+          request,
+          {
+            kind: "candidate",
+            candidate: { achievements: [] },
+          },
+          meta,
+        );
         return;
       }
       const merged = await runValidated(
@@ -269,10 +292,14 @@ export function createSummaryRunner({
         { rejectEmpty: true },
       );
       if (merged.kind === "valid") {
-        await save(request, {
-          kind: "candidate",
-          candidate: { achievements: merged.achievements },
-        });
+        await save(
+          request,
+          {
+            kind: "candidate",
+            candidate: { achievements: merged.achievements },
+          },
+          meta,
+        );
         return;
       }
       await save(
@@ -280,6 +307,7 @@ export function createSummaryRunner({
         merged.kind === "unavailable"
           ? { kind: "merge-unavailable" }
           : { kind: "merge-invalid", issue: merged.issue },
+        meta,
       );
       throw new Error(`${provider} produced no valid merged summary.`);
 
@@ -336,6 +364,7 @@ export function createSummaryRunner({
   async function save(
     request: SummaryRequest,
     summary: Parameters<typeof assembleReport>[0]["summary"],
+    meta?: { summaryModel?: string; summaryProvider?: ReportSource },
   ): Promise<AchievementReportV1> {
     const report = assembleReport({
       date: request.payload.date,
@@ -345,6 +374,8 @@ export function createSummaryRunner({
       manifest: request.payload.manifest,
       coverage: request.payload.coverage,
       summary,
+      summaryModel: meta?.summaryModel,
+      summaryProvider: meta?.summaryProvider,
     });
     await reportStore.save(report);
     return report;

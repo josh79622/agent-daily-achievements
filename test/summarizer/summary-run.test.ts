@@ -1004,4 +1004,38 @@ describe("sanitizeCandidateEvidence", () => {
       "m5",
     ]);
   });
+
+  test("SR-meta: runner saves summaryModel and summaryProvider on the report", async () => {
+    const { runner, state } = harness({
+      provider: "claude-code",
+      runnerScript: [claudeExit(candidate(1))],
+      effectiveSettings: { model: "claude-3-7-sonnet" },
+    });
+    await runner.run("claude-code", request());
+    expect(state.saved).toHaveLength(1);
+    expect(state.saved[0]!.summaryModel).toBe("claude-3-7-sonnet");
+    expect(state.saved[0]!.summaryProvider).toBe("claude-code");
+  });
+
+  test("SR-meta: runner falls back to default summaryModel per provider", async () => {
+    const { runner, state } = harness({
+      provider: "claude-code",
+      runnerScript: [claudeExit(candidate(1))],
+    });
+    await runner.run("claude-code", request());
+    expect(state.saved).toHaveLength(1);
+    expect(state.saved[0]!.summaryModel).toBe("opus");
+    expect(state.saved[0]!.summaryProvider).toBe("claude-code");
+
+    const agyHarness = harness({
+      provider: "agy",
+      runnerScript: [agyExit(candidate(1))],
+    });
+    await agyHarness.runner.run("agy", request());
+    expect(agyHarness.state.saved).toHaveLength(1);
+    expect(agyHarness.state.saved[0]!.summaryModel).toBe(
+      "gemini-3.8-flash-medium",
+    );
+    expect(agyHarness.state.saved[0]!.summaryProvider).toBe("agy");
+  });
 });

@@ -33,6 +33,7 @@ export const zhTW: Translations = {
   meta: {
     count: "🎯 {n} 項具體成果",
     sources: "來源：",
+    model: "模型：{model}",
   },
   badges: {
     primary: "🌟 核心里程碑",

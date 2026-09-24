@@ -37,7 +37,11 @@ function report(title: string): AchievementReportV1 {
 const newest = {
   id: "newest-version",
   generatedAt: "2026-09-21T11:30:00.000Z",
-  report: report("最新版本內容"),
+  report: {
+    ...report("最新版本內容"),
+    summaryModel: "gpt-6-luna",
+    summaryProvider: "codex" as const,
+  },
 };
 const older = {
   id: "older-version",
@@ -136,5 +140,14 @@ describe("ZenJournal report versions", () => {
         expect.objectContaining({ method: "DELETE" }),
       );
     });
+  });
+
+  test("displays summary model and provider in meta bar when present", async () => {
+    vi.stubGlobal("fetch", stubVersionsApi());
+
+    render(<ZenJournal />);
+    await screen.findByText(newest.report.achievements[0]!.title);
+
+    expect(screen.getByText(/Codex \(gpt-6-luna\)/)).toBeInTheDocument();
   });
 });
