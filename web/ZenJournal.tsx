@@ -46,6 +46,7 @@ interface AchievementCardProps {
   onError: (message: string) => void;
   isHero?: boolean;
   t: Translations;
+  onOpenEvidence?: (achievement: Achievement) => void;
 }
 
 function AchievementCard({
@@ -56,6 +57,7 @@ function AchievementCard({
   onError,
   isHero = false,
   t,
+  onOpenEvidence,
 }: AchievementCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -153,7 +155,11 @@ function AchievementCard({
 
   const handleCardClick = () => {
     if (hasEvidence && !isEditing && !isRemoving) {
-      setIsEvidenceModalOpen(true);
+      if (onOpenEvidence) {
+        onOpenEvidence(achievement);
+      } else {
+        setIsEvidenceModalOpen(true);
+      }
     }
   };
 
@@ -165,7 +171,11 @@ function AchievementCard({
       (e.key === "Enter" || e.key === " ")
     ) {
       e.preventDefault();
-      setIsEvidenceModalOpen(true);
+      if (onOpenEvidence) {
+        onOpenEvidence(achievement);
+      } else {
+        setIsEvidenceModalOpen(true);
+      }
     }
   };
 
@@ -354,7 +364,11 @@ function AchievementCard({
                 className="evidence-summary-btn"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsEvidenceModalOpen(true);
+                  if (onOpenEvidence) {
+                    onOpenEvidence(achievement);
+                  } else {
+                    setIsEvidenceModalOpen(true);
+                  }
                 }}
               >
                 <span>📎</span>
@@ -368,7 +382,7 @@ function AchievementCard({
             </div>
           ) : null}
 
-          {hasEvidence && isEvidenceModalOpen ? (
+          {hasEvidence && isEvidenceModalOpen && !onOpenEvidence ? (
             <EvidenceModal
               isOpen={isEvidenceModalOpen}
               onClose={() => setIsEvidenceModalOpen(false)}
@@ -390,7 +404,10 @@ interface ReportVersionContentProps {
   t: Translations;
   onReportUpdated: (report: AchievementReportV1) => void;
   onError: (message: string) => void;
+  onOpenEvidence?: (achievement: Achievement) => void;
 }
+
+export type ReportVersionViewProps = ReportVersionContentProps;
 
 function formatGeneratedAt(generatedAt: string, language: Language): string {
   const date = new Date(generatedAt);
@@ -408,6 +425,7 @@ function ReportVersionContent({
   t,
   onReportUpdated,
   onError,
+  onOpenEvidence,
 }: ReportVersionContentProps) {
   const report = version.report;
   const incomplete = describeIncomplete(report.incomplete, t);
@@ -438,6 +456,7 @@ function ReportVersionContent({
       onError={onError}
       isHero={isHero}
       t={t}
+      onOpenEvidence={onOpenEvidence}
     />
   );
 
@@ -532,6 +551,8 @@ export function ZenJournal() {
   const [loading, setLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isActivityOpen, setIsActivityOpen] = useState(false);
+  const [viewingEvidenceAchievement, setViewingEvidenceAchievement] =
+    useState<Achievement | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(getYesterdayDate);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateMessage, setGenerateMessage] = useState<string | undefined>(
@@ -902,6 +923,7 @@ export function ZenJournal() {
                   )
                 }
                 onError={setStatus}
+                onOpenEvidence={setViewingEvidenceAchievement}
               />
             ))}
           </>
@@ -999,6 +1021,16 @@ export function ZenJournal() {
         isGenerating={isGenerating}
         direction={direction}
       />
+
+      {viewingEvidenceAchievement ? (
+        <EvidenceModal
+          isOpen={true}
+          onClose={() => setViewingEvidenceAchievement(null)}
+          achievement={viewingEvidenceAchievement}
+          reportDate={selectedDate}
+          t={t}
+        />
+      ) : null}
     </div>
   );
 }

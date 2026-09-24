@@ -61,8 +61,21 @@ describe("EvidenceModal component", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  test("renders modal elements when isOpen is true", () => {
-    render(
+  test("does not render when achievement is missing", () => {
+    const { container } = render(
+      <EvidenceModal
+        isOpen={true}
+        onClose={vi.fn()}
+        achievement={null as unknown as Achievement}
+        t={zhTW}
+      />,
+    );
+    expect(container.firstChild).toBeNull();
+    expect(document.querySelector(".modal-backdrop")).toBeNull();
+  });
+
+  test("renders modal elements when isOpen is true portalled into document.body", () => {
+    const { container } = render(
       <EvidenceModal
         isOpen={true}
         onClose={vi.fn()}
@@ -70,6 +83,12 @@ describe("EvidenceModal component", () => {
         t={zhTW}
       />,
     );
+
+    // Modal is portalled directly to document.body and not inside local container
+    const backdrop = document.querySelector(".modal-backdrop");
+    expect(backdrop).toBeTruthy();
+    expect(backdrop?.parentElement).toBe(document.body);
+    expect(container.firstChild).toBeNull();
 
     // Header & details
     expect(screen.getByText("🌟 核心里程碑")).toBeTruthy();
@@ -195,6 +214,10 @@ describe("ZenJournal card evidence interaction", () => {
     fireEvent.click(summaryBtn);
     expect(document.querySelector(".evidence-modal")).toBeTruthy();
     expect(screen.getByText("📎 紀錄佐證 (2)")).toBeTruthy();
+    expect(card?.querySelector(".evidence-modal")).toBeNull();
+    expect(document.querySelector(".modal-backdrop")?.parentElement).toBe(
+      document.body,
+    );
 
     // Close modal
     fireEvent.click(screen.getByRole("button", { name: /關閉|Close|✕/ }));

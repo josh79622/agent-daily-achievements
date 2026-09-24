@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Achievement, EvidenceRef } from "../src/report/contract.js";
 import {
   isLocallyTraceable,
@@ -138,7 +139,7 @@ export function EvidenceModal({
 
   useEffect(() => {
     setSelectedEvidenceIndex(0);
-  }, [achievement.id, isOpen]);
+  }, [achievement?.id, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -153,14 +154,14 @@ export function EvidenceModal({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !achievement) return null;
 
   const category = achievement.category || "progress";
   const evidenceList = achievement.evidence ?? [];
   const selectedEvidence =
     evidenceList[selectedEvidenceIndex] ?? evidenceList[0];
 
-  return (
+  const modalContent = (
     <div
       className="modal-backdrop"
       onClick={(e) => {
@@ -262,4 +263,8 @@ export function EvidenceModal({
       </div>
     </div>
   );
+
+  return typeof document !== "undefined"
+    ? createPortal(modalContent, document.body)
+    : modalContent;
 }
