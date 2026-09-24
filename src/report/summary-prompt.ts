@@ -67,11 +67,16 @@ Rules:
 1. ${projectRule}
    Focus on accomplishments, decisions, or milestones completed on the report date (messages where time is formatted as HH:mm). Messages with a date prefix (e.g. YYYY-MM-DD HH:mm) provide background context from prior days.
 2. Readability & Cognitive Clarity:
-   - title: A concise, punchy phrase or short sentence (strictly under 40 characters / 10 words). State what was achieved or decided plainly and directly (e.g. "定稿 Energetica 求職信", "排除 8 筆不合適職缺", "重構認證中介層"). DO NOT include commit hashes, raw file paths, or parenthetical notes in the title.
-   - detail: 1 to 2 clean, natural sentences explaining the core outcome or reasoning. Write for the developer to review their own day with clarity and closure. Focus on the net outcome, not the chronological trial-and-error.
+   - title: Strictly concise, punchy phrase or short sentence (under 30 characters / 8 words in English, under 20 characters in Chinese). State plainly what was achieved or decided (e.g. "定稿 Energetica 求職信", "排除 8 筆不合適職缺", "重構認證中介層"). No file paths, commit hashes, or parenthetical notes in the title.
+   - detail: 1 to 2 clean, natural, and concise sentences (strictly 40 to 70 Chinese characters, or 15 to 30 English words). Focus on the core net outcome, value delivered, or key decision made. Write in fluent, readable human phrasing that gives the developer cognitive relief.
    - project: The project name this achievement belongs to. Must match the 'project' field of the cited conversation record. Never invent or hallucinate a project name not present in the input.
-   - Strictly avoid audit-log language: DO NOT say "the user", "使用者", "git log shows", or narrate prompt back-and-forth.
-   - DO NOT put raw file paths or commit hashes in the detail; evidence references belong strictly in the "evidence" array.
+   - Strictly avoid robotic audit-log and commit-log style:
+     - DO NOT cram multiple disconnected clauses together using endless commas and semicolons.
+     - DO NOT mention test numbers (e.g. "通過 585 個測試"), benchmark scores, temporary script paths, or retry counts.
+     - DO NOT narrate chronological trial-and-error, debug attempts, or prompt interactions.
+     - DO NOT say "the user", "使用者", "git log shows", or narrate prompt back-and-forth.
+     - DO NOT put raw file paths or commit hashes in the detail; evidence references belong strictly in the "evidence" array.
+     - Focus on the high-level impact and net result.
 3. The 'evidence' list holds records about the activity. Cite only exact source and recordId values from the input, and messageIds from that conversation's messages array. messageIds must be 1 to 5 message identifiers taken from the 'id' field of messages in that conversation's 'messages' array (never use the recordId as a messageId). Never invent, reformat, or guess an identifier.
 4. A stated intention is not an achievement. "I'll do X tomorrow", "I plan to", or an unsent draft is not progress, no matter how specific.
 5. A conversation with no evidence that something ran, changed, or was sent cannot establish that a task was completed. Discussion alone is not progress, though it may be a decision, a clarification, or learning. This governs whether an achievement exists, not which records it cites: a record too weak to stand alone is still cited when it refers to an activity established elsewhere.
@@ -152,11 +157,16 @@ Rules:
 2. Return 3 to 5 final achievements (never more than ${maxAchievements}, and strictly at least 1 when candidates are provided; if fewer than 3 unique candidates are provided, return all of them). NEVER return an empty array {"achievements":[]} when candidate achievements exist in the input.
 3. Pick exactly one primary achievement with "isPrimary": true, all others "isPrimary": false.
 4. Readability & Cognitive Clarity:
-   - title: A concise, punchy phrase or short sentence (strictly under 40 characters / 10 words). State what was achieved or decided plainly and directly. DO NOT include commit hashes, raw file paths, or parenthetical notes in the title.
-   - detail: 1 to 2 clean, natural sentences explaining the core outcome or reasoning. Write for the developer to review their own day with clarity and closure. Focus on the net outcome, not chronological trial-and-error.
+   - title: Strictly concise, punchy phrase or short sentence (under 30 characters / 8 words in English, under 20 characters in Chinese). State plainly what was achieved or decided. No file paths, commit hashes, or parenthetical notes in the title.
+   - detail: 1 to 2 clean, natural, and concise sentences (strictly 40 to 70 Chinese characters, or 15 to 30 English words). Focus on the core net outcome, value delivered, or key decision made. Write in fluent, readable human phrasing that gives the developer cognitive relief. Avoid comma-spliced clause salads. No test counts, no retry narration. Focus on the core value or resolution.
    - project: The project name this achievement belongs to, matching the candidate's project. Never invent or hallucinate a project name not present in the input.
-   - Strictly avoid audit-log jargon: DO NOT say "the user", "使用者", "git log shows", or narrate prompt back-and-forth.
-   - DO NOT put raw file paths or commit hashes in the detail; evidence references belong strictly in the "evidence" array.
+   - Strictly avoid robotic audit-log and commit-log style:
+     - DO NOT cram multiple disconnected clauses together using endless commas and semicolons.
+     - DO NOT mention test numbers (e.g. "通過 585 個測試"), benchmark scores, temporary script paths, or retry counts.
+     - DO NOT narrate chronological trial-and-error, debug attempts, or prompt interactions.
+     - DO NOT say "the user", "使用者", "git log shows", or narrate prompt back-and-forth.
+     - DO NOT put raw file paths or commit hashes in the detail; evidence references belong strictly in the "evidence" array.
+     - Focus on the high-level impact and net result.
 5. Retain exact evidence identifiers (source, recordId, and messageIds if present) from the input candidates. Never invent identifiers. Merge evidence references for achievements that combine multiple candidates. Omit messageIds only when the supplied compact evidence omits them; a session-level evidence entry is {"source":"<source from the input>","recordId":"<recordId from the input>"} with no messageIds.
 6. Language: ${languageInstruction}
 

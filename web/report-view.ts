@@ -77,6 +77,7 @@ const sourceLabels: Record<ReportSource, string> = {
   "claude-code": "Claude Code",
   codex: "Codex",
   antigravity: "Google Antigravity",
+  agy: "Google Antigravity",
   "claude-web": "Claude (web)",
   "chatgpt-web": "ChatGPT (web)",
   "gemini-web": "Gemini (web)",

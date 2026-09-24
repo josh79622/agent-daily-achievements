@@ -34,6 +34,7 @@ export const es: Translations = {
   meta: {
     count: "🎯 {n} logros",
     sources: "Fuentes: ",
+    model: "Modelo: {model}",
   },
   badges: {
     primary: "🌟 Hito clave",

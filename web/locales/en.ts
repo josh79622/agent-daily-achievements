@@ -36,6 +36,7 @@ export const en = {
   meta: {
     count: "🎯 {n} achievements",
     sources: "Sources: ",
+    model: "Model: {model}",
   },
   badges: {
     primary: "🌟 Key Milestone",

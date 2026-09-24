@@ -12,12 +12,14 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { AchievementReportV1 } from "../report/contract.js";
+import type { AchievementReportV1, ReportSource } from "../report/contract.js";
 
 export interface ReportVersion {
   id: string;
   generatedAt: string;
   report: AchievementReportV1;
+  summaryModel?: string;
+  summaryProvider?: ReportSource;
 }
 
 export type ReadReportResult =
@@ -119,10 +121,17 @@ export function createReportStore(directory: string): ReportVersionStore {
         readFile(path, "utf8"),
         stat(path),
       ]);
+      const report = JSON.parse(contents) as AchievementReportV1;
       return {
         id: legacyIdFor(date),
         generatedAt: metadata.mtime.toISOString(),
-        report: JSON.parse(contents) as AchievementReportV1,
+        report,
+        ...(report.summaryModel !== undefined
+          ? { summaryModel: report.summaryModel }
+          : {}),
+        ...(report.summaryProvider !== undefined
+          ? { summaryProvider: report.summaryProvider }
+          : {}),
       };
     } catch (error) {
       if (isMissingFileError(error)) return undefined;
@@ -296,6 +305,12 @@ export function createReportStore(directory: string): ReportVersionStore {
         id,
         generatedAt: nextGeneratedAt(),
         report,
+        ...(report.summaryModel !== undefined
+          ? { summaryModel: report.summaryModel }
+          : {}),
+        ...(report.summaryProvider !== undefined
+          ? { summaryProvider: report.summaryProvider }
+          : {}),
       };
       const versionsDirectory = versionsDirectoryFor(report.date);
       await mkdir(versionsDirectory, { recursive: true });

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   Achievement,
   AchievementReportV1,
+  ReportSource,
 } from "../src/report/contract.js";
 import { describeIncomplete, sourceLabel } from "./report-view.js";
 import {
@@ -36,6 +37,8 @@ interface ReportVersion {
   id: string;
   generatedAt: string;
   report: AchievementReportV1;
+  summaryModel?: string;
+  summaryProvider?: ReportSource;
 }
 
 interface AchievementCardProps {
@@ -481,6 +484,20 @@ function ReportVersionContent({
               .map((coverage) => sourceLabel(coverage.source))
               .join(", ")}
           </span>
+          {report.summaryModel || version.summaryModel ? (
+            <>
+              <span className="meta-divider">•</span>
+              <span className="meta-model">
+                🤖{" "}
+                {format(t.meta.model, {
+                  model:
+                    report.summaryProvider || version.summaryProvider
+                      ? `${sourceLabel((report.summaryProvider || version.summaryProvider) as ReportSource)} (${report.summaryModel || version.summaryModel})`
+                      : (report.summaryModel || version.summaryModel)!,
+                })}
+              </span>
+            </>
+          ) : null}
         </div>
       </section>
 

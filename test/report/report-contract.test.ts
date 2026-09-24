@@ -55,6 +55,32 @@ test("RC: chunking failures are typed incomplete entries without candidate text"
   ]);
 });
 
+test("RC: assembleReport preserves summaryModel and summaryProvider when present", () => {
+  const base = {
+    date: "2026-09-23",
+    timezone: "UTC",
+    manifest,
+    coverage: allIncluded,
+    summary: {
+      kind: "candidate" as const,
+      candidate: { achievements: [item()] },
+    },
+  };
+  const reportWithMeta = assembleReport({
+    ...base,
+    summaryModel: "gpt-6-luna",
+    summaryProvider: "codex",
+  });
+  expect(reportWithMeta.summaryModel).toBe("gpt-6-luna");
+  expect(reportWithMeta.summaryProvider).toBe("codex");
+
+  const reportWithoutMeta = assembleReport(base);
+  expect(reportWithoutMeta.summaryModel).toBeUndefined();
+  expect(reportWithoutMeta.summaryProvider).toBeUndefined();
+  expect("summaryModel" in reportWithoutMeta).toBe(false);
+  expect("summaryProvider" in reportWithoutMeta).toBe(false);
+});
+
 function item(overrides: Record<string, unknown> = {}) {
   return {
     id: "a1",
